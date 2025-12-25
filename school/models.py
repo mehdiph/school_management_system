@@ -22,13 +22,10 @@ class Subject(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
-    
-
 
 class SchoolClass(models.Model):
     year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
-    Subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     section = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
@@ -38,4 +35,7 @@ class ClassSubject(models.Model):
     school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING)
     subject = models.ForeignKey(Subject, on_delete=models.DO_NOTHING)
     teacher = models.ForeignKey(User, on_delete=models.DO_NOTHING)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)

@@ -1,5 +1,5 @@
 from django.db import models
-from school.models import SchoolClass
+from school.models import ClassSubject
 
 # Create your models here.
 
@@ -9,7 +9,7 @@ class SchoolSession(models.Model):
         CANCELED = 'CD', 'کنسل شده'
         HELD = 'HD', 'برگزار شده'
 
-    school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING)
+    class_subject = models.ForeignKey(ClassSubject, on_delete=models.DO_NOTHING)
     date = models.DateField()
     session_number = models.IntegerField()
     status = models.CharField(
