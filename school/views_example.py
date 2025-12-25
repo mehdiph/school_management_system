@@ -1,20 +1,7 @@
-from django.shortcuts import render, redirect, get_object_or_404
+# مثال برای استفاده از فرم SchoolClass در views.py
+from django.shortcuts import render, redirect
 from django.contrib import messages
 from .forms import SchoolClassForm
-from .models import SchoolClass
-
-
-def class_list(request):
-    """
-    ویو برای نمایش لیست کلاس‌ها
-    """
-    classes = SchoolClass.objects.filter(is_active=True).select_related('year', 'grade')
-    
-    context = {
-        'classes': classes,
-    }
-    
-    return render(request, 'school/class_list.html', context)
 
 
 def class_create(request):
@@ -50,6 +37,9 @@ def class_update(request, pk):
     """
     ویو برای ویرایش کلاس موجود
     """
+    from django.shortcuts import get_object_or_404
+    from .models import SchoolClass
+    
     school_class = get_object_or_404(SchoolClass, pk=pk)
     
     if request.method == 'POST':
@@ -70,3 +60,8 @@ def class_update(request, pk):
     
     return render(request, 'school/class_form.html', context)
 
+
+# مثال برای URLs (باید در urls.py اضافه شود):
+"""
+
+"""

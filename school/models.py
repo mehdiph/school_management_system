@@ -1,41 +1,82 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django_jalali.db import models as jmodels
 
 # Create your models here.
 
 class AcademicYear(models.Model):
-    title = models.CharField(max_length=50)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    is_current = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=False)
+    title = models.CharField(max_length=50, verbose_name='عنوان')
+    start_date = jmodels.jDateField(verbose_name='تاریخ شروع')
+    end_date = jmodels.jDateField(verbose_name='تاریخ پایان')
+    is_current = models.BooleanField(default=False, verbose_name='سال جاری')
+    is_active = models.BooleanField(default=False, verbose_name='فعال')
+
+    class Meta:
+        verbose_name = 'سال تحصیلی'
+        verbose_name_plural = 'سال‌های تحصیلی'
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return self.title
 
 class Grade(models.Model):
-    name = models.CharField(max_length=255)
-    level = models.IntegerField(unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    name = models.CharField(max_length=255, verbose_name='نام')
+    level = models.IntegerField(unique=True, verbose_name='سطح')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+
+    class Meta:
+        verbose_name = 'پایه تحصیلی'
+        verbose_name_plural = 'پایه‌های تحصیلی'
+        ordering = ['level']
+
+    def __str__(self):
+        return self.name
 
 class Subject(models.Model):
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    name = models.CharField(max_length=255, verbose_name='نام درس')
+    slug = models.SlugField(max_length=255, verbose_name='نامک')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+
+    class Meta:
+        verbose_name = 'درس'
+        verbose_name_plural = 'دروس'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class SchoolClass(models.Model):
-    year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
-    section = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, verbose_name='سال تحصیلی')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, verbose_name='پایه')
+    section = models.CharField(max_length=255, verbose_name='نام کلاس')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+
+    class Meta:
+        verbose_name = 'کلاس'
+        verbose_name_plural = 'کلاس‌ها'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.grade.name} - {self.section}"
 
     
 class ClassSubject(models.Model):
-    school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING)
-    subject = models.ForeignKey(Subject, on_delete=models.DO_NOTHING)
-    teacher = models.ForeignKey(User, on_delete=models.DO_NOTHING)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING, verbose_name='کلاس')
+    subject = models.ForeignKey(Subject, on_delete=models.DO_NOTHING, verbose_name='درس')
+    teacher = models.ForeignKey(User, on_delete=models.DO_NOTHING, verbose_name='معلم')
+    start_date = jmodels.jDateField(verbose_name='تاریخ شروع')
+    end_date = jmodels.jDateField(verbose_name='تاریخ پایان')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    is_active = models.BooleanField(default=True, verbose_name='فعال')
+
+    class Meta:
+        verbose_name = 'درس کلاس'
+        verbose_name_plural = 'دروس کلاس‌ها'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.school_class} - {self.subject.name}"
