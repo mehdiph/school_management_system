@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -21,6 +22,8 @@ class Subject(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
+    
+
 
 class SchoolClass(models.Model):
     year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
@@ -31,4 +34,8 @@ class SchoolClass(models.Model):
     is_active = models.BooleanField(default=True)
 
     
-
+class ClassSubject(models.Model):
+    school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING)
+    subject = models.ForeignKey(Subject, on_delete=models.DO_NOTHING)
+    teacher = models.ForeignKey(User, on_delete=models.DO_NOTHING)
+    is_active = models.BooleanField(default=True)

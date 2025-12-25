@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت جلسه کلاسی</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-lighter: #dbeafe;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: var(--gray-800);
+            line-height: 1.6;
+            direction: rtl;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        /* Header Styles */
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title i {
+            color: var(--primary);
+            background-color: var(--primary-lighter);
+            padding: 10px;
+            border-radius: 50%;
+        }
+
+        /* Class Info Card */
+        .class-info-card {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .class-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .class-info-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 6px;
+        }
+
+        .class-info-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Form Cards */
+        .form-card {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            margin-bottom: 28px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary-lighter);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: var(--primary);
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--gray-800);
+            font-size: 0.95rem;
+        }
+
+        .required::after {
+            content: " *";
+            color: var(--danger);
+        }
+
+        /* Input Styles */
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background-color: white;
+            color: var(--gray-800);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        input[type="number"] {
+            direction: ltr;
+            text-align: right;
+        }
+
+        /* Radio Group */
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            width: auto;
+            margin-left: 4px;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            gap: 6px;
+        }
+
+        .status-held {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-canceled {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-makeup {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Textarea */
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        /* Helper Text */
+        .helper-text {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Form Actions */
+        .form-actions {
+            display: flex;
+            justify-content: flex-start;
+            gap: 16px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 160px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #0da271;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-outline {
+            background-color: white;
+            color: var(--gray-600);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        /* Copy Button */
+        .copy-section {
+            background-color: var(--gray-50);
+            border: 1px dashed var(--gray-300);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .copy-btn {
+            background-color: white;
+            color: var(--gray-800);
+            border: 1px solid var(--gray-300);
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--primary-lighter);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .class-info-card {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .page-title {
+                font-size: 1.5rem;
+            }
+            
+            .card-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-card {
+                padding: 20px;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .class-info-value {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Focus States */
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        /* Utility Classes */
+        .mt-4 { margin-top: 16px; }
+        .mb-2 { margin-bottom: 8px; }
+        .text-sm { font-size: 0.9rem; }
+
+        /* Placeholder Styling */
+        ::placeholder {
+            color: var(--gray-400);
+            opacity: 1;
+        }
+
+        :-ms-input-placeholder {
+            color: var(--gray-400);
+        }
+
+        ::-ms-input-placeholder {
+            color: var(--gray-400);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-chalkboard-teacher"></i>
+                ثبت جلسه و محتوای تدریس
+            </h1>
+        </header>
+
+        <!-- Class Information Card -->
+        <section class="class-info-card">
+            <div class="class-info-item">
+                <span class="class-info-label">پایه تحصیلی</span>
+                <span class="class-info-value">
+                    <i class="fas fa-graduation-cap"></i>
+                    چهارم ابتدایی
+                </span>
+            </div>
+            <div class="class-info-item">
+                <span class="class-info-label">نام کلاس / بخش</span>
+                <span class="class-info-value">
+                    <i class="fas fa-school"></i>
+                    کلاس ۴ الف
+                </span>
+            </div>
+            <div class="class-info-item">
+                <span class="class-info-label">درس</span>
+                <span class="class-info-value">
+                    <i class="fas fa-book"></i>
+                    ریاضی
+                </span>
+            </div>
+            <div class="class-info-item">
+                <span class="class-info-label">سال تحصیلی</span>
+                <span class="class-info-value">
+                    <i class="fas fa-calendar-alt"></i>
+                    ۱۴۰۳-۱۴۰۴
+                </span>
+            </div>
+        </section>
+
+        <!-- Session Information Form -->
+        <form id="sessionForm">
+            <!-- Session Information Card -->
+            <section class="form-card">
+                {{ session_form }}
+                {% csrf_token %}
+            </section>
+
+            <!-- Session Content Card -->
+            <section class="form-card">
+                <h2 class="card-title">
+                    <i class="fas fa-book-open"></i>
+                    محتوای جلسه
+                </h2>
+                
+                {{ content_form }}
+                {% csrf_token %}
+            </section>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    ذخیره جلسه
+                </button>
+                
+                <button type="button" class="btn btn-secondary" id="saveAndAddBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    ذخیره و افزودن جلسه بعدی
+                </button>
+                
+                <button type="button" class="btn btn-outline" id="cancelBtn">
+                    <i class="fas fa-arrow-right"></i>
+                    بازگشت
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // DOM Elements
+        const sessionForm = document.getElementById('sessionForm');
+        const copyFromPreviousBtn = document.getElementById('copyFromPreviousBtn');
+        const saveAndAddBtn = document.getElementById('saveAndAddBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        
+        
+        // Today's date in YYYY-MM-DD format for date picker
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Set default date to today
+        document.getElementById('sessionDate').value = getTodayDate();
+    
+        
+        
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateY(-20px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateY(-20px);
+                    opacity: 0;
+                }
+            }
+            
+            /* Focus styles for better accessibility */
+            .radio-option input:focus + .status-badge {
+                outline: 2px solid #3b82f6;
+                outline-offset: 2px;
+            }
+            
+            /* Improve number input appearance */
+            input[type="number"]::-webkit-inner-spin-button,
+            input[type="number"]::-webkit-outer-spin-button {
+                opacity: 1;
+                height: auto;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

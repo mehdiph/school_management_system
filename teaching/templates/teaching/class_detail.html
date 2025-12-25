@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جلسات کلاس چهارم الف - ریاضی</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-lighter: #dbeafe;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: var(--gray-800);
+            line-height: 1.6;
+            direction: rtl;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title i {
+            color: var(--primary);
+            background-color: var(--primary-lighter);
+            padding: 12px;
+            border-radius: 50%;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 180px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: var(--gray-800);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--gray-50);
+            border-color: var(--gray-400);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Class Summary Card */
+        .class-summary-card {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            margin-bottom: 32px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+            border-right: 4px solid var(--primary);
+        }
+
+        .class-summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .class-summary-label {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .class-summary-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .session-count {
+            background-color: var(--primary-lighter);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+        }
+
+        /* Sessions Table */
+        .sessions-section {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .sessions-table-container {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+        }
+
+        .sessions-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .sessions-table thead {
+            background-color: var(--gray-50);
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .sessions-table th {
+            padding: 18px 16px;
+            text-align: right;
+            font-weight: 700;
+            color: var(--gray-800);
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+
+        .sessions-table tbody tr {
+            border-bottom: 1px solid var(--gray-100);
+            transition: background-color 0.2s ease;
+        }
+
+        .sessions-table tbody tr:hover {
+            background-color: var(--gray-50);
+        }
+
+        .sessions-table tbody tr.no-content {
+            background-color: rgba(239, 68, 68, 0.05);
+            border-right: 3px solid var(--danger);
+        }
+
+        .sessions-table tbody tr.no-content:hover {
+            background-color: rgba(239, 68, 68, 0.08);
+        }
+
+        .sessions-table td {
+            padding: 16px;
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .status-held {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-canceled {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-makeup {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Session Topic */
+        .session-topic {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .session-topic.full {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        /* Action Buttons in Table */
+        .action-cell {
+            width: 100px;
+        }
+
+        .edit-btn {
+            background-color: white;
+            color: var(--gray-600);
+            border: 1px solid var(--gray-300);
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+
+        .edit-btn:hover {
+            background-color: var(--primary-lighter);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* No Content Warning */
+        .no-content-warning {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--danger);
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-600);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--gray-300);
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            color: var(--gray-800);
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+            margin-bottom: 24px;
+            max-width: 500px;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .class-summary-card {
+                grid-template-columns: repeat(2, 1fr);
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .action-buttons {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            
+            .btn {
+                min-width: 160px;
+                padding: 10px 20px;
+            }
+            
+            .class-summary-card {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .sessions-section {
+                padding: 20px;
+            }
+            
+            .sessions-table th,
+            .sessions-table td {
+                padding: 14px 12px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .page-title {
+                font-size: 1.5rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .section-title {
+                font-size: 1.2rem;
+            }
+            
+            .sessions-table th,
+            .sessions-table td {
+                padding: 12px 10px;
+                font-size: 0.9rem;
+            }
+            
+            .status-badge,
+            .edit-btn {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Utility Classes */
+        .text-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-4 {
+            margin-top: 16px;
+        }
+
+        .mb-4 {
+            margin-bottom: 16px;
+        }
+
+        /* Django Template Specific */
+        .django-variable {
+            background-color: rgba(37, 99, 235, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px dashed var(--primary);
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        /* Session topic tooltip */
+        .session-topic {
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .session-topic:hover::after {
+            content: attr(data-full-topic);
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background-color: var(--gray-800);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            white-space: normal;
+            max-width: 400px;
+            z-index: 100;
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* Make table rows more interactive */
+        .sessions-table tbody tr {
+            cursor: pointer;
+        }
+        
+        .sessions-table tbody tr td:first-child {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--gray-600);
+            text-decoration: none;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            transition: all 0.2s ease;
+        }
+
+        .back-link:hover {
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+        }
+
+        /* Django message alerts */
+        .messages {
+            margin-bottom: 24px;
+        }
+
+        .message {
+            padding: 16px 24px;
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .message.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .message.warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+
+        .message.info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Django Template Comment: Start of template -->
+        <!-- 
+            در Django این بخش با extends و block کار می‌کند:
+            {% extends "base.html" %}
+            {% block content %}
+        -->
+
+        <!-- Back to Dashboard Link -->
+        <a href="#" class="back-link">
+            <i class="fas fa-arrow-right"></i>
+            بازگشت به داشبورد
+        </a>
+
+        <!-- Django Messages (for success/error alerts) -->
+        <!-- 
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="message {{ message.tags }}">
+                    <i class="fas 
+                        {% if message.tags == 'success' %}fa-check-circle
+                        {% elif message.tags == 'error' %}fa-exclamation-circle
+                        {% elif message.tags == 'warning' %}fa-exclamation-triangle
+                        {% else %}fa-info-circle
+                        {% endif %}
+                    "></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        -->
+
+        <!-- Page Header -->
+        <header class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    جلسات کلاس
+                </h1>
+            </div>
+            
+            <div class="action-buttons">
+                <!-- 
+                    در Django این لینک‌ها با url template tag کار می‌کنند:
+                    <a href="{% url 'session_create' class_id=class.id %}" class="btn btn-primary">
+                -->
+                <a href="#" class="btn btn-primary">
+                    <i class="fas fa-plus-circle"></i>
+                    ثبت جلسه جدید
+                </a>
+                <button class="btn btn-secondary" onclick="scrollToLastSession()">
+                    <i class="fas fa-eye"></i>
+                    مشاهده آخرین جلسه
+                </button>
+            </div>
+        </header>
+
+        <!-- Class Summary Card -->
+        <!-- 
+            در Django متغیرها از context می‌آیند:
+            <section class="class-summary-card">
+                <div class="class-summary-item">
+                    <div class="class-summary-label">
+                        <i class="fas fa-graduation-cap"></i>
+                        پایه تحصیلی
+                    </div>
+                    <div class="class-summary-value">{{ class.grade }}</div>
+                </div>
+                ...
+                <div class="class-summary-item">
+                    <div class="class-summary-label">
+                        <i class="fas fa-list-ol"></i>
+                        تعداد جلسات
+                    </div>
+                    <div class="session-count">
+                        <i class="fas fa-chalkboard"></i>
+                        <span>{{ sessions.count }}</span> جلسه
+                    </div>
+                </div>
+            </section>
+        -->
+        <section class="class-summary-card">
+            <div class="class-summary-item">
+                <div class="class-summary-label">
+                    <i class="fas fa-graduation-cap"></i>
+                    پایه تحصیلی
+                </div>
+                <div class="class-summary-value">چهارم ابتدایی</div>
+            </div>
+            
+            <div class="class-summary-item">
+                <div class="class-summary-label">
+                    <i class="fas fa-school"></i>
+                    نام کلاس / بخش
+                </div>
+                <div class="class-summary-value">کلاس ۴ الف</div>
+            </div>
+            
+            <div class="class-summary-item">
+                <div class="class-summary-label">
+                    <i class="fas fa-book"></i>
+                    درس
+                </div>
+                <div class="class-summary-value">ریاضی</div>
+            </div>
+            
+            <div class="class-summary-item">
+                <div class="class-summary-label">
+                    <i class="fas fa-calendar-alt"></i>
+                    سال تحصیلی
+                </div>
+                <div class="class-summary-value">۱۴۰۳-۱۴۰۴</div>
+            </div>
+            
+            <div class="class-summary-item">
+                <div class="class-summary-label">
+                    <i class="fas fa-list-ol"></i>
+                    تعداد جلسات
+                </div>
+                <div class="session-count">
+                    <i class="fas fa-chalkboard"></i>
+                    <span>۱۲</span> جلسه
+                </div>
+            </div>
+        </section>
+
+        <!-- Sessions List Section -->
+        <section class="sessions-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-list"></i>
+                    لیست جلسات ثبت شده
+                </h2>
+                <div class="section-info">
+                    <span>۱۲ جلسه نمایش داده می‌شود</span>
+                </div>
+            </div>
+
+            <!-- 
+                در Django این بخش با یک for loop روی sessions کار می‌کند:
+                {% if sessions %}
+                <div class="sessions-table-container">
+                    <table class="sessions-table">
+                        <thead>...</thead>
+                        <tbody>
+                            {% for session in sessions %}
+                            <tr class="{% if not session.has_content %}no-content{% endif %}">
+                                <td>{{ session.session_number }}</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                        {{ session.date|jalali_date }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="session-topic" data-full-topic="{{ session.topic }}">
+                                        {{ session.topic|truncatechars:50 }}
+                                    </div>
+                                    {% if not session.has_content %}
+                                    <div class="no-content-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        محتوای جلسه ثبت نشده
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'held' %}
+                                    <span class="status-badge status-held">
+                                        <i class="fas fa-check-circle"></i>
+                                        برگزار شد
+                                    </span>
+                                    {% elif session.status == 'canceled' %}
+                                    <span class="status-badge status-canceled">
+                                        <i class="fas fa-times-circle"></i>
+                                        لغو شد
+                                    </span>
+                                    {% elif session.status == 'makeup' %}
+                                    <span class="status-badge status-makeup">
+                                        <i class="fas fa-history"></i>
+                                        جبرانی
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="action-cell text-center">
+                                    <a href="{% url 'session_edit' session_id=session.id %}" class="edit-btn">
+                                        <i class="fas fa-edit"></i>
+                                        ویرایش
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>هنوز جلسه‌ای ثبت نشده است</h3>
+                    <p>برای شروع، اولین جلسه کلاس را ثبت کنید.</p>
+                    <a href="{% url 'session_create' class_id=class.id %}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i>
+                        ثبت اولین جلسه
+                    </a>
+                </div>
+                {% endif %}
+            -->
+
+            <div class="sessions-table-container">
+                <table class="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>شماره جلسه</th>
+                            <th>تاریخ جلسه</th>
+                            <th>موضوع جلسه</th>
+                            <th>وضعیت</th>
+                            <th class="text-center">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Session 1 (Latest) -->
+                        <tr id="session-12">
+                            <td>
+                                <strong>۱۲</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۳/۰۱/۱۵
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="کسرهای متعارفی و جمع و تفریق کسرها با مخرج مشترک">
+                                    کسرهای متعارفی و جمع و تفریق کسرها با مخرج مشترک
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-held">
+                                    <i class="fas fa-check-circle"></i>
+                                    برگزار شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 2 -->
+                        <tr>
+                            <td>
+                                <strong>۱۱</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۳/۰۱/۱۲
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="مفهوم کسر و انواع کسر (متعارف، نامتعارف، مختلط)">
+                                    مفهوم کسر و انواع کسر (متعارف، نامتعارف، مختلط)
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-held">
+                                    <i class="fas fa-check-circle"></i>
+                                    برگزار شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 3 -->
+                        <tr>
+                            <td>
+                                <strong>۱۰</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۳/۰۱/۰۸
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="مرور فصل چهارم و آزمون پایانی">
+                                    مرور فصل چهارم و آزمون پایانی
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-held">
+                                    <i class="fas fa-check-circle"></i>
+                                    برگزار شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 4 -->
+                        <tr>
+                            <td>
+                                <strong>۹</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۳/۰۱/۰۵
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="ضرب و تقسیم اعداد اعشاری در توان‌های ۱۰">
+                                    ضرب و تقسیم اعداد اعشاری در توان‌های ۱۰
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-held">
+                                    <i class="fas fa-check-circle"></i>
+                                    برگزار شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 5 (Without content) -->
+                        <tr class="no-content">
+                            <td>
+                                <strong>۸</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۳/۰۱/۰۲
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="جمع و تفریق اعداد اعشاری">
+                                    جمع و تفریق اعداد اعشاری
+                                </div>
+                                <div class="no-content-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    محتوای جلسه ثبت نشده
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-canceled">
+                                    <i class="fas fa-times-circle"></i>
+                                    لغو شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 6 -->
+                        <tr>
+                            <td>
+                                <strong>۷</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۲/۱۲/۲۷
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="مفهوم عدد اعشاری و نمایش روی محور">
+                                    مفهوم عدد اعشاری و نمایش روی محور
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-held">
+                                    <i class="fas fa-check-circle"></i>
+                                    برگزار شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 7 (Make-up) -->
+                        <tr>
+                            <td>
+                                <strong>۶</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۲/۱۲/۲۲
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="مرور فصل سوم">
+                                    مرور فصل سوم
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-makeup">
+                                    <i class="fas fa-history"></i>
+                                    جبرانی
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Session 8 -->
+                        <tr>
+                            <td>
+                                <strong>۵</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="far fa-calendar-alt" style="color: var(--gray-600);"></i>
+                                    ۱۴۰۲/۱۲/۱۸
+                                </div>
+                            </td>
+                            <td>
+                                <div class="session-topic" data-full-topic="محیط و مساحت مستطیل و مربع">
+                                    محیط و مساحت مستطیل و مربع
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-held">
+                                    <i class="fas fa-check-circle"></i>
+                                    برگزار شد
+                                </span>
+                            </td>
+                            <td class="action-cell text-center">
+                                <a href="#" class="edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination (for Django) -->
+            <!-- 
+                {% if is_paginated %}
+                <div class="pagination mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination-list" style="display: flex; gap: 8px; list-style: none; justify-content: center;">
+                            {% if page_obj.has_previous %}
+                            <li>
+                                <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline">
+                                    <i class="fas fa-chevron-right"></i>
+                                    قبلی
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li>
+                                    <span class="btn btn-primary">{{ num }}</span>
+                                </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li>
+                                    <a href="?page={{ num }}" class="btn btn-outline">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li>
+                                <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline">
+                                    بعدی
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            -->
+        </section>
+
+        <!-- Django Template Comment: End of template -->
+        <!-- {% endblock %} -->
+    </div>
+
+    <!-- Minimal JavaScript for UI interactions -->
+    <script>
+        // Function to scroll to the last session (session with highest number)
+        function scrollToLastSession() {
+            const lastSessionRow = document.getElementById('session-12');
+            if (lastSessionRow) {
+                lastSessionRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Add highlight effect
+                lastSessionRow.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
+                setTimeout(() => {
+                    lastSessionRow.style.backgroundColor = '';
+                }, 2000);
+                
+                // Show a message
+                showMessage('به آخرین جلسه (شماره ۱۲) منتقل شدید', 'info');
+            } else {
+                showMessage('جلسه‌ای یافت نشد', 'warning');
+            }
+        }
+
+        // Function to show temporary message
+        function showMessage(message, type = 'info') {
+            // Create message element
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                right: 20px;
+                max-width: 400px;
+                margin: 0 auto;
+                padding: 16px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                font-weight: 500;
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                animation: slideIn 0.3s ease;
+                text-align: right;
+            `;
+            
+            // Add icon
+            const icon = document.createElement('i');
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-circle';
+            } else if (type === 'warning') {
+                icon.className = 'fas fa-exclamation-triangle';
+            } else {
+                icon.className = 'fas fa-info-circle';
+            }
+            
+            // Add text
+            const text = document.createElement('span');
+            text.textContent = message;
+            
+            messageEl.appendChild(icon);
+            messageEl.appendChild(text);
+            
+            // Add to page
+            document.body.appendChild(messageEl);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                if (messageEl.parentNode) {
+                    messageEl.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        if (messageEl.parentNode) {
+                            messageEl.remove();
+                        }
+                    }, 300);
+                }
+            }, 4000);
+        }
+
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateY(-20px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateY(-20px);
+                    opacity: 0;
+                }
+            }
+            
+            /* Pagination styles */
+            .pagination-list {
+                display: flex;
+                gap: 8px;
+                list-style: none;
+                justify-content: center;
+                margin-top: 24px;
+            }
+            
+            .btn-outline {
+                background-color: white;
+                color: var(--gray-600);
+                border: 1px solid var(--gray-300);
+                padding: 8px 16px;
+                border-radius: var(--radius);
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-weight: 500;
+                cursor: pointer;
+            }
+            
+            .btn-outline:hover {
+                background-color: var(--gray-50);
+                border-color: var(--gray-400);
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add click event to table rows to navigate to edit page
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableRows = document.querySelectorAll('.sessions-table tbody tr');
+            tableRows.forEach(row => {
+                row.addEventListener('click', function(e) {
+                    // Don't navigate if user clicked on edit button
+                    if (!e.target.closest('.edit-btn')) {
+                        const editBtn = this.querySelector('.edit-btn');
+                        if (editBtn && editBtn.href) {
+                            window.location.href = editBtn.href;
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

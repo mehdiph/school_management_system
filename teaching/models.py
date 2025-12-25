@@ -10,7 +10,7 @@ class SchoolSession(models.Model):
         HELD = 'HD', 'برگزار شده'
 
     school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING)
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateField()
     session_number = models.IntegerField()
     status = models.CharField(
         max_length=2,
