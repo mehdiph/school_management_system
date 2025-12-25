@@ -165,10 +165,6 @@
         /* Select Dropdown */
         select.form-control {
             cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: left 12px center;
-            background-size: 20px;
             padding-left: 44px;
         }
 
@@ -511,7 +507,6 @@
                         <div class="checkbox-group">
                             {{ form.is_active }}
                             <label for="{{ form.is_active.id_for_label }}">
-                                <i class="fas fa-toggle-on"></i>
                                 {{ form.is_active.label }}
                             </label>
                         </div>
