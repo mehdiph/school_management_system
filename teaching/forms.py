@@ -70,6 +70,11 @@ class SessionContentForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': 'مطالب و مفاهیم تدریس شده در این جلسه را بنویسید...'
             }),
+            'date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
             'activity': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 3,

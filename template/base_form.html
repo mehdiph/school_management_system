@@ -1,0 +1,56 @@
+<!-- templates/base_form.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block styles %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <!-- Form Header -->
+    <div class="form-header">
+        <i class="fas fa-chalkboard"></i>
+        <h2>{% block form_title %}فرم{% endblock %}</h2>
+        <p class="form-subtitle">{% block form_subtitle %}اطلاعات را وارد کنید{% endblock %}</p>
+    </div>
+
+    <!-- Form Body -->
+    <div class="form-body">
+        <!-- Success/Error Messages -->
+        {% if messages %}
+        {% for message in messages %}
+        {% if message.tags == 'success' %}
+        <div class="success-message">
+            <i class="fas fa-check-circle"></i>
+            {{ message }}
+        </div>
+        {% elif message.tags == 'error' or message.tags == 'danger' %}
+        <div class="error-message" style="margin-bottom: 24px; font-size: 1rem; padding: 16px;">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ message }}
+        </div>
+        {% else %}
+        <div class="info-box" style="margin-bottom: 24px;">
+            <div class="info-box-title">
+                <i class="fas fa-info-circle"></i>
+                پیام سیستم
+            </div>
+            <div class="info-box-text">{{ message }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+
+        <!-- Main Content -->
+        {% block form_content %}
+        {% endblock %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="{% static 'js/forms.js' %}"></script>
+{% endblock %}
