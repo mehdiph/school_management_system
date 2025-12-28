@@ -45,7 +45,13 @@ def school_session_form(request):
             # نمایش خطاهای فرم
             messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')
     else:
-        session_form = SchoolSessionForm()
+        # Check if a class_subject ID is passed in the URL (e.g. from class list)
+        initial_data = {}
+        class_subject_id = request.GET.get('class_subject')
+        if class_subject_id:
+            initial_data['class_subject'] = class_subject_id
+
+        session_form = SchoolSessionForm(initial=initial_data)
         content_form = SessionContentForm()
 
     context = {

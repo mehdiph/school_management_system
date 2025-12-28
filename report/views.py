@@ -5,15 +5,19 @@ from django.template.loader import get_template
 from django.conf import settings
 from django.db.models import Count, Min, Max
 from django.utils import timezone
+from jdatetime import datetime
 import os
-from xhtml2pdf import pisa
+
+# Third-party for PDF
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 
 from school.models import SchoolClass, ClassSubject, AcademicYear, Grade
 from teaching.models import SchoolSession
 
 class BaseReportView(View):
     """
-    Base view to handle PDF generation logic and static file callback.
+    Base view to handle PDF generation logic using WeasyPrint.
     """
     template_name = None 
 
@@ -30,56 +34,48 @@ class BaseReportView(View):
 
     def render_to_pdf(self, request, context):
         context['is_pdf'] = True
+        
+        # Determine strict font path for WeasyPrint
+        # Assuming we have a font file in static/fonts/ or similar
+        # Since I don't see a visible fonts folder, I will try to find where Vazirmatn is
+        # Or recommend the user to place it. For now, I will assume it is in static/fonts/Vazirmatn-Regular.ttf
+        # If not, WeasyPrint will struggle. I'll add a check.
+        
+        # CHECK: Does the user have the font locally? 
+        # The user's system likely doesn't have it in a static folder yet based on file list.
+        # I will point to a system font or ask the user.
+        # However, for a robust solution, I should look for the font file.
+        # I'll Assume standard staticfile structure: static/fonts/Vazirmatn.ttf
+        
+        font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts', 'Vazirmatn-Regular.ttf')
+        context['font_path'] = font_path
+
+        # Use specific PDF template
+        template = get_template('report/report_pdf.html')
+        html_string = template.render(context)
+
+        # Create HTTP Response
         response = HttpResponse(content_type='application/pdf')
         filename = f"report_{timezone.now().strftime('%Y%m%d%H%M')}.pdf"
         response['Content-Disposition'] = f'inline; filename="{filename}"'
 
-        template = get_template(self.template_name)
-        html = template.render(context)
+        # WeasyPrint font config
+        font_config = FontConfiguration()
+        
+        # Base URL for resolving static files
+        base_url = request.build_absolute_uri('/')
 
-        pisa_status = pisa.CreatePDF(
-            html, dest=response, link_callback=self.link_callback
-        )
+        # Generate PDF
+        try:
+            HTML(string=html_string, base_url=base_url).write_pdf(
+                target=response, 
+                font_config=font_config,
+                presentational_hints=True
+            )
+        except Exception as e:
+            return HttpResponse(f"Error generating PDF (WeasyPrint): {e}")
 
-        if pisa_status.err:
-            return HttpResponse('We had some errors <pre>' + html + '</pre>')
         return response
-
-    @staticmethod
-    def link_callback(uri, rel):
-        sUrl = settings.STATIC_URL
-        sRoot = settings.STATIC_ROOT
-        mUrl = settings.MEDIA_URL
-        mRoot = settings.MEDIA_ROOT
-
-        if uri.startswith(mUrl):
-            path = os.path.join(mRoot, uri.replace(mUrl, ""))
-        elif uri.startswith(sUrl):
-            path = os.path.join(sRoot, uri.replace(sUrl, ""))
-        else:
-            return uri 
-
-        if not os.path.isfile(path):
-             # Dev environment fallback - Check local static folder
-             local_static = os.path.join(settings.BASE_DIR, 'static')
-             rel_path = uri.replace(sUrl, "")
-             local_path = os.path.join(local_static, rel_path)
-             
-             if os.path.isfile(local_path):
-                 return local_path
-
-             # App specific fallbacks (legacy check, might not be needed if above works but keeping for safety)
-             if 'report/css/' in uri:
-                 if 'grade_report.css' in uri:
-                     return os.path.join(settings.BASE_DIR, 'report/static/report/css/grade_report.css')
-                 if 'report.css' in uri:
-                     return os.path.join(settings.BASE_DIR, 'report/static/report/css/report.css')
-                 if 'reports.css' in uri:
-                     return os.path.join(settings.BASE_DIR, 'report/static/report/css/reports.css')
-
-             print(f"Warning: PDF static file not found: {path} (and local fallback {local_path}) for uri: {uri}")
-
-        return path
 
 
 class ReportsView(BaseReportView):
@@ -185,7 +181,7 @@ class ReportsView(BaseReportView):
             'class_name': school_class.section,
             'grade': school_class.grade.name,
             'academic_year': school_class.year.title,
-            'report_date': timezone.now().strftime("%Y-%m-%d"),
+            'report_date': datetime.now().strftime("%Y-%m-%d"),
             'total_subjects': len(subjects_data),
             'total_sessions': total_sessions_count,
             'first_session_date': global_first_date,

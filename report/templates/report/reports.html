@@ -66,8 +66,7 @@
                     <select name="class_id" id="class_id" class="form-control">
                         <option value="">انتخاب کنید...</option>
                         {% for c in classes_list %}
-                        <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.grade.name
-                            }} - {{ c.section }}</option>
+                        <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.grade.name}} - {{ c.section }}</option>
                         {% endfor %}
                     </select>
                 </div>

@@ -45,3 +45,15 @@ class SchoolClassForm(forms.ModelForm):
         self.fields['year'].required = True
         self.fields['grade'].required = True
         self.fields['section'].required = True
+
+    def clean_section(self):
+        print(self.cleaned_data)
+        section = self.cleaned_data['section']
+        grade = Grade.objects.get(name=self.cleaned_data['grade'])
+        year = AcademicYear.objects.get(title=self.cleaned_data['year'])
+        if not section:
+            raise forms.ValidationError('نام کلاس نمی تواند خالی باشد')
+        exists = SchoolClass.objects.filter(year=year, grade=grade, section=section).exists()
+        if exists:
+            raise forms.ValidationError('این نام کلاس قبلاً ثبت شده است')
+        return section

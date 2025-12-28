@@ -1,0 +1,276 @@
+{% load static %}
+{% load persian_tools %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>گزارش آموزشی</title>
+    <style>
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('file://{{ font_path }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @page {
+            size: A4;
+            margin: 5mm;
+            border: 1px solid #000;
+            padding: 10mm;
+
+            @top-right {
+                content: "سیستم مدیریت مدرسه هوشمند نسل قلم";
+                font-family: 'Vazirmatn', sans-serif;
+                font-size: 9pt;
+                margin-bottom: 1mm;
+            }
+
+            @bottom-center {
+                content: "صفحه " counter(page);
+                font-family: 'Vazirmatn', sans-serif;
+                font-size: 9pt;
+                margin-top: 5mm;
+            }
+        }
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            direction: rtl;
+            text-align: right;
+            font-size: 10pt;
+            line-height: 1.5;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Vazirmatn', sans-serif;
+        }
+
+        /* Specific styles from grade_report.css that need to be inline or imported */
+        .report-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 1rem;
+        }
+
+        .report-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .report-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .text-right {
+            text-align: right !important;
+        }
+
+        .text-center {
+            text-align: center !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+            border: 1px dashed #ddd;
+        }
+    </style>
+</head>
+
+<body>
+
+    {% if report_type == 'class' %}
+    {# We include the content but ensure the content template doesn't rely on web-specific classes #}
+    {# Re-implementing simplified include logic for PDF to be safe #}
+
+    <div class="report-header">
+        <div class="report-title">گزارش جلسات کلاسی</div>
+        <div class="report-meta">
+            <span>کلاس: {{ class_name }}</span>
+            <span>پایه: {{ grade }}</span>
+            <span>سال تحصیلی: {{ academic_year }}</span>
+        </div>
+        <div class="report-meta" style="margin-top: 5px;">
+            <span>تاریخ گزارش: {{ report_date }}</span>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <h3 style="margin-top: 2rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; color: #555;">خلاصه آمار</h3>
+    <table style="width: 100%; border: none; margin-bottom: 2rem;">
+        <tr style="border: none;">
+            <td style="border: none; width: 33%; padding: 0;">
+                <div
+                    style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 10px;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_sessions }}</div>
+                    <div style="color: #7f8c8d; font-size: 0.9rem;">کل جلسات برگزار شده</div>
+                </div>
+            </td>
+            <td style="border: none; width: 33%; padding: 0;">
+                <div
+                    style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 5px; margin-right: 5px;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_subjects }}</div>
+                    <div style="color: #7f8c8d; font-size: 0.9rem;">تعداد دروس فعال</div>
+                </div>
+            </td>
+            <td style="border: none; width: 33%; padding: 0;">
+                <div
+                    style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-right: 10px;">
+                    <div style="font-size: 1rem; font-weight: bold; color: #2c3e50;">{{ first_session_date }} تا
+                        {{last_session_date }}</div>
+                    <div style="color: #7f8c8d; font-size: 0.9rem;">بازه زمانی فعالیت</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Subjects Overview Table -->
+    <h3 style="margin-top: 2rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; color: #555;">لیست دروس و وضعیت
+        کلی</h3>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">ردیف</th>
+                <th>نام درس</th>
+                <th>نام معلم</th>
+                <th>تعداد جلسات</th>
+                <th>تاریخ اولین جلسه</th>
+                <th>تاریخ آخرین جلسه</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subject in subjects %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ subject.name }}</td>
+                <td>{{ subject.teacher_name }}</td>
+                <td>{{ subject.session_count }}</td>
+                <td>{{ subject.first_date|default:"-" }}</td>
+                <td>{{ subject.last_date|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+
+
+    <!-- Detailed Sessions -->
+    <h3 style="margin-top: 2rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; color: #555;">جزئیات جلسات به
+        تفکیک درس</h3>
+
+    {% for subject in subjects %}
+    <div class="subject-section" style="break-inside: avoid; margin-top: 2rem;">
+        <h3 style="border-bottom: 2px solid #333; padding-bottom: 0.5rem;">
+            درس: {{ subject.name }}
+            <small style="font-size: 0.8rem; font-weight: normal; margin-right: 1rem;">(معلم:
+                {{subject.teacher_name}})</small>
+        </h3>
+
+        {% if subject.sessions %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 10%;">ردیف</th>
+                    <th style="width: 15%;">تاریخ</th>
+                    <th>محتوای تدریس شده</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in subject.sessions %}
+                <tr>
+                    <td>{{ session.number }}</td>
+                    <td>{{ session.date|date:"Y/m/d" }}</td>
+                    <td class="text-right">{{ session.content }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">بدون جلسه ثبت شده</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% elif report_type == 'grade' %}
+
+    <div class="report-header">
+        <div class="report-title">گزارش جامع پایه تحصیلی</div>
+        <div class="report-meta">
+            <span>سال تحصیلی: {{ academic_year }}</span>
+            <span>تاریخ گزارش: {{ report_date }}</span>
+        </div>
+    </div>
+
+    {% for grade in grades_data %}
+    <div class="grade-section">
+        <h2 style="background-color: #eee; padding: 0.5rem; text-align: center; margin-top: 2rem;">پایه:
+            {{grade.grade_name }}</h2>
+
+        {% for klass in grade.classes %}
+        <div class="class-section" style="margin-top: 1.5rem; break-inside: avoid;">
+            <h3>کلاس: {{ klass.class_name }}</h3>
+
+            {% if klass.sessions %}
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">تاریخ</th>
+                        <th style="width: 20%;">درس</th>
+                        <th style="width: 20%;">معلم</th>
+                        <th>خلاصه محتوا</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in klass.sessions %}
+                    <tr>
+                        <td>{{ session.date|date:"Y/m/d" }}</td>
+                        <td>{{ session.subject_name }}</td>
+                        <td>{{ session.teacher_name }}</td>
+                        <td class="text-right">{{ session.content_summary }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">جلسه‌ای برای این کلاس ثبت نشده است.</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    {% endif %}
+
+</body>
+
+</html>

@@ -2,18 +2,15 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from school.models import AcademicYear, ClassSubject
 from teaching.models import SchoolSession
-import jdatetime
+
 
 @login_required
 def dashboard(request):
     """
     Dashboard view for the teacher.
     """
-    # 1. Teacher & Date
-    teacher = {
-        'name': request.user.get_full_name() or request.user.username
-    }
-    today_date = jdatetime.date.today().strftime("%Y/%m/%d")
+    
+    
     
     # 2. Academic Year
     current_year = AcademicYear.objects.filter(is_current=True).first()
@@ -78,10 +75,8 @@ def dashboard(request):
     total_sessions = SchoolSession.objects.filter(class_subject__teacher=request.user).count()
 
     context = {
-        'teacher': teacher,
         'academic_year': academic_year_title,
-        'today_date': today_date,
-        'today_class_subjects': today_class_subjects,
+        'today_class_subjects': today_class_subjects[:6],
         'class_subjects_summary': class_subjects_summary,
         'recent_sessions': recent_sessions,
         'total_sessions': total_sessions,

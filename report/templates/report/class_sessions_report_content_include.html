@@ -166,8 +166,7 @@
         </div>
         {% empty %}
         <div class="empty-state">
-            {% if is_pdf %}{{ "اطلاعاتی برای نمایش وجود ندارد."|reshape }}{% else %}اطلاعاتی برای نمایش وجود ندارد.{%
-            endif %}
+            {% if is_pdf %}{{ "اطلاعاتی برای نمایش وجود ندارد."|reshape }}{% else %}اطلاعاتی برای نمایش وجود ندارد.{% endif %}
         </div>
         {% endfor %}
     </section>

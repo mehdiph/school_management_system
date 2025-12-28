@@ -1,0 +1,319 @@
+/* Class List Page Styles - Grouped List Layout */
+
+/* Page Header and Filters (Shared) */
+.page-header {
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* Filter Section */
+.filter-section {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 2rem;
+    border: 1px solid var(--gray-200);
+}
+
+.filter-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.form-control {
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    outline: none;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-filter {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-filter:hover {
+    background-color: var(--primary-dark);
+    color: var(--primary-dark);
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
+}
+
+.btn-clear {
+    background-color: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--gray-300);
+    padding: 0.6rem 1.5rem;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-clear:hover {
+    background-color: var(--gray-100);
+    color: var(--text-dark);
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
+}
+
+.btn-view-session {
+    background-color: var(--primary);
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
+}
+
+.btn-view-session:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-dark);
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
+}
+
+/* Grouped List Styles */
+.classes-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.grade-group {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+}
+
+.grade-header {
+    background-color: var(--gray-50);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.grade-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.grade-count {
+    background-color: var(--gray-200);
+    color: var(--text-muted);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* List Items */
+.class-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.class-item {
+    display: grid;
+    grid-template-columns: 1fr 3fr 2fr;
+    /* Class | Subject | Action */
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--gray-100);
+    transition: background-color 0.2s;
+    gap: 1rem;
+}
+
+.class-item:last-child {
+    border-bottom: none;
+}
+
+.class-item:hover {
+    background-color: var(--gray-50);
+}
+
+.class-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.class-name i {
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+.subject-name {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.subject-name i {
+    color: var(--secondary);
+    opacity: 0.7;
+}
+
+.action-col {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: end;
+    /* Align button to the left (end in RTL) */
+}
+
+.btn-register-session {
+    background-color: var(--success);
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
+}
+
+.btn-register-session:hover {
+    background-color: var(--success-dark);
+    color: var(--success-dark);
+    box-shadow: 0 4px 6px rgba(46, 204, 113, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: white;
+    border-radius: var(--border-radius);
+    border: 2px dashed var(--gray-300);
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    color: var(--gray-300);
+}
+
+.empty-state h3 {
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .filter-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-group {
+        min-width: 100%;
+    }
+
+    .filter-actions {
+        flex-direction: column;
+    }
+
+    .btn-filter,
+    .btn-clear {
+        justify-content: center;
+    }
+
+    /* Stack list items on mobile */
+    .class-item {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+        padding: 1.2rem;
+    }
+
+    .action-col {
+        text-align: right;
+        /* Revert to right align for full width */
+        margin-top: 0.5rem;
+    }
+
+    .btn-register-session {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        padding: 0.8rem;
+    }
+}
