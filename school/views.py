@@ -31,7 +31,7 @@ def class_create(request):
             messages.success(request, f'کلاس {school_class.grade.name} - {school_class.section} با موفقیت ایجاد شد!')
             
             # انتقال به لیست کلاس‌ها
-            return redirect('class_list')
+            return redirect('school:class_list')
         else:
             # نمایش پیام خطا
             messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')

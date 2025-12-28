@@ -306,7 +306,7 @@
                 </p>
             </div>
             <div class="header-actions">
-                <a href="{% url 'class_create' %}" class="btn btn-primary">
+                <a href="{% url 'school:class_create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     افزودن کلاس جدید
                 </a>
@@ -370,7 +370,7 @@
 
                     <div class="class-card-footer"
                         style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--gray-100);">
-                        <a href="{% url 'class_update' class.id %}" class="btn btn-primary" style="width: 100%;">
+                        <a href="{% url 'school:class_update' class.id %}" class="btn btn-primary" style="width: 100%;">
                             <i class="fas fa-edit"></i>
                             ویرایش کلاس
                         </a>
@@ -386,7 +386,7 @@
                 <p>
                     شما هنوز هیچ کلاسی ایجاد نکرده‌اید. برای شروع، روی دکمه "افزودن کلاس جدید" کلیک کنید.
                 </p>
-                <a href="{% url 'class_create' %}" class="btn btn-primary">
+                <a href="{% url 'school:class_create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     افزودن اولین کلاس
                 </a>

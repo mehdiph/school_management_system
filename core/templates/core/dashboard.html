@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}داشبورد معلم | نیک‌آموز{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'core/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header - Custom styled to break out of generic container if needed (handled by CSS negative margins) -->
+<header class="header">
+    <div class="header-content">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+            <span>نیک‌آموز</span>
+        </div>
+
+        <nav class="nav-links">
+            <a href="#" class="nav-link active">داشبورد</a>
+            <a href="{% url 'school:class_list' %}" class="nav-link">کلاس‌ها</a>
+            <a href="{% url 'teaching:session_list' %}" class="nav-link">جلسات</a>
+            <a href="#" class="nav-link">گزارش‌ها</a>
+        </nav>
+
+        <div class="header-info">
+            <span class="date-display">{{ today_date }}</span>
+            <span class="desktop-only">{{ teacher.name }}</span>
+        </div>
+    </div>
+</header>
+
+<div class="welcome-section">
+    <h1 class="welcome-title">سلام، {{ teacher.name }}</h1>
+    <p class="welcome-subtitle">سال تحصیلی {{ academic_year }}</p>
+</div>
+
+<div class="dashboard-grid">
+
+    <!-- Left Column: Primary Content -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Today's Teaching -->
+        <!-- Helper class dashboard-card used to apply specific styling vs generic base card -->
+        <section class="card dashboard-card">
+            <div class="card-header">
+                <h2 class="card-title">برنامه امروز</h2>
+            </div>
+            <div class="card-body">
+                {% if today_class_subjects %}
+                <div class="today-list">
+                    {% for item in today_class_subjects %}
+                    <div class="today-item">
+                        <div class="today-header">
+                            <span class="class-badge">{{ item.class_name }}</span>
+                            <span class="today-meta">جلسه قبل: {{ item.last_session_number }}</span>
+                        </div>
+                        <div class="today-content">
+                            <h4>{{ item.subject_name }}</h4>
+                            <p class="today-meta">{{ item.last_session_summary|default:"بدون گزارش قبلی"|truncatechars:100 }}</p>
+                        </div>
+                        <a href="{% url 'teaching:session_form' %}?class={{ item.id }}" class="btn-register">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            ثبت جلسه جدید
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>برای امروز کلاسی تعریف نشده است.</p>
+                    <p style="font-size: 0.9em; margin-top: 0.5rem;">روز خوبی داشته باشید!</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- My Classes Grouping -->
+        <section class="card dashboard-card classes-section">
+            <div class="card-header">
+                <h2 class="card-title">کلاس‌های من</h2>
+            </div>
+            <div class="card-body">
+                <div class="filter-tabs">
+                    <button class="tab-btn active" onclick="toggleView('by-subject')">بر اساس درس</button>
+                    <button class="tab-btn" onclick="toggleView('by-grade')">بر اساس پایه</button>
+                </div>
+
+                <!-- View 1: Group By Subject -->
+                <div id="view-by-subject" class="class-view">
+                    {% regroup class_subjects_summary|dictsort:"subject_name" by subject_name as subject_list %}
+                    {% for subject in subject_list %}
+                    <div class="class-group">
+                        <h3 class="group-title">{{ subject.grouper }}</h3>
+                        <div class="class-grid">
+                            {% for item in subject.list %}
+                            <div class="mini-card">
+                                <h5>{{ item.class_name }}</h5>
+                                <span>{{ item.grade_name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state">هیچ درسی یافت نشد.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- View 2: Group By Grade -->
+                <div id="view-by-grade" class="class-view" style="display: none;">
+                    {% regroup class_subjects_summary|dictsort:"grade_name" by grade_name as grade_list %}
+                    {% for grade in grade_list %}
+                    <div class="class-group">
+                        <h3 class="group-title">{{ grade.grouper }}</h3>
+                        <div class="class-grid">
+                            {% for item in grade.list %}
+                            <div class="mini-card">
+                                <h5>{{ item.subject_name }}</h5>
+                                <span>کلاس {{ item.class_name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state">هیچ کلاسی یافت نشد.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Right Column: Sidebar Stats & Recent -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Stats -->
+        <div class="dashboard-stats-grid">
+            <div class="stat-card-simple">
+                <span class="stat-value">{{ class_subjects_summary|length }}</span>
+                <span class="stat-label">کلاس فعال</span>
+            </div>
+            <div class="stat-card-simple">
+                <span class="stat-value">{{ total_sessions|default:"0" }}</span>
+                <span class="stat-label">جلسه ثبت شده</span>
+            </div>
+        </div>
+
+        <!-- Recent Sessions -->
+        <section class="card dashboard-card">
+            <div class="card-header">
+                <h2 class="card-title">آخرین جلسات</h2>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                {% if recent_sessions %}
+                <div class="session-list">
+                    {% for session in recent_sessions %}
+                    <div class="session-item">
+                        <div class="session-info">
+                            <span class="session-title">{{ session.class_subject }} (ج {{ session.session_number}})</span>
+                            <span class="session-date">{{ session.date|date:"Y/m/d" }}</span>
+                        </div>
+                        <div class="session-actions">
+                            <a href="#" class="btn-sm">مشاهده</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>هنوز جلسه‌ای ثبت نشده است.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+    </div>
+
+</div>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="bottom-nav">
+    <a href="#" class="nav-item active">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        <span>خانه</span>
+    </a>
+    <a href="{% url 'school:class_list' %}" class="nav-item">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        <span>کلاس‌ها</span>
+    </a>
+    <a href="{% url 'teaching:session_list' %}" class="nav-item">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+        <span>جلسات</span>
+    </a>
+    <a href="#" class="nav-item">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+        </svg>
+        <span>گزارش</span>
+    </a>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'core/dashboard.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,424 @@
+/* Dashboard Helpers to override or supplement base variables if needed */
+:root {
+    /* Extending base vars where dashboard needs specific colors */
+    --primary-dark: #115e59;
+    --secondary-light: #64748b;
+    --accent: #f59e0b;
+    --bg-card: #ffffff;
+    --text-muted: #64748b;
+}
+
+/* Header - Specific to dashboard */
+.header {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0.5rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: var(--shadow-sm);
+    margin-left: -24px;
+    /* Break out of base container if possible, though base padding clips */
+    margin-right: -24px;
+    padding-left: 24px;
+    padding-right: 24px;
+    margin-top: -24px;
+    /* Pull up to top */
+    margin-bottom: 24px;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 4rem;
+}
+
+.logo {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.logo svg {
+    width: 28px;
+    height: 28px;
+}
+
+.header-info {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--gray-600);
+}
+
+.date-display {
+    background: var(--gray-100);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+}
+
+.nav-links {
+    display: none;
+    /* Mobile hidden */
+}
+
+/* Welcome Section */
+.welcome-section {
+    margin-bottom: 1.5rem;
+}
+
+.welcome-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.welcome-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+/* Card Overrides/Specifics */
+/* We rely on base .card for basic shape, but add flex column for layout */
+.dashboard-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    /* Override base padding for full-width headers */
+    overflow: hidden;
+}
+
+.dashboard-card .card-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafafa;
+    margin-bottom: 0;
+    /* Override base */
+}
+
+.dashboard-card .card-body {
+    padding: 1.5rem;
+    flex: 1;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 0;
+    /* Reset */
+}
+
+/* Section: Today's Teaching */
+.today-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.today-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: #fff;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.today-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-light);
+}
+
+.today-item::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary);
+}
+
+.today-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.class-badge {
+    background: var(--primary-light);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.today-content h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.today-meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.btn-register {
+    align-self: flex-end;
+    background: var(--primary);
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+    width: 100%;
+    justify-content: center;
+    text-decoration: none;
+}
+
+@media (min-width: 640px) {
+    .btn-register {
+        width: auto;
+    }
+}
+
+.btn-register:hover {
+    background: var(--primary-dark);
+}
+
+/* Section: Overview Stats */
+.dashboard-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.stat-card-simple {
+    background: var(--bg-card);
+    padding: 1rem;
+    border-radius: var(--radius);
+    text-align: center;
+    border: 1px solid var(--gray-200);
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--primary);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Section: Recent Sessions */
+.session-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.session-item:last-child {
+    border-bottom: none;
+}
+
+.session-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.session-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.session-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.session-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: var(--radius);
+    background: var(--gray-50);
+    color: var(--gray-600);
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-sm:hover {
+    background: var(--primary-light);
+    color: white;
+}
+
+/* Section: My Classes */
+.classes-section {
+    grid-column: 1 / -1;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.tab-btn {
+    background: transparent;
+    border: 1px solid var(--gray-300);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: var(--gray-700);
+    color: white;
+    border-color: var(--gray-700);
+}
+
+.class-group {
+    margin-bottom: 1.5rem;
+}
+
+.group-title {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    border-right: 3px solid var(--accent);
+    padding-right: 0.75rem;
+}
+
+.class-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.mini-card {
+    background: white;
+    padding: 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.mini-card h5 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.mini-card span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Bottom Nav (Mobile) */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-around;
+    padding: 0.75rem 0;
+    z-index: 100;
+}
+
+@media (min-width: 1024px) {
+    .bottom-nav {
+        display: none;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .nav-link {
+        color: var(--gray-600);
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+        color: var(--primary);
+    }
+
+    .nav-link.active {
+        color: var(--primary);
+        font-weight: 700;
+    }
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    gap: 4px;
+    text-decoration: none;
+}
+
+.nav-item svg {
+    width: 24px;
+    height: 24px;
+}
+
+.nav-item.active {
+    color: var(--primary);
+}

@@ -1,0 +1,96 @@
+{% load persian_tools %}
+<!-- Content of Grade Sessions Report (Partial) -->
+<div class="grade-report-container">
+    <!-- Main Header -->
+    <header class="main-header">
+        <h1>{% if is_pdf %}{{ "گزارش جلسات تدریس بر اساس پایه"|reshape }}{% else %}گزارش جلسات تدریس بر اساس پایه{%endif %}</h1>
+        <div class="meta">
+            <span>{% if is_pdf %}{{ "سال تحصیلی"|reshape }}{% else %}سال تحصیلی{% endif %}: {{ academic_year|reshape }}</span>
+            <span class="separator">|</span>
+            <span>{% if is_pdf %}{{ "تاریخ اخذ گزارش"|reshape }}{% else %}تاریخ اخذ گزارش{% endif %}: {{ report_date }}</span>
+        </div>
+    </header>
+
+    <!-- Main Content: Grades Loop -->
+    {% for grade_data in grades_data %}
+    <div class="grade-section">
+        <div class="grade-title">
+            {% if is_pdf %}{{ grade_data.grade_name|reshape }}{% else %}{{ grade_data.grade_name }}{% endif %}
+        </div>
+
+        {% for class_data in grade_data.classes %}
+        <div class="class-section">
+            <h3 class="class-title">{% if is_pdf %}{{ "کلاس"|reshape }}{% else %}کلاس{% endif %}: {% if is_pdf %}{{class_data.class_name|reshape }}{% else %}{{ class_data.class_name }}{% endif %}</h3>
+            {% if class_data.sessions %}
+            <table class="session-table">
+                <thead>
+                    <tr>
+                        {% if is_pdf %}
+                        <!-- Reverse Order for PDF (LTR simulating RTL) -->
+                        <th>{{ "خلاصه محتوا"|reshape }}</th>
+                        <th style="width: 150px;">{{ "دبیر"|reshape }}</th>
+                        <th style="width: 150px;">{{ "درس"|reshape }}</th>
+                        <th style="width: 100px;">{{ "تاریخ"|reshape }}</th>
+                        <th style="width: 50px;">{{ "ردیف"|reshape }}</th>
+                        {% else %}
+                        <th style="width: 50px;">ردیف</th>
+                        <th style="width: 100px;">تاریخ</th>
+                        <th style="width: 150px;">درس</th>
+                        <th style="width: 150px;">دبیر</th>
+                        <th>خلاصه محتوا</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in class_data.sessions %}
+                    <tr>
+                        {% if is_pdf %}
+                        <!-- Reverse Order for PDF -->
+                        <td style="text-align: right;">{{ session.content_summary|truncatechars:100|reshape }}</td>
+                        <td style="text-align: right;">{{ session.teacher_name|reshape }}</td>
+                        <td style="text-align: right;">{{ session.subject_name|reshape }}</td>
+                        <td style="text-align: right;">{{ session.date }}</td>
+                        <td style="text-align: center;">{{ forloop.counter }}</td>
+                        {% else %}
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ session.date }}</td>
+                        <td>{{ session.subject_name }}</td>
+                        <td>{{ session.teacher_name }}</td>
+                        <td>{{ session.content_summary|truncatechars:100 }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-message">
+                {% if is_pdf %}{{ "هیچ جلسه‌ای برای این کلاس در سال تحصیلی جاری ثبت نشده است."|reshape }}{% else %}هیچ
+                جلسه‌ای برای این کلاس در سال تحصیلی جاری ثبت نشده است.{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-message">
+            {% if is_pdf %}{{ "کلاسی برای این پایه تعریف نشده یا اطلاعاتی موجود نیست."|reshape }}{% else %}کلاسی برای
+            این پایه تعریف نشده یا اطلاعاتی موجود نیست.{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% empty %}
+    <div class="empty-message" style="margin-top: 3rem;">
+        {% if is_pdf %}{{ "هیچ داده‌ای برای نمایش یافت نشد."|reshape }}{% else %}هیچ داده‌ای برای نمایش یافت نشد.{%endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Footer -->
+    <footer class="report-footer">
+        {% if is_pdf %}
+        <!-- Reverse footer if needed, but flexbox usually handles row-reverse or we just swap -->
+        <div>{{ report_date }}</div>
+        <div>{{ "سیستم مدیریت مدارس"|reshape }}</div>
+        {% else %}
+        <div>سیستم مدیریت مدارس</div>
+        <div>{{ report_date }}</div>
+        {% endif %}
+    </footer>
+</div>

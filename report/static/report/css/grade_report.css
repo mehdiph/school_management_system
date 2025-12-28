@@ -1,0 +1,156 @@
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('/static/fonts/Vazirmatn-Regular.ttf');
+}
+
+/* Grade Report Specific Variables Replaced for PDF Compatibility */
+/*
+    --grade-header-bg: #e0f2fe;
+    --grade-border: #1e40af;
+    --class-header-bg: #f1f5f9;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+*/
+
+.grade-report-container {
+    padding: 2rem;
+    background: white;
+    max-width: 210mm;
+    margin: 0 auto;
+    font-family: 'Vazirmatn', sans-serif;
+}
+
+/* Header */
+.main-header {
+    text-align: center;
+    border-bottom: 3px solid #1e293b;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.main-header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.main-header .meta {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+/* Grade Section */
+.grade-section {
+    margin-bottom: 3rem;
+    page-break-after: always;
+    /* Start new grade on new page usually better, or at least avoid breaking inside */
+}
+
+.grade-section:last-child {
+    page-break-after: auto;
+}
+
+.grade-title {
+    background-color: #e0f2fe;
+    color: #1e40af;
+    padding: 0.75rem 1rem;
+    font-size: 1.4rem;
+    font-weight: 800;
+    border-right: 5px solid #1e40af;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+/* Class Section */
+.class-section {
+    margin-bottom: 2rem;
+    page-break-inside: avoid;
+}
+
+.class-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    padding-right: 0.5rem;
+    color: #1e293b;
+}
+
+/* Table Styles */
+.session-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.session-table th,
+.session-table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.6rem;
+    text-align: right;
+}
+
+.session-table th {
+    background-color: #f1f5f9;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.session-table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.empty-message {
+    padding: 1rem;
+    background-color: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    text-align: center;
+    border-radius: 4px;
+}
+
+/* Footer */
+.report-footer {
+    margin-top: 3rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Print Overrides */
+@media print {
+    body {
+        margin: 0;
+        background: white;
+    }
+
+    .grade-report-container {
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        max-width: none;
+        width: 100%;
+    }
+
+    .grade-title {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .session-table th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .main-header {
+        border-bottom-color: black;
+    }
+
+    /* Hide URL/Title headers browser usually adds if possible */
+    @page {
+        margin: 1cm;
+    }
+}

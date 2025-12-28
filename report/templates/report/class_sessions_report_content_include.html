@@ -1,0 +1,186 @@
+{% load persian_tools %}
+
+<!-- Content of Class Sessions Report (Partial) -->
+<div class="report-container">
+    <!-- Header -->
+    <header class="report-header">
+        <div class="logo-section">
+            {% if school_logo_url %}
+            <img src="{{ school_logo_url }}" alt="School Logo">
+            {% else %}
+            <div
+                style="width: 60px; height: 60px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-school fa-2x text-muted"></i>
+            </div>
+            {% endif %}
+            <div class="report-title">
+                <h1>{% if is_pdf %}{{ "گزارش جلسات کلاسی"|reshape }}{% else %}گزارش جلسات کلاسی{% endif %}</h1>
+                <span class="text-muted">{% if is_pdf %}{{ "سال تحصیلی"|reshape }} {{ academic_year|reshape }}{% else%}سال تحصیلی {{ academic_year }}{% endif %}</span>
+            </div>
+        </div>
+        <div class="report-meta">
+            <div>{% if is_pdf %}{{ "تاریخ گزارش"|reshape }}{% else %}تاریخ گزارش{% endif %}: {{ report_date }}</div>
+        </div>
+    </header>
+
+    <!-- Metadata Grid -->
+    <div class="meta-grid">
+        <div class="meta-item">
+            <span class="label">{% if is_pdf %}{{ "نام کلاس"|reshape }}{% else %}نام کلاس{% endif %}</span>
+            <span class="value">{% if is_pdf %}{{ class_name|reshape }}{% else %}{{ class_name }}{% endif %}</span>
+        </div>
+        <div class="meta-item">
+            <span class="label">{% if is_pdf %}{{ "پایه تحصیلی"|reshape }}{% else %}پایه تحصیلی{% endif %}</span>
+            <span class="value">{% if is_pdf %}{{ grade|reshape }}{% else %}{{ grade }}{% endif %}</span>
+        </div>
+        <div class="meta-item">
+            <span class="label">{% if is_pdf %}{{ "تعداد دروس"|reshape }}{% else %}تعداد دروس{% endif %}</span>
+            <span class="value">{{ total_subjects }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="label">{% if is_pdf %}{{ "بازه زمانی تدریس"|reshape }}{% else %}بازه زمانی تدریس{% endif%}</span>
+            <span class="value">{{ first_session_date|default:"-" }} {% if is_pdf %}{{ "تا"|reshape }}{% else %}تا{% endif %} {{ last_session_date|default:"-" }}</span>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <span class="number">{{ total_sessions }}</span>
+            <span class="text">{% if is_pdf %}{{ "کل جلسات برگزار شده"|reshape }}{% else %}کل جلسات برگزار شده{% endif%}</span>
+        </div>
+        <div class="summary-card">
+            <span class="number">{{ total_subjects }}</span>
+            <span class="text">{% if is_pdf %}{{ "دروس فعال"|reshape }}{% else %}دروس فعال{% endif %}</span>
+        </div>
+        <div class="summary-card">
+            <span class="number" style="color: #10b981;">{% if is_pdf %}{{ "فعال"|reshape }}{% else %}فعال{% endif%}</span>
+            <span class="text">{% if is_pdf %}{{ "وضعیت کلاس"|reshape }}{% else %}وضعیت کلاس{% endif %}</span>
+        </div>
+    </div>
+
+    <!-- Subjects Overview Table -->
+    <section class="report-section">
+        <div class="section-title">{% if is_pdf %}{{ "لیست دروس و وضعیت کلی"|reshape }}{% else %}لیست دروس و وضعیت کلی{%endif %}</div>
+        {% if subjects %}
+        <table class="report-table">
+            <thead>
+                <tr>
+                    {% if is_pdf %}
+                    <!-- Reverse Columns for PDF -->
+                    <th>{{ "آخرین جلسه"|reshape }}</th>
+                    <th>{{ "اولین جلسه"|reshape }}</th>
+                    <th>{{ "تعداد جلسات"|reshape }}</th>
+                    <th>{{ "نام دبیر"|reshape }}</th>
+                    <th>{{ "نام درس"|reshape }}</th>
+                    <th style="width: 50px;">{{ "ردیف"|reshape }}</th>
+                    {% else %}
+                    <th style="width: 50px;">ردیف</th>
+                    <th>نام درس</th>
+                    <th>نام دبیر</th>
+                    <th>تعداد جلسات</th>
+                    <th>اولین جلسه</th>
+                    <th>آخرین جلسه</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                <tr>
+                    {% if is_pdf %}
+                    <td style="text-align: right;">{{ subject.last_date|default:"-" }}</td>
+                    <td style="text-align: right;">{{ subject.first_date|default:"-" }}</td>
+                    <td style="text-align: right;">{{ subject.session_count }}</td>
+                    <td style="text-align: right;">{{ subject.teacher_name|reshape }}</td>
+                    <td style="text-align: right;">{{ subject.name|reshape }}</td>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    {% else %}
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ subject.name }}</td>
+                    <td>{{ subject.teacher_name }}</td>
+                    <td>{{ subject.session_count }}</td>
+                    <td>{{ subject.first_date|default:"-" }}</td>
+                    <td>{{ subject.last_date|default:"-" }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            {% if is_pdf %}{{ "هیچ درسی برای این کلاس ثبت نشده است."|reshape }}{% else %}هیچ درسی برای این کلاس ثبت نشده
+            است.{% endif %}
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Detailed Sessions (Per Subject) -->
+    <section class="report-section">
+        <div class="section-title">{% if is_pdf %}{{ "جزئیات جلسات به تفکیک درس"|reshape }}{% else %}جزئیات جلسات به
+            تفکیک درس{% endif %}</div>
+
+        {% for subject in subjects %}
+        <div class="subject-wrapper" style="margin-bottom: 2rem;">
+            <div class="subject-detail-header">
+                <span class="subject-name">{% if is_pdf %}{{ subject.name|reshape }}{% else %}{{ subject.name }}{% endif%}</span>
+                <span class="teacher-name"><i class="fas fa-chalkboard-teacher"></i> {% if is_pdf %}{{subject.teacher_name|reshape }}{% else %}{{ subject.teacher_name }}{% endif %}</span>
+            </div>
+
+            {% if subject.sessions %}
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        {% if is_pdf %}
+                        <th>{{ "خلاصه تدریس"|reshape }}</th>
+                        <th style="width: 120px;">{{ "تاریخ جلسه"|reshape }}</th>
+                        <th style="width: 50px;">#</th>
+                        {% else %}
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 120px;">تاریخ جلسه</th>
+                        <th>خلاصه تدریس</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in subject.sessions %}
+                    <tr>
+                        {% if is_pdf %}
+                        <td style="text-align: right;">{{ session.content|truncatewords:30|reshape }}</td>
+                        <td style="text-align: right;">{{ session.date }}</td>
+                        <td style="text-align: center;">{{ session.number }}</td>
+                        {% else %}
+                        <td>{{ session.number }}</td>
+                        <td>{{ session.date }}</td>
+                        <td>{{ session.content|truncatewords:30 }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" style="border: 1px solid #e2e8f0; border-top: none;">
+                {% if is_pdf %}{{ "هیچ جلسه‌ای برای این درس ثبت نشده است."|reshape }}{% else %}هیچ جلسه‌ای برای این درس
+                ثبت نشده است.{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            {% if is_pdf %}{{ "اطلاعاتی برای نمایش وجود ندارد."|reshape }}{% else %}اطلاعاتی برای نمایش وجود ندارد.{%
+            endif %}
+        </div>
+        {% endfor %}
+    </section>
+
+    <!-- Footer -->
+    <footer class="report-footer">
+        {% if is_pdf %}
+        <div>{{ report_date }}</div>
+        <div>{{ "سیستم مدیریت آموزشی مدارس"|reshape }}</div>
+        {% else %}
+        <div>سیستم مدیریت آموزشی مدارس</div>
+        <div>صفحه <span class="page-number"></span></div>
+        <div>{{ report_date }}</div>
+        {% endif %}
+    </footer>
+</div>

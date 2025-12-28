@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}گزارش جلسات تدریس - {{ academic_year }}{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'report/css/grade_report.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="grade-report-container">
+    <!-- Main Header -->
+    <header class="main-header">
+        <h1>گزارش جلسات تدریس بر اساس پایه</h1>
+        <div class="meta">
+            <span>سال تحصیلی: {{ academic_year }}</span>
+            <span class="separator">|</span>
+            <span>تاریخ اخذ گزارش: {{ report_date }}</span>
+        </div>
+    </header>
+
+    <!-- Main Content: Grades Loop -->
+    {% for grade_data in grades_data %}
+    <div class="grade-section">
+        <div class="grade-title">
+            {{ grade_data.grade_name }}
+        </div>
+
+        {% for class_data in grade_data.classes %}
+        <div class="class-section">
+            <h3 class="class-title">کلاس: {{ class_data.class_name }}</h3>
+
+            {% if class_data.sessions %}
+            <table class="session-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 100px;">تاریخ</th>
+                        <th style="width: 150px;">درس</th>
+                        <th style="width: 150px;">دبیر</th>
+                        <th>خلاصه محتوا</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in class_data.sessions %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ session.date }}</td>
+                        <td>{{ session.subject_name }}</td>
+                        <td>{{ session.teacher_name }}</td>
+                        <td>{{ session.content_summary|truncatechars:100 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-message">
+                هیچ جلسه‌ای برای این کلاس در سال تحصیلی جاری ثبت نشده است.
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-message">
+            کلاسی برای این پایه تعریف نشده یا اطلاعاتی موجود نیست.
+        </div>
+        {% endfor %}
+    </div>
+    {% empty %}
+    <div class="empty-message" style="margin-top: 3rem;">
+        هیچ داده‌ای برای نمایش یافت نشد.
+    </div>
+    {% endfor %}
+
+    <!-- Footer -->
+    <footer class="report-footer">
+        <div>سیستم مدیریت مدارس</div>
+        <div>{{ report_date }}</div>
+    </footer>
+</div>
+{% endblock %}

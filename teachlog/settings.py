@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'django_jalali',
     'school',
     'teaching',
+    'core',
+    'report',
 ]
 
 MIDDLEWARE = [

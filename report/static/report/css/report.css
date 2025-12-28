@@ -1,0 +1,238 @@
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('/static/fonts/Vazirmatn-Regular.ttf');
+}
+
+/* Report Specific Variables Replaced for PDF Compatibility */
+/* 
+    --report-primary: #3b82f6;
+    --report-border: #e2e8f0;
+    --report-bg-header: #f8fafc;
+    --report-text-main: #1e293b;
+    --report-text-muted: #64748b;
+*/
+
+/* Page Layout */
+.report-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    max-width: 210mm;
+    /* A4 width approx */
+    margin: 2rem auto;
+    font-family: 'Vazirmatn', sans-serif;
+    /* Applied font */
+}
+
+/* Header Section */
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.report-header .logo-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.report-header .logo-section img {
+    height: 60px;
+    width: auto;
+}
+
+.report-header .report-title h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.report-header .report-meta {
+    text-align: left;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+/* Metadata Grid */
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    background-color: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 6px;
+    margin-bottom: 2rem;
+    border: 1px solid #e2e8f0;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.meta-item .label {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.meta-item .value {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Summary Section */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    padding: 1rem;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.summary-card .number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.summary-card .text {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+/* Tables Common Styles */
+.report-section {
+    margin-bottom: 3rem;
+    page-break-inside: avoid;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1e293b;
+    border-right: 4px solid #3b82f6;
+    padding-right: 0.75rem;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.report-table th,
+.report-table td {
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    text-align: right;
+}
+
+.report-table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.report-table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+/* Subject Specific Styles */
+.subject-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f1f5f9;
+    padding: 0.75rem;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    margin-top: 1.5rem;
+}
+
+.subject-name {
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.teacher-name {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+/* Footer */
+.report-footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    background: #f8fafc;
+    border-radius: 6px;
+    color: #64748b;
+    font-style: italic;
+}
+
+/* Print Specifics */
+@media print {
+    body {
+        background: white;
+        font-size: 12pt;
+    }
+
+    .report-container {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .report-header {
+        margin-bottom: 1rem;
+    }
+
+    .meta-grid,
+    .summary-cards,
+    .report-table th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    /* Ensure tables don't break awkwardly */
+    tr {
+        page-break-inside: avoid;
+    }
+
+    .report-section {
+        page-break-inside: avoid;
+    }
+}

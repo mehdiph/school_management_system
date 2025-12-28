@@ -1,0 +1,130 @@
+/* Unified Reports Page Styles - Fixed for PDF Compatibility */
+/*
+    --primary-color: #3b82f6;
+    --border-color: #e2e8f0;
+    --bg-gray: #f8fafc;
+    --text-primary: #1e293b;
+*/
+
+.reports-page-header {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 1rem;
+}
+
+.reports-page-header h1 {
+    font-size: 1.8rem;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+/* Filter Form */
+.reports-filter-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    border: 1px solid #e2e8f0;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    align-items: end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+
+.form-control {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.form-control:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.radio-group {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.6rem 0;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.btn-submit {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    height: 40px;
+    /* aligning with inputs */
+}
+
+.btn-submit:hover {
+    background-color: #2563eb;
+}
+
+.btn-pdf {
+    display: inline-block;
+    background-color: #dc2626;
+    /* Red for PDF */
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+}
+
+.btn-pdf i {
+    margin-left: 0.5rem;
+}
+
+/* Print Specifics */
+@media print {
+
+    .reports-filter-section,
+    .reports-page-header .desc,
+    .btn-pdf,
+    .no-print {
+        display: none !important;
+    }
+
+    .reports-page-header {
+        border-bottom: none;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    body {
+        background: white;
+    }
+}

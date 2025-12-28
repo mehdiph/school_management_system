@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load persian_tools %}
+
+{% block title %}گزارش‌های سیستم{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'report/css/reports.css' %}">
+<link rel="stylesheet" href="{% static 'report/css/report.css' %}">
+<link rel="stylesheet" href="{% static 'report/css/grade_report.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Page Header -->
+    <div class="reports-page-header">
+        <h1>{% if is_pdf %}{{ "گزارش‌های آموزشی"|reshape }}{% else %}گزارش‌های آموزشی{% endif %}</h1>
+        <p class="desc text-muted">جهت مشاهده گزارش، فیلترهای زیر را تنظیم کنید.</p>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="reports-filter-section">
+        <form method="get" action="">
+            <div class="filter-grid">
+                <!-- Report Type -->
+                <div class="form-group">
+                    <label>نوع گزارش:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="report_type" value="class" {% if report_type == 'class' %}checked{% endif %}>
+                            <span>بر اساس کلاس</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="report_type" value="grade" {% if report_type == 'grade' %}checked{% endif %}>
+                            <span>بر اساس پایه</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Year -->
+                <div class="form-group">
+                    <label for="year">سال تحصیلی:</label>
+                    <select name="year" id="year" class="form-control">
+                        {% for y in years %}
+                        <option value="{{ y.id }}" {% if selected_year_id == y.id %}selected{% endif %}>{{ y.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Grade -->
+                <div class="form-group" id="grade-filter-container">
+                    <label for="grade">پایه تحصیلی (اختیاری):</label>
+                    <select name="grade" id="grade" class="form-control">
+                        <option value="">همه پایه‌ها</option>
+                        {% for g in grades_list %}
+                        <option value="{{ g.id }}" {% if selected_grade_id == g.id %}selected{% endif %}>{{ g.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Class -->
+                <div class="form-group" id="class-filter-container">
+                    <label for="class_id">کلاس:</label>
+                    <select name="class_id" id="class_id" class="form-control">
+                        <option value="">انتخاب کنید...</option>
+                        {% for c in classes_list %}
+                        <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.grade.name
+                            }} - {{ c.section }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Submit -->
+                <div class="form-group" style="padding-bottom: 2px;">
+                    <button type="submit" class="btn-submit">مشاهده گزارش</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Report Output -->
+    {% if has_report %}
+    <div class="report-actions no-print" style="margin-bottom: 1rem; text-align: left;">
+        <a href="{{ request.get_full_path }}&format=pdf" class="btn-pdf" target="_blank">
+            <i class="fas fa-file-pdf"></i> دانلود PDF
+        </a>
+    </div>
+
+    {% if report_type == 'class' %}
+    {% include 'report/class_sessions_report_content_include.html' %}
+    {% elif report_type == 'grade' %}
+    {% include 'report/grade_sessions_report_content_include.html' %}
+    {% endif %}
+    {% elif request.GET.report_type %}
+    <div class="alert alert-info">داده‌ای برای نمایش یافت نشد.</div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'report/js/reports.js' %}"></script>
+{% endblock %}

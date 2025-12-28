@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}گزارش جلسات کلاس - {{ class_name }}{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'report/css/report.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <!-- Header -->
+    <header class="report-header">
+        <div class="logo-section">
+            {% if school_logo_url %}
+            <img src="{{ school_logo_url }}" alt="School Logo">
+            {% else %}
+            <!-- Placeholder if no logo -->
+            <div
+                style="width: 60px; height: 60px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-school fa-2x text-muted"></i>
+            </div>
+            {% endif %}
+            <div class="report-title">
+                <h1>گزارش جلسات کلاسی</h1>
+                <span class="text-muted">سال تحصیلی {{ academic_year }}</span>
+            </div>
+        </div>
+        <div class="report-meta">
+            <div>تاریخ گزارش: {{ report_date }}</div>
+        </div>
+    </header>
+
+    <!-- Metadata Grid -->
+    <div class="meta-grid">
+        <div class="meta-item">
+            <span class="label">نام کلاس</span>
+            <span class="value">{{ class_name }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="label">پایه تحصیلی</span>
+            <span class="value">{{ grade }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="label">تعداد دروس</span>
+            <span class="value">{{ total_subjects }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="label">بازه زمانی تدریس</span>
+            <span class="value">{{ first_session_date|default:"-" }} تا {{ last_session_date|default:"-" }}</span>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <span class="number">{{ total_sessions }}</span>
+            <span class="text">کل جلسات برگزار شده</span>
+        </div>
+        <div class="summary-card">
+            <span class="number">{{ total_subjects }}</span>
+            <span class="text">دروس فعال</span>
+        </div>
+        <!-- Placeholder for potential future stat, e.g., participation rate -->
+        <div class="summary-card">
+            <span class="number" style="color: #10b981;">فعال</span>
+            <span class="text">وضعیت کلاس</span>
+        </div>
+    </div>
+
+    <!-- Subjects Overview Table -->
+    <section class="report-section">
+        <div class="section-title">لیست دروس و وضعیت کلی</div>
+        {% if subjects %}
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ردیف</th>
+                    <th>نام درس</th>
+                    <th>نام دبیر</th>
+                    <th>تعداد جلسات</th>
+                    <th>اولین جلسه</th>
+                    <th>آخرین جلسه</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ subject.name }}</td>
+                    <td>{{ subject.teacher_name }}</td>
+                    <td>{{ subject.session_count }}</td>
+                    <td>{{ subject.first_date|default:"-" }}</td>
+                    <td>{{ subject.last_date|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            هیچ درسی برای این کلاس ثبت نشده است.
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Detailed Sessions (Per Subject) -->
+    <section class="report-section">
+        <div class="section-title">جزئیات جلسات به تفکیک درس</div>
+
+        {% for subject in subjects %}
+        <div class="subject-wrapper" style="margin-bottom: 2rem;">
+            <div class="subject-detail-header">
+                <span class="subject-name">{{ subject.name }}</span>
+                <span class="teacher-name"><i class="fas fa-chalkboard-teacher"></i> {{ subject.teacher_name }}</span>
+            </div>
+
+            {% if subject.sessions %}
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 120px;">تاریخ جلسه</th>
+                        <th>خلاصه تدریس</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in subject.sessions %}
+                    <tr>
+                        <td>{{ session.number }}</td>
+                        <td>{{ session.date }}</td>
+                        <td>{{ session.content|truncatewords:30 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" style="border: 1px solid var(--report-border); border-top: none;">
+                هیچ جلسه‌ای برای این درس ثبت نشده است.
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            اطلاعاتی برای نمایش وجود ندارد.
+        </div>
+        {% endfor %}
+    </section>
+
+    <!-- Footer -->
+    <footer class="report-footer">
+        <div>سیستم مدیریت آموزشی مدارس</div>
+        <div>صفحه <span class="page-number"></span></div>
+        <div>{{ report_date }}</div>
+    </footer>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'report/js/report.js' %}"></script>
+{% endblock %}
