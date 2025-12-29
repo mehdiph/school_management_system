@@ -1,5 +1,6 @@
 {% load static %}
 {% load persian_tools %}
+{% load report_tags %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 
@@ -8,8 +9,8 @@
     <title>گزارش آموزشی</title>
     <style>
         @font-face {
-            font-family: 'Vazirmatn';
-            src: url('file://{{ font_path }}') format('truetype');
+            font-family: "Vazirmatn";
+            src: url("{% static 'report/fonts/Vazirmatn-VariableFont_wght.ttf' %}");
             font-weight: normal;
             font-style: normal;
         }
@@ -132,14 +133,16 @@
             <td style="border: none; width: 33%; padding: 0;">
                 <div
                     style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 10px;">
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_sessions }}</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_sessions|to_persian }}
+                    </div>
                     <div style="color: #7f8c8d; font-size: 0.9rem;">کل جلسات برگزار شده</div>
                 </div>
             </td>
             <td style="border: none; width: 33%; padding: 0;">
                 <div
                     style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 5px; margin-right: 5px;">
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_subjects }}</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_subjects|to_persian }}
+                    </div>
                     <div style="color: #7f8c8d; font-size: 0.9rem;">تعداد دروس فعال</div>
                 </div>
             </td>
@@ -171,12 +174,12 @@
         <tbody>
             {% for subject in subjects %}
             <tr>
-                <td>{{ forloop.counter }}</td>
+                <td>{{ forloop.counter|to_persian }}</td>
                 <td>{{ subject.name }}</td>
                 <td>{{ subject.teacher_name }}</td>
-                <td>{{ subject.session_count }}</td>
-                <td>{{ subject.first_date|default:"-" }}</td>
-                <td>{{ subject.last_date|default:"-" }}</td>
+                <td>{{ subject.session_count|to_persian }}</td>
+                <td>{{ subject.first_date|default:"-"|to_persian }}</td>
+                <td>{{ subject.last_date|default:"-"|to_persian }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -208,7 +211,7 @@
             <tbody>
                 {% for session in subject.sessions %}
                 <tr>
-                    <td>{{ session.number }}</td>
+                    <td>{{ session.number|to_persian }}</td>
                     <td>{{ session.date|date:"Y/m/d" }}</td>
                     <td class="text-right">{{ session.content }}</td>
                 </tr>
@@ -253,7 +256,7 @@
                 <tbody>
                     {% for session in klass.sessions %}
                     <tr>
-                        <td>{{ session.date|date:"Y/m/d" }}</td>
+                        <td>{{ session.date|date:"Y/m/d"|to_persian }}</td>
                         <td>{{ session.subject_name }}</td>
                         <td>{{ session.teacher_name }}</td>
                         <td class="text-right">{{ session.content_summary }}</td>
