@@ -1,6 +1,6 @@
 {% extends 'base.html' %} {% load static %}
 
-{% block title %}لیست جلسات درسی{% endblock %}
+{% block title %} لیست جلسات درسی{% endblock %}
 
 {% block styles %}
 <style>
@@ -18,9 +18,9 @@
 <header class="page-header">
     <h1 class="page-title">
         <i class="fas fa-list-check"></i>
-        لیست جلسات کلاسی
+        لیست جلسات کلاسی {{ class_subject }}
     </h1>
-    <a href="{% url 'teaching:session_form' %}" class="btn btn-primary">
+    <a href="{% url 'teaching:session_form' class_id %}" class="btn btn-primary">
         <i class="fas fa-plus"></i>
         ثبت جلسه جدید
     </a>
@@ -48,7 +48,7 @@
                 <th style="width: 120px;">تاریخ</th>
                 <th>موضوع درس</th>
                 <th style="width: 120px;">وضعیت</th>
-                <!-- <th style="width: 100px;">عملیات</th> -->
+                <th style="width: 100px;">عملیات</th>
             </tr>
         </thead>
         <tbody>
@@ -73,15 +73,15 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if session.status == 'held' %}
+                    {% if session.status == 'HD' %}
                     <span class="status-badge status-held">
                         <i class="fas fa-check"></i> برگزار شد
                     </span>
-                    {% elif session.status == 'canceled' %}
+                    {% elif session.status == 'CD' %}
                     <span class="status-badge status-canceled">
                         <i class="fas fa-times"></i> لغو شد
                     </span>
-                    {% elif session.status == 'makeup' %}
+                    {% elif session.status == 'JB' %}
                     <span class="status-badge status-makeup">
                         <i class="fas fa-redo"></i> جبرانی
                     </span>
@@ -91,13 +91,11 @@
                     </span>
                     {% endif %}
                 </td>
-                <!-- 
-                    <td>
-                        <a href="#" class="btn-icon" title="ویرایش">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                    </td>
-                    -->
+                <td>
+                    <a href="{% url 'teaching:update_session' session.id %}" class="btn-icon" title="ویرایش">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                </td>  
             </tr>
             {% endfor %}
         </tbody>

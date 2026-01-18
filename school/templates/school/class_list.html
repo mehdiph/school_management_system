@@ -91,15 +91,10 @@
                     </div>
 
                     <div class="action-col">
-                        <a href=""
+                        <a href="{% url 'teaching:session_list' cs.id %}"
                             class="btn-view-session">
                             <i class="fas fa-eye"></i>
                             مشاهده جلسات
-                        </a>
-                        <a href="{% url 'teaching:session_form' %}?class_subject={{ cs.id }}"
-                            class="btn-register-session">
-                            <i class="fas fa-plus"></i>
-                            ثبت جلسه
                         </a>
                     </div>
                 </li>

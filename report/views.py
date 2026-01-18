@@ -3,7 +3,6 @@ from django.views import View
 from django.http import HttpResponse
 from django.template.loader import get_template
 from django.conf import settings
-from django.db.models import Count, Min, Max
 from django.utils import timezone
 from jdatetime import datetime
 import os

@@ -25,10 +25,18 @@
     --transition: all 0.2s ease;
 }
 
+@font-face {
+    font-family: "Vazirmatn";
+    src: url("{% static 'report/fonts/Vazirmatn-VariableFont_wght.ttf' %}");
+    font-weight: normal;
+    font-style: normal;
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Vazirmatn', sans-serif;
 }
 
 /* Header - Specific to dashboard */

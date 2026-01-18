@@ -7,8 +7,8 @@
 {% block styles %}
 {{ block.super }}
 <!-- Persian Date Picker -->
-<link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/persian-datepicker@latest/dist/css/persian-datepicker.min.css">
+<!-- <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/persian-datepicker@latest/dist/css/persian-datepicker.min.css"> -->
 {% endblock %}
 
 {% block form_title %}ثبت جلسه درسی{% endblock %}
@@ -241,7 +241,7 @@
     <!-- Form Actions -->
     <div class="form-actions">
         <button type="button" class="btn btn-secondary"
-            onclick="window.location.href='{% url 'teaching:session_list' %}'">
+            onclick="window.location.href='{% url 'teaching:session_list' class_id %}'">
             <i class="fas fa-arrow-right"></i>
             بازگشت
         </button>

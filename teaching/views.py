@@ -3,10 +3,11 @@ from django.contrib import messages
 from django.db import transaction
 from .forms import SchoolSessionForm, SessionContentForm
 from .models import SchoolSession, SessionContent
+from school.models import ClassSubject
 
 # Create your views here.
 
-def school_session_form(request):
+def school_session_form(request, class_id):
     """
     ویو برای ایجاد جلسه درسی جدید همراه با محتوای آن
     """
@@ -33,7 +34,7 @@ def school_session_form(request):
                     )
                     
                     # انتقال به لیست جلسات یا صفحه جدید
-                    return redirect('teaching:session_form')
+                    return redirect('teaching:session_list', class_id)
                     
             except Exception as e:
                 # در صورت بروز خطا
@@ -45,28 +46,53 @@ def school_session_form(request):
             # نمایش خطاهای فرم
             messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')
     else:
-        # Check if a class_subject ID is passed in the URL (e.g. from class list)
-        initial_data = {}
-        class_subject_id = request.GET.get('class_subject')
-        if class_subject_id:
-            initial_data['class_subject'] = class_subject_id
-
-        session_form = SchoolSessionForm(initial=initial_data)
+        class_subject = get_object_or_404(ClassSubject, id=class_id)
+        # Find the max session number for this class subject
+        last_session = SchoolSession.objects.filter(class_subject=class_subject).order_by('-session_number').first()
+        next_number = (last_session.session_number + 1) if last_session else 1
+        
+        session_form = SchoolSessionForm(initial={
+            'session_number': next_number,
+            'class_subject': class_subject
+        })
         content_form = SessionContentForm()
 
     context = {
         'session_form': session_form,
-        'content_form': content_form
+        'content_form': content_form,
+        'class_id': class_id,
+    }
+    
+    return render(request, 'teaching/session_form.html', context)
+
+def update_session(request, session_id):
+    session = SchoolSession.objects.get(id=session_id)
+    session_form = SchoolSessionForm(instance=session)
+    content_form = SessionContentForm(instance=session.sessioncontent)
+    
+    if request.method == 'POST':
+        session_form = SchoolSessionForm(request.POST, instance=session)
+        content_form = SessionContentForm(request.POST, instance=session.sessioncontent)
+        if session_form.is_valid() and content_form.is_valid():
+            session_form.save()
+            content_form.save()
+            return redirect('teaching:session_list')
+    
+    context = {
+        'session_form': session_form,
+        'content_form': content_form,
+        'session': session
     }
     
     return render(request, 'teaching/session_form.html', context)
 
 
-def session_list(request):
+def session_list(request, class_id):
     """
     ویو برای نمایش لیست جلسات درسی
     """
     sessions = SchoolSession.objects.filter(
+        class_subject__school_class__id=class_id,
         class_subject__is_active=True
     ).select_related(
         'class_subject__school_class__grade',
@@ -74,9 +100,13 @@ def session_list(request):
         'class_subject__teacher',
         'sessioncontent'  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
     ).order_by('-date', '-session_number')
+
+    class_subject = ClassSubject.objects.get(school_class__id=class_id)
     
     context = {
-        'sessions': sessions
+        'sessions': sessions,
+        'class_id': class_id,
+        'class_subject': class_subject
     }
     
     return render(request, 'teaching/session_list.html', context)
