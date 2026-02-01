@@ -55,7 +55,7 @@ class BaseReportView(View):
 
         # Create HTTP Response
         response = HttpResponse(content_type='application/pdf')
-        filename = f"report_{timezone.now().strftime('%Y%m%d%H%M')}.pdf"
+        filename = f"report_{datetime.now().strftime('%Y_%m_%d')}.pdf"
         response['Content-Disposition'] = f'inline; filename="{filename}"'
 
         # WeasyPrint font config
@@ -144,6 +144,7 @@ class ReportsView(BaseReportView):
         for cs in class_subjects:
             sessions = cs.schoolsession_set.all().order_by('date', 'session_number')
             session_list = []
+            session_list_held = []
             cs_first_date = None
             cs_last_date = None
             
@@ -163,8 +164,16 @@ class ReportsView(BaseReportView):
                 session_list.append({
                     'number': session.session_number,
                     'date': session.date,
-                    'content': content_summary
+                    'content': content_summary,
+                    'status': session.status,
                 })
+
+                if session.status == 'HD':
+                    session_list_held.append({
+                        'number': session.session_number,
+                        'date': session.date,
+                        'content': content_summary
+                    })
             
             subjects_data.append({
                 'name': cs.subject.name,
@@ -174,7 +183,7 @@ class ReportsView(BaseReportView):
                 'last_date': cs_last_date,
                 'sessions': session_list
             })
-            total_sessions_count += len(session_list)
+            total_sessions_count += len(session_list_held)
 
         return {
             'class_name': school_class.section,
@@ -246,6 +255,6 @@ class ReportsView(BaseReportView):
 
         return {
             'academic_year': academic_year.title,
-            'report_date': timezone.now().strftime("%Y-%m-%d"),
+            'report_date': datetime.now().strftime("%Y/%m/%d"),
             'grades_data': grades_data
         }

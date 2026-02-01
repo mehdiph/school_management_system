@@ -18,7 +18,7 @@
         @page {
             size: A4;
             margin: 5mm 5mm 10mm 5mm;
-            border: 1px solid #000;
+            border: 3px double #000;
             padding: 10mm;
 
             @top-right {
@@ -55,7 +55,7 @@
         .report-header {
             text-align: center;
             margin-bottom: 2rem;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #2a2a2a;
             padding-bottom: 1rem;
         }
 
@@ -81,13 +81,13 @@
 
         th,
         td {
-            border: 1px solid #ddd;
+            border: 1px solid #363636;
             padding: 0.5rem;
             text-align: center;
         }
 
         th {
-            background-color: #f8f9fa;
+            background-color: #a5a5a5;
             font-weight: bold;
         }
 
@@ -103,7 +103,7 @@
             text-align: center;
             padding: 2rem;
             color: #999;
-            border: 1px dashed #ddd;
+            border: 1px dashed #2e2e2e;
         }
     </style>
 </head>
@@ -119,7 +119,7 @@
         <div class="report-meta">
             <span>کلاس: {{ class_name }}</span>
             <span>پایه: {{ grade }}</span>
-            <span>سال تحصیلی: {{ academic_year }}</span>
+            <span>سال تحصیلی: {{ academic_year|to_persian }}</span>
         </div>
         <div class="report-meta" style="margin-top: 5px;">
             <span>تاریخ گزارش: {{ report_date }}</span>
@@ -132,26 +132,26 @@
         <tr style="border: none;">
             <td style="border: none; width: 33%; padding: 0;">
                 <div
-                    style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 10px;">
+                    style="background: #b1b1b1; border: 1px solid #4e4e4e; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 10px;">
                     <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_sessions|to_persian }}
                     </div>
-                    <div style="color: #7f8c8d; font-size: 0.9rem;">کل جلسات برگزار شده</div>
+                    <div style="color: #000000; font-size: 0.9rem;">کل جلسات برگزار شده</div>
                 </div>
             </td>
             <td style="border: none; width: 33%; padding: 0;">
                 <div
-                    style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 5px; margin-right: 5px;">
+                    style="background: #b1b1b1; border: 1px solid #4e4e4e; padding: 1rem; text-align: center; border-radius: 8px; margin-left: 5px; margin-right: 5px;">
                     <div style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">{{ total_subjects|to_persian }}
                     </div>
-                    <div style="color: #7f8c8d; font-size: 0.9rem;">تعداد دروس فعال</div>
+                    <div style="color: #000000; font-size: 0.9rem;">تعداد دروس فعال</div>
                 </div>
             </td>
             <td style="border: none; width: 33%; padding: 0;">
                 <div
-                    style="background: #f8f9fa; border: 1px solid #ddd; padding: 1rem; text-align: center; border-radius: 8px; margin-right: 10px;">
-                    <div style="font-size: 1rem; font-weight: bold; color: #2c3e50;">{{ first_session_date }} تا
-                        {{last_session_date }}</div>
-                    <div style="color: #7f8c8d; font-size: 0.9rem;">بازه زمانی فعالیت</div>
+                    style="background: #b1b1b1; border: 1px solid #4e4e4e; padding: 1rem; text-align: center; border-radius: 8px; margin-right: 10px;">
+                    <div style="font-size: 1rem; font-weight: bold; color: #2c3e50;">{{ first_session_date|date:"Y/m/d"|to_persian }} تا
+                        {{last_session_date|date:"Y/m/d"|to_persian }}</div>
+                    <div style="color: #000000; font-size: 0.9rem;">بازه زمانی فعالیت</div>
                 </div>
             </td>
         </tr>
@@ -178,8 +178,8 @@
                 <td>{{ subject.name }}</td>
                 <td>{{ subject.teacher_name }}</td>
                 <td>{{ subject.session_count|to_persian }}</td>
-                <td>{{ subject.first_date|default:"-"|to_persian }}</td>
-                <td>{{ subject.last_date|default:"-"|to_persian }}</td>
+                <td>{{ subject.first_date|date:"Y/m/d"|to_persian }}</td>
+                <td>{{ subject.last_date|date:"Y/m/d"|to_persian }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -210,9 +210,9 @@
             </thead>
             <tbody>
                 {% for session in subject.sessions %}
-                <tr>
+                <tr {% if session.status == 'CD' %} style="background-color: #808080;" {% endif %}>
                     <td>{{ session.number|to_persian }}</td>
-                    <td>{{ session.date|date:"Y/m/d" }}</td>
+                    <td>{{ session.date|date:"Y/m/d"|to_persian }}</td>
                     <td class="text-right">{{ session.content }}</td>
                 </tr>
                 {% endfor %}
