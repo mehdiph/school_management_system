@@ -7,7 +7,7 @@ from school.models import ClassSubject
 
 # Create your views here.
 
-def school_session_form(request, class_id):
+def school_session_form(request, class_subject_id):
     """
     ویو برای ایجاد جلسه درسی جدید همراه با محتوای آن
     """
@@ -34,7 +34,7 @@ def school_session_form(request, class_id):
                     )
                     
                     # انتقال به لیست جلسات یا صفحه جدید
-                    return redirect('teaching:session_list', class_id)
+                    return redirect('teaching:session_list', class_subject_id)
                     
             except Exception as e:
                 # در صورت بروز خطا
@@ -46,7 +46,7 @@ def school_session_form(request, class_id):
             # نمایش خطاهای فرم
             messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')
     else:
-        class_subject = get_object_or_404(ClassSubject, id=class_id)
+        class_subject = get_object_or_404(ClassSubject, id=class_subject_id)
         # Find the max session number for this class subject
         last_session = SchoolSession.objects.filter(class_subject=class_subject).order_by('-session_number').first()
         next_number = (last_session.session_number + 1) if last_session else 1
@@ -60,7 +60,7 @@ def school_session_form(request, class_id):
     context = {
         'session_form': session_form,
         'content_form': content_form,
-        'class_id': class_id,
+        'class_subject_id': class_subject_id,
     }
     
     return render(request, 'teaching/session_form.html', context)
@@ -76,7 +76,7 @@ def update_session(request, session_id):
         if session_form.is_valid() and content_form.is_valid():
             session_form.save()
             content_form.save()
-            return redirect('teaching:session_list')
+            return redirect('teaching:session_list', session.class_subject_id)
     
     context = {
         'session_form': session_form,
@@ -87,27 +87,29 @@ def update_session(request, session_id):
     return render(request, 'teaching/session_form.html', context)
 
 
-def session_list(request, class_id):
+def session_list(request, class_subject_id):
     """
     ویو برای نمایش لیست جلسات درسی
     """
+    class_subject = get_object_or_404(
+        ClassSubject.objects.select_related('school_class__grade', 'subject', 'teacher'),
+        id=class_subject_id,
+        is_active=True
+    )
+
     sessions = SchoolSession.objects.filter(
-        class_subject__school_class__id=class_id,
-        class_subject__is_active=True
+        class_subject_id=class_subject_id,
+        class_subject__is_active=True,
     ).select_related(
         'class_subject__school_class__grade',
         'class_subject__subject',
         'class_subject__teacher',
         'sessioncontent'  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
     ).order_by('-date', '-session_number')
-
-    print(sessions)
-
-    class_subject = ClassSubject.objects.get(school_class__id=class_id)
     
     context = {
         'sessions': sessions,
-        'class_id': class_id,
+        'class_subject_id': class_subject_id,
         'class_subject': class_subject
     }
     

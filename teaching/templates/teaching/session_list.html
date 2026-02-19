@@ -20,7 +20,7 @@
         <i class="fas fa-list-check"></i>
         لیست جلسات کلاسی {{ class_subject }}
     </h1>
-    <a href="{% url 'teaching:session_form' class_id %}" class="btn btn-primary">
+    <a href="{% url 'teaching:session_form' class_subject_id %}" class="btn btn-primary">
         <i class="fas fa-plus"></i>
         ثبت جلسه جدید
     </a>
@@ -93,7 +93,7 @@
                 </td>
                 <td>
                     <a href="{% url 'teaching:update_session' session.id %}" class="btn-icon" title="ویرایش">
-                        <i class="fas fa-edit"></i>
+                        <i class="fas fa-edit">ویرایش</i>
                     </a>
                 </td>  
             </tr>
