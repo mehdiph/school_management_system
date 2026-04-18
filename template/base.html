@@ -24,17 +24,26 @@
             <span>نیک‌آموز</span>
         </div>
 
-        <nav class="nav-links">
-            <a href="{% url 'core:dashboard' %}" class="nav-link active">داشبورد</a>
-            <a href="{% url 'school:class_list' %}" class="nav-link">کلاس‌ها</a>
-            <a href="{% url 'report:reports_page' %}" class="nav-link">گزارش‌ها</a>
-        </nav>
+        {% if user.is_authenticated %}
+            <nav class="nav-links">
+                <a href="{% url 'core:dashboard' %}" class="nav-link active">داشبورد</a>
+                <a href="{% url 'school:class_list' %}" class="nav-link">کلاس‌ها</a>
+                <a href="{% url 'report:reports_page' %}" class="nav-link">گزارش‌ها</a>
+            </nav>
+        {% else %}
+            <nav class="nav-links">
+            
+            </nav>
+        {% endif %}
 
         <div class="header-info">
             <span class="date-display">{{ today_date }}</span>
-            <!-- {% if user.is_authenticated == True %}
+            {% if user.is_authenticated %}
                 <span class="desktop-only">{{ teacher.name }}</span>
-            {% endif %} -->
+                <a href="{% url 'accounts:logout' %}">
+                    <span class="desktop-only" style="text-decoration: none;">خروج</span>
+                </a>
+            {% endif %}
         </div>
     </div>
 </header>

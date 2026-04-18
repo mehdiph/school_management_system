@@ -81,6 +81,7 @@ def class_create(request):
     return render(request, 'school/class_form.html', context)
 
 
+
 def class_update(request, pk):
     """
     ویو برای ویرایش کلاس موجود
