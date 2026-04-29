@@ -41,7 +41,8 @@ def dashboard(request):
         class_subjects_summary.append({
             'class_name': class_name,
             'subject_name': subject_name,
-            'grade_name': grade_name
+            'grade_name': grade_name,
+            'id': cs.id
         })
 
         # For Cards (Fetch last session)
@@ -81,5 +82,7 @@ def dashboard(request):
         'recent_sessions': recent_sessions,
         'total_sessions': total_sessions,
     }
+
+    print(class_subjects_summary)
 
     return render(request, 'core/dashboard.html', context)

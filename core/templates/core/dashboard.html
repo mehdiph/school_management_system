@@ -142,7 +142,7 @@
                             <span class="session-date">{{ session.date|date:"Y/m/d" }}</span>
                         </div>
                         <div class="session-actions">
-                            <a href="#" class="btn-sm">مشاهده</a>
+                            <a href="{% url 'teaching:update_session' session.id %}" class="btn-sm">مشاهده</a>
                         </div>
                     </div>
                     {% endfor %}

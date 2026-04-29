@@ -40,8 +40,8 @@
             <span class="date-display">{{ today_date }}</span>
             {% if user.is_authenticated %}
                 <span class="desktop-only">{{ teacher.name }}</span>
-                <a href="{% url 'accounts:logout' %}">
-                    <span class="desktop-only" style="text-decoration: none;">خروج</span>
+                <a href="{% url 'accounts:logout' %}" style="text-decoration: none;">
+                    <span class="desktop-only">خروج</span>
                 </a>
             {% endif %}
         </div>
