@@ -1,3 +1,4 @@
+
 /* Variables & Reset */
 :root {
     --primary: #2563eb;
@@ -27,7 +28,7 @@
 
 @font-face {
     font-family: "Vazirmatn";
-    src: url("{% static 'report/fonts/Vazirmatn-VariableFont_wght.ttf' %}");
+    src: url("/static/fonts/Vazirmatn-Regular.ttf");
     font-weight: normal;
     font-style: normal;
 }

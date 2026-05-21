@@ -26,9 +26,9 @@
 
         {% if user.is_authenticated %}
             <nav class="nav-links">
-                <a href="{% url 'core:dashboard' %}" class="nav-link active">داشبورد</a>
-                <a href="{% url 'school:class_list' %}" class="nav-link">کلاس‌ها</a>
-                <a href="{% url 'report:reports_page' %}" class="nav-link">گزارش‌ها</a>
+                <a href="{% url 'core:dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">داشبورد</a>
+                <a href="{% url 'school:class_list' %}" class="nav-link {% if request.path == '/school/classes/' %}active{% endif %}">کلاس‌ها</a>
+                <a href="{% url 'report:reports_page' %}" class="nav-link {% if request.path == '/report/all/' %}active{% endif %}">گزارش‌ها</a>
             </nav>
         {% else %}
             <nav class="nav-links">
@@ -68,9 +68,9 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="{% static '/js/jquery/jquery-3.7.1.js' %}"></script>
 
-    {% block scripts %}{% endblock %}
+    {% block scripts %}{% endblock scripts %}
 </body>
 
 </html>

@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 # from django.contrib.auth.forms import AuthenticationForm
+from django.contrib import messages
 from .forms import LoginForm
 from django.contrib.auth import logout, login, authenticate
 
@@ -15,7 +16,13 @@ def login_form(request):
                          password=cd['password'])
             if user is not None:
                 login(request, user)
+                messages.success(request, 'با موفقیت وارد شدید')
                 return redirect('core:dashboard')
+            else:
+                messages.error(request, 'نام کاربری یا رمز عبور اشتباه است')
+        else:
+            messages.error(request, 'خطای فرم را بررسی کنید')
+
     else:
         form = LoginForm()
     return render(request, 'accounts/login.html', {'form': form})

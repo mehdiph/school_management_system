@@ -19,25 +19,34 @@
                     <div>
                         {{ form.username.label_tag }}
                     </div>
-                    <div>
+                    <div class="username-input">
                         {{ form.username }}
                     </div>
                     <div>
                         {{ form.password.label_tag }}
                     </div>
-                    <div>
+                    <div class="password-input">
                         {{ form.password }}
                     </div>
+                    <div class="btn-container">
+                        <input type="submit" value="ورود">
+                    </div>
                 </div>
-                <div class="btn-container">
-                    <input type="submit" value="ورود">
-                </div>
-                <div class="errors">
-                    {{ form.username.error }}
-                    {{ form.password.error }}
+                <div class="login-errors">
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
             </form>
         </div>
     </div>
 
 {% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'accounts/js/login.js' %}"></script>
+{% endblock scripts %}

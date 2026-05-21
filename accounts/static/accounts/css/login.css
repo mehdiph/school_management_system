@@ -44,13 +44,11 @@
 
 .form-container {
     display: grid;
-    grid-template-columns: 1.1fr 5fr;
-    grid-template-rows: repeat(2, 70px);
+    grid-template-columns: 0.7fr 5fr;
+    grid-template-rows: repeat(3, 70px);
     justify-content: center;
-}
-
-.form-container > div {
-    padding: 5px;
+    align-items: center;
+    text-align: center;
 }
 
 .input-container {
@@ -77,3 +75,22 @@
     border: none;
     border-radius: var(--radius);
 }
+
+.login-errors {
+    display: flex;
+    flex-direction: column;
+    grid-column-start: 1;
+    grid-column-end: 3;
+    padding: 1.5rem;
+}
+
+.username-input, .password-input {
+    padding: 1rem;
+}
+
+.btn-container {
+    grid-column: span 2;
+    padding: 0 1rem 0 1rem;
+}
+
+
