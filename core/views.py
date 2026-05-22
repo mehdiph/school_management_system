@@ -2,6 +2,8 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from school.models import AcademicYear, ClassSubject
 from teaching.models import SchoolSession
+from school.utils import get_current_week_type, get_today_schedule_day
+from datetime import date
 
 
 @login_required
@@ -19,12 +21,20 @@ def dashboard(request):
     # 3. Class Subjects (Active only)
     # Filter by user and current year (if exists)
     class_subjects_query = ClassSubject.objects.filter(
-         teacher=request.user,
-         is_active=True
-    ).select_related('school_class', 'school_class__grade', 'subject')
+            teacher=request.user,
+            is_active=True,
+            school_class__is_active=True,
+        )\
+        .select_related('school_class', 'school_class__grade', 'subject', 'teacher')\
+        .prefetch_related('schedules')\
+        .order_by('school_class__grade__level', 'subject__name', 'school_class__section')
 
+    today_day = get_today_schedule_day(date.today())
+    week_type = get_current_week_type(date.today())
     if current_year:
-        class_subjects_query = class_subjects_query.filter(school_class__year=current_year)
+        class_subjects_query = class_subjects_query.filter(school_class__year=current_year,
+                                                           schedules__day_of_week=today_day,
+                                                           schedules__week_type=week_type)
 
     # Process data for "Today's Teaching" cards AND "My Classes" list
     # Since we don't have a daily schedule model, we show all active classes as potential teaching targets.
@@ -32,6 +42,7 @@ def dashboard(request):
     class_subjects_summary = []
     
     for cs in class_subjects_query:
+
         # Common data
         class_name = f"{cs.school_class.grade.name} - {cs.school_class.section}"
         subject_name = cs.subject.name

@@ -42,11 +42,11 @@ def get_today_schedule_day(current_date=None):
         current_date = date.today()
 
     weekday_map = {
-        5: ClassSchedule.DayChoices.SATURDAY,
-        6: ClassSchedule.DayChoices.SUNDAY,
-        0: ClassSchedule.DayChoices.MONDAY,
-        1: ClassSchedule.DayChoices.TUESDAY,
-        2: ClassSchedule.DayChoices.WEDNESDAY,
-        3: ClassSchedule.DayChoices.THURSDAY,
+        5: ClassSchedule.DayChoices.WEDNESDAY,
+        6: ClassSchedule.DayChoices.THURSDAY,
+        0: ClassSchedule.DayChoices.SATURDAY,
+        1: ClassSchedule.DayChoices.SUNDAY,
+        2: ClassSchedule.DayChoices.MONDAY,
+        3: ClassSchedule.DayChoices.TUESDAY,
     }
     return weekday_map.get(current_date.weekday())
