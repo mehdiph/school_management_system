@@ -23,19 +23,9 @@
             </svg>
             <span>نیک‌آموز</span>
         </div>
-
-        {% if user.is_authenticated %}
-            <nav class="nav-links">
-                <a href="{% url 'core:dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">داشبورد</a>
-                <a href="{% url 'school:class_list' %}" class="nav-link {% if request.path == '/school/classes/' %}active{% endif %}">کلاس‌ها</a>
-                <a href="{% url 'report:reports_page' %}" class="nav-link {% if request.path == '/report/all/' %}active{% endif %}">گزارش‌ها</a>
-            </nav>
-        {% else %}
-            <nav class="nav-links">
-            
-            </nav>
-        {% endif %}
-
+        {% block navlinks %}
+        
+        {% endblock %}
         <div class="header-info">
             <span class="date-display">{{ today_date }}</span>
             {% if user.is_authenticated %}
