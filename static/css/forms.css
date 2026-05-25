@@ -24,7 +24,7 @@
 
 /* Form Header */
 .form-header {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    background: var(--primary);
     color: white;
     padding: 32px;
     text-align: center;

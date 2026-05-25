@@ -30,6 +30,9 @@ class SchoolSessionForm(forms.ModelForm):
             'status': forms.Select(attrs={
                 'class': 'form-control'
             }),
+            'date': forms.DateInput(attrs={
+                'class': 'form-control'
+            }),
         }
 
     def __init__(self, *args, **kwargs):

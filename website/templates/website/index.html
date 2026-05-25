@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+<!-- page title -->
+{% block title %}مدرسه نسل قلم{% endblock title %}
+
+
+<!-- navbar links for landing page -->
+{% block navlinks %}
+<nav class="nav-links">
+    <ul>
+        <li><a href="#" class="active">تماس با ما</a></li>
+        <li><a href="#">کلاس ها</a></li>
+        <li><a href="#">معلمان</a></li>
+        <li><a href="#">درباره ما</a></li>
+        <li><a href="#">وبلاگ</a></li>
+        <li><a href="#">مقاله</a></li>
+    </ul>
+</nav>
+{% if request.path != '/auth/login' %}
+<a href="{% url 'accounts:login' %}" class="cta-btn">ورود</a>
+{% endif %}
+{% endblock navlinks %}
+
+
+<!-- link to css -->
+{% block styles %}
+<link rel="stylesheet" href="{% static '/website/css/index.css' %}">
+{% endblock styles %}
+
+
+<!-- main content for landing page -->
+{% block content %}
+<!-- ===== HERO SECTION ===== -->
+<section class="hero">
+    <div class="hero-image">
+        <div class="badge-icon"><i class="fas fa-graduation-cap"></i></div>
+        <img src="{% static '/website/images/happy_young_boy.png'%}" alt="دانش آموزان مدرسه" style="background-color: #e5c3ae;">
+    </div>
+    
+    <div class="hero-content">
+        <h1>آینده‌ای درخشان برای <br> فرزند شما در مدرسه نسل قلم</h1>
+        <p>ما با ایجاد محیطی شاد، خلاق و امن، اشتیاق به یادگیری را در کودکان پرورش می‌دهیم تا با اعتماد به نفس برای چالش‌های فردا آماده شوند.</p>
+        <div class="hero-buttons">
+            <a href="#" class="btn-primary">ثبت نام کنید</a>
+            <a href="#" class="btn-outline">بازدید از مدرسه</a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== FEATURES SECTION ===== -->
+<section class="features">
+    <h2>چرا مدرسه نسل قلم؟</h2>
+    <p class="features-subtitle">ما با بهره‌گیری از جدیدترین متدهای آموزشی و محیطی پویا، استعدادهای نهفته کودکان را کشف و شکوفا می‌کنیم.</p>
+
+    <div class="features-grid">
+        <!-- Card 1 -->
+        <div class="feature-card">
+            <div class="feature-icon icon-yellow">
+                <img src="{% static '/website/images/robotic.jpg'%}" alt="">
+            </div>
+            <h4>رباتیک و برنامه نویسی</h4>
+            <p>آموزش جذاب و کاربردی علوم کامپیوتر از سنین پایین برای تقویت تفکر منطقی و حل مسئله در دانش‌آموزان</p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="feature-card">
+            <div class="feature-icon icon-orange">
+                <img src="{% static '/website/images/hooshmand.jpg'%}" alt="">
+            </div>
+            <h4>کلاس‌های هوشمند</h4>
+            <p>تجهیزات مدرن و تکنولوژی‌های آموزشی روز برای یادگیری تعاملی و جذاب دروس مختلف</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="feature-card">
+            <div class="feature-icon icon-blue">
+                <img src="{% static '/website/images/teacher.jpg'%}" alt="">
+            </div>
+            <h4>معلمان مجرب</h4>
+            <p>کادر آموزشی متخصص و با سابقه که با عشق و حوصله، مسیر یادگیری را برای کودکان هموار می‌کنند</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===== NEW "LEARNING" SECTION (STUDENT IMAGE) ===== -->
+<section class="learning-section">
+    <div class="container">
+        <div class="learning-wrapper">
+            <!-- Left Side: Image Blob -->
+            <div class="learning-left">
+                <div class="image-blob">
+                    <img src="{% static '/website/images/giraffe.png'%}" alt="دانش آموز شاد">
+                </div>
+            </div>
+
+            <!-- Right Side: Content -->
+            <div class="learning-right">
+                <h2 class="learning-title">یادگیری فعال، ارتباط با اعتماد به نفس</h2>
+                <p class="learning-desc">ما به کودکان کمک می‌کنیم تا با روش‌های خلاقانه و تعاملی، مهارت‌های لازم برای آینده را کسب کنند.</p>
+                
+                <div class="learning-items">
+                    <div class="learning-item">
+                        <div class="item-icon icon-yellow-item"><i class="fas fa-crown"></i></div>
+                        <div>
+                            <h5>برنامه های خلاقانه</h5>
+                            <p>بازی های آموزشی و سرگرم کننده</p>
+                        </div>
+                    </div>
+                    <div class="learning-item">
+                        <!-- <div class="item-icon icon-blue-item"><i class="fas fa-book-open"></i></div> -->
+                        <div>
+                            <h5>یادگیری آسان</h5>
+                            <p>روش های نوین و جذاب تدریس</p>
+                        </div>
+                    </div>
+                    <div class="learning-item">
+                        <!-- <div class="item-icon icon-blue-item"><i class="fas fa-book-open"></i></div> -->
+                        <div>
+                            <h5>یادگیری آسان</h5>
+                            <p>روش های نوین و جذاب تدریس</p>
+                        </div>
+                    </div>
+                    <div class="learning-item">
+                        <!-- <div class="item-icon icon-blue-item"><i class="fas fa-book-open"></i></div> -->
+                        <div>
+                            <h5>یادگیری آسان</h5>
+                            <p>روش های نوین و جذاب تدریس</p>
+                        </div>
+                    </div>
+                </div>
+                
+
+                
+            </div>
+
+            <!-- Cute Giraffe Illustration -->
+            <div class="giraffe-wrapper">
+                <!-- <img src="https://img.freepik.com/premium-photo/cartoon-giraffe-isolated-white-background_945705-43.jpg?w=200" alt="زرافه بامزه"> -->
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- ===== EXPERT INSTRUCTORS SECTION (SLIDER) ===== -->
+<section class="instructors-section">
+    <div class="container">
+        <div class="instructors-header">
+            <h2>اساتید مجرب ما</h2>
+            <p>با اساتید متخصص و متعهد مدرسه پیشرو آشنا شوید</p>
+        </div>
+
+        <div class="slider-container">
+            <button class="slider-btn prev-btn" id="prevBtn" aria-label="معلم قبلی">
+                <i class="fas fa-chevron-right"><</i>
+            </button>
+            
+            <div class="instructors-grid-wrapper">
+                <div class="instructors-grid" id="instructorGrid">
+                    <!-- Instructor 1 -->
+                    <div class="instructor-card">
+                        <div class="instructor-img-wrapper bg-teal">
+                            <!-- <img src="https://img.freepik.com/free-photo/portrait-smiling-young-man_23-2147664899.jpg?size=626&ext=jpg" alt="علی رضایی"> -->
+                        </div>
+                        <h4>علی رضایی</h4>
+                        <span class="instructor-role">استاد ریاضی</span>
+                        <div class="social-icons">
+                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
+                        </div>
+                    </div>
+
+                    <!-- Instructor 2 -->
+                    <div class="instructor-card">
+                        <div class="instructor-img-wrapper bg-blue">
+                            <!-- <img src="https://img.freepik.com/free-photo/handsome-young-man-holding-books_23-2147664888.jpg?size=626&ext=jpg" alt="سعید محمدی"> -->
+                        </div>
+                        <h4>سعید محمدی</h4>
+                        <span class="instructor-role">استاد علوم</span>
+                        <div class="social-icons">
+                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
+                        </div>
+                    </div>
+
+                    <!-- Instructor 3 -->
+                    <div class="instructor-card">
+                        <div class="instructor-img-wrapper bg-pink">
+                            <!-- <img src="https://img.freepik.com/free-photo/portrait-young-beautiful-woman_23-2147664910.jpg?size=626&ext=jpg" alt="ماریا کریمی"> -->
+                        </div>
+                        <h4>ماریا کریمی</h4>
+                        <span class="instructor-role">استاد زبان</span>
+                        <div class="social-icons">
+                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
+                        </div>
+                    </div>
+                    
+                    <!-- Instructor 4 (Extra for demonstration) -->
+                    <div class="instructor-card">
+                        <div class="instructor-img-wrapper bg-teal">
+                            <!-- <img src="https://img.freepik.com/free-photo/happy-young-female-student-holding-notebooks-from-courses-smiling-camera-standing-spring-clothes-against-blue-background_1258-70161.jpg?size=626&ext=jpg" alt="ندا حسینی"> -->
+                        </div>
+                        <h4>ندا حسینی</h4>
+                        <span class="instructor-role">استاد هنر</span>
+                        <div class="social-icons">
+                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="slider-btn next-btn" id="nextBtn" aria-label="معلم بعدی">
+                <i class="fas fa-chevron-left">></i>
+            </button>
+        </div>
+    </div>
+</section>
+
+
+</div>
+{% endblock content %}
+
+
+{% block scripts %} 
+<script src="{% static '/website/js/index.js' %}" ></script>
+{% endblock scripts %}
+
+

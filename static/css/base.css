@@ -1,9 +1,9 @@
 
 /* Variables & Reset */
 :root {
-    --primary: #2563eb;
-    --primary-light: #3b82f6;
-    --primary-lighter: #dbeafe;
+    --primary: #d96a30;
+    --primary-light: #ff8d50;
+    --primary-lighter: #fdd0b8;
     --secondary: #10b981;
     --danger: #ef4444;
     --warning: #f59e0b;
@@ -40,62 +40,82 @@
     font-family: 'Vazirmatn', sans-serif;
 }
 
-/* Header - Specific to dashboard */
-.header {
-    background-color: var(--gray-50);
-    border-bottom: 1px solid var(--gray-200);
-    padding: 0.5rem 0;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    box-shadow: var(--shadow-sm);
-    margin-left: -24px;
-    /* Break out of base container if possible, though base padding clips */
-    margin-right: -24px;
-    padding-left: 24px;
-    padding-right: 24px;
-    margin-top: -24px;
-    /* Pull up to top */
-    margin-bottom: 24px;
+a {
+    text-decoration: none;
+    color: inherit;
 }
 
-.header-content {
+ul {
+    list-style: none;
+}
+
+/* ===== HEADER / NAVBAR ===== */
+header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 4rem;
+    padding: 15px 0;
+    /* Added subtle border and backdrop blur */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
+    border-radius: 0 0 15px 15px;
+    padding: 15px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .logo {
-    font-size: 1.25rem;
+    font-size: 1.4rem;
     font-weight: 800;
-    color: var(--primary);
+    color: #d86f3b;
+}
+
+.nav-links {
+    display: none; /* Hidden on mobile by default */
+}
+
+.nav-links li {
+    display: inline-block;
+    margin-left: 25px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #555;
+}
+
+.nav-links li.active {
+    color: #d86f3b;
+    font-weight: 600;
+}
+
+.nav-info {
     display: flex;
+    gap: 25px;
     align-items: center;
-    gap: 0.5rem;
-    margin-right: 30px;
 }
 
-.logo svg {
-    width: 28px;
-    height: 28px;
+.cta-btn {
+    background-color: #ef7e41;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    transition: background 0.3s;
 }
 
-.header-info {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    font-size: 0.9rem;
-    color: var(--gray-600);
-    margin-left: 30px;
+.cta-btn:hover {
+    background-color: #d96a30;
 }
 
-.date-display {
+/* .date-display {
     background: var(--gray-100);
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     font-size: 0.85rem;
-}
+} */
 
 /* .nav-links {
     display: none;
@@ -105,17 +125,19 @@
 
 body {
     font-family: 'Vazirmatn', sans-serif;
-    background-color: #f8fafc;
-    color: var(--gray-800);
-    line-height: 1.6;
-    direction: rtl;
+    color: #333;
+    /* Beautiful Gradient Background */
+    background: linear-gradient(180deg, #f9d65e 0%, #fa9a65 40%, #65ccff 100%);
     min-height: 100vh;
+    direction: rtl;
+    line-height: 2;
+    overflow-x: hidden;
 }
 
 .container {
     max-width: 1200px;
-    margin: 0 auto;
-    padding: 24px;
+    margin: 20px auto;
+    padding: 0 20px;
 }
 
 /* Header & Typography */
@@ -519,4 +541,80 @@ textarea.form-control {
 .nav-link.active {
     color: var(--primary);
     font-weight: 700;
+}
+
+
+
+
+
+
+
+/* ****************** website ********************* */
+/* ===== FOOTER ===== */
+footer {
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 30px 0 15px;
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+    border-radius: 30px 30px 0 0;
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+}
+
+.footer-logo {
+    font-weight: 800;
+    color: #d86f3b;
+    font-size: 2rem;
+}
+
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+}
+
+.footer-links a {
+    font-size: 1.1rem;
+    color: #777;
+    transition: color 0.3s;
+}
+
+.footer-links a:hover {
+    color: #d86f3b;
+}
+
+.copyright {
+    font-size: 1.1rem;
+    color: #999;
+    margin-top: 15px;
+    border-top: 1px solid rgba(200, 200, 200, 0.3);
+    padding-top: 15px;
+    width: 100%;
+    text-align: center;
+}
+
+/* ===== RESPONSIVE DESIGN (TABLET & DESKTOP) ===== */
+@media (min-width: 768px) {
+    .nav-links {
+        display: block; /* Show nav on larger screens */
+    }
+
+    .footer-content {
+        flex-direction: row;
+        justify-content: space-between;
+        text-align: right;
+        flex-wrap: wrap;
+    }
+
+    .footer-links {
+        justify-content: flex-end;
+    }
 }

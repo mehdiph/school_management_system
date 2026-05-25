@@ -14,38 +14,9 @@
     {% block styles %}{% endblock %}
 </head>
 <!-- Dashboard Header - Custom styled to break out of generic container if needed (handled by CSS negative margins) -->
-<header class="header">
-    <div class="header-content">
-        <div class="logo">
-            <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-            </svg>
-            <span>نیک‌آموز</span>
-        </div>
-
-        {% if user.is_authenticated %}
-            <nav class="nav-links">
-                <a href="{% url 'core:dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">داشبورد</a>
-                <a href="{% url 'school:class_list' %}" class="nav-link {% if request.path == '/school/classes/' %}active{% endif %}">کلاس‌ها</a>
-                <a href="{% url 'report:reports_page' %}" class="nav-link {% if request.path == '/report/all/' %}active{% endif %}">گزارش‌ها</a>
-            </nav>
-        {% else %}
-            <nav class="nav-links">
-            
-            </nav>
-        {% endif %}
-
-        <div class="header-info">
-            <span class="date-display">{{ today_date }}</span>
-            {% if user.is_authenticated %}
-                <span class="desktop-only">{{ teacher.name }}</span>
-                <a href="{% url 'accounts:logout' %}" style="text-decoration: none;">
-                    <span class="desktop-only">خروج</span>
-                </a>
-            {% endif %}
-        </div>
-    </div>
+<header>
+    <a href="{% url 'website:website' %}" class="logo">مدرسه نسل قلم</a>
+    {% block navlinks %}{% endblock navlinks %}
 </header>
 
 
@@ -66,6 +37,27 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">مدرسه نسل قلم</div>
+                <div class="footer-links">
+                    <a href="#">اینستاگرام</a>
+                    <a href="#">تلگرام</a>
+                    <a href="#">آپارات</a>
+                    <a href="#">درباره ما</a>
+                    <a href="#">سوالات متداول</a>
+                    <a href="#">تماس با ما</a>
+                </div>
+            </div>
+            <div class="copyright">
+                تمامی حقوق برای مدرسه نسل قلم محفوظ است. <br>
+                Made with &#128151 in Urmia
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="{% static '/js/jquery/jquery-3.7.1.js' %}"></script>

@@ -4,10 +4,22 @@
 {% block title %}داشبورد معلم | نیک‌آموز{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{% static 'core/dashboard.css' %}">
+<link rel="stylesheet" href="{% static '/core/dashboard.css' %}">
 {% endblock %}
 
+
+<!-- navbar links for dashboard -->
+
+{% block navlinks %}
+    {% include 'core/include/nav-links.html' %}
+{% endblock navlinks %}
+
+<!-- content of main page for teacher dashboard -->
 {% block content %}
+
+<div class="rainbow">
+    <img  src="{% static '/core/images/rainbow.png' %}" alt="rainbow">
+</div>
 
 <div class="welcome-section">
     <h1 class="welcome-title">سلام، {{ teacher.name }}</h1>
@@ -185,6 +197,8 @@
 </nav>
 {% endblock %}
 
+
+<!-- link to js for teacher dashboard -->
 {% block scripts %}
 <script src="{% static 'core/dashboard.js' %}"></script>
 {% endblock %}
