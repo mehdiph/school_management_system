@@ -7,20 +7,19 @@
 <link rel="stylesheet" href="{% static 'school/css/class_list.css' %}">
 {% endblock %}
 
+{% block navlinks %}
+    {% include 'core/include/nav-links.html' %}
+{% endblock navlinks %}
+
 {% block content %}
 <div class="container">
     <!-- Page Header -->
-    <header class="page-header">
-        <div class="header-content">
-            <h1 class="page-title">
-                <i class="fas fa-chalkboard-teacher"></i>
-                کلاس‌های من
-            </h1>
-            <p class="page-subtitle">
-                مشاهده کلاس‌ها و ثبت جلسه جدید
-            </p>
-        </div>
-    </header>
+    <div class="header-content" style="padding-right: 10px;">
+        <h1 class="page-title">
+            لیست کلاس های من
+        </h1>
+    </div>
+  
 
     <!-- Filter Section -->
     <section class="filter-section">

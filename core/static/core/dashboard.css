@@ -8,6 +8,18 @@
     --text-muted: #64748b;
 }
 
+.rainbow {
+    position: absolute;
+    left: 25px;
+    top: 160px;
+}
+
+.rainbow > img {
+    width: 250px;
+    height: 150px;
+    transform: rotate(330deg);
+    transform-origin: top left; /*pivot from top-left corner*/
+}
 
 /* Welcome Section */
 .welcome-section {
@@ -46,6 +58,8 @@
     padding: 0;
     /* Override base padding for full-width headers */
     overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(2px);
 }
 
 .dashboard-card .card-header {
@@ -54,9 +68,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #fafafa;
+    background-color: rgba(252, 239, 232); /* Slightly transparent to show body gradient */
     margin-bottom: 0;
     /* Override base */
+}
+
+.card-body {
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(2px);
 }
 
 .dashboard-card .card-body {

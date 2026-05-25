@@ -4,28 +4,22 @@
 {% block title %}داشبورد معلم | نیک‌آموز{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{% static 'core/dashboard.css' %}">
+<link rel="stylesheet" href="{% static '/core/dashboard.css' %}">
 {% endblock %}
 
 
 <!-- navbar links for dashboard -->
-{% navlinks %}
-    {% if user.is_authenticated %}
-        <nav class="nav-links">
-            <a href="{% url 'core:dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">داشبورد</a>
-            <a href="{% url 'school:class_list' %}" class="nav-link {% if request.path == '/school/classes/' %}active{% endif %}">کلاس‌ها</a>
-            <a href="{% url 'report:reports_page' %}" class="nav-link {% if request.path == '/report/all/' %}active{% endif %}">گزارش‌ها</a>
-        </nav>
-    {% else %}
-        <nav class="nav-links">
-        
-        </nav>
-    {% endif %}
-{% endblock navlinks %}
 
+{% block navlinks %}
+    {% include 'core/include/nav-links.html' %}
+{% endblock navlinks %}
 
 <!-- content of main page for teacher dashboard -->
 {% block content %}
+
+<div class="rainbow">
+    <img  src="{% static '/core/images/rainbow.png' %}" alt="rainbow">
+</div>
 
 <div class="welcome-section">
     <h1 class="welcome-title">سلام، {{ teacher.name }}</h1>

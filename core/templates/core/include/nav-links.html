@@ -1,0 +1,19 @@
+
+{% if user.is_authenticated %}
+    <nav class="nav-links">
+            <ul>
+                <li><a href="{% url 'school:class_list' %}">کلاس ها</a></li>
+                <li><a href="{% url 'core:dashboard' %}">داشبورد</a></li>
+                <li><a href="{% url 'report:reports_page' %}">گزارش ها</a></li>
+            </ul>
+        </nav>
+        <div class="nav-info">
+            <a href="#">{{ teacher.name }}</a>
+            <p class="date-time">{% now "DATETIME_FORMAT" %}</p>
+            <a href="{% url 'accounts:logout' %}">خروج</a>
+        </div>
+{% else %}
+    <nav class="nav-links">
+    
+    </nav>
+{% endif %}

@@ -6,43 +6,83 @@
 <link rel="stylesheet" href="{% static 'accounts/css/login.css' %}">
 {% endblock %}
 
+{% block navlinks %}
+<nav class="nav-links">
+    <ul>
+        <li><a href="#" class="active">تماس با ما</a></li>
+        <li><a href="#">کلاس ها</a></li>
+        <li><a href="#">معلمان</a></li>
+        <li><a href="#">درباره ما</a></li>
+        <li><a href="#">وبلاگ</a></li>
+        <li><a href="#">مقاله</a></li>
+    </ul>
+</nav>
+{% if request.path == '/auth/login/' %}
+<a href="#"></a>
+{% else %}
+<a href="{% url 'accounts:login' %}" class="cta-btn">ورود</a>
+{% endif %}
+{% endblock navlinks %}
+
 {% block content %}
 
-    <div class="main-container">
-        <div class="form-container1">
-            <div class="title">
-                ورود به سامانه مدیریت مدرسه نسل قلم
+    <div class="login-container">
+        
+        <!-- ===== CUTE SCHOOL BOY IMAGE SECTION ===== -->
+        <div class="image-section">
+            <img src="{% static 'accounts/images/4.jpeg' %}" alt="دانش آموز خوشحال">
+        </div>
+
+        <!-- ===== LOGIN CARD ===== -->
+        <div class="login-card">
+            <!-- Decorative blobs -->
+            <div class="decoration decoration-1"></div>
+            <div class="decoration decoration-2"></div>
+
+            <div class="login-header">
+                <div class="school-icon">
+                    <img src="{% static 'accounts/icons/school_24dp_FFFFFF_FILL0_wght400_GRAD0_opsz24.svg' %}" alt="" style="width: 50px; height: 50px;">
+                </div>
+                <h1>خوش آمدید</h1>
+                <p>برای ورود به پنل مدرسه، اطلاعات خود را وارد کنید</p>
             </div>
-            <form action="" method="post">
-                <div class="form-container">
-                    {% csrf_token %}
-                    <div>
-                        {{ form.username.label_tag }}
+            {% if form.non_field_errors %}
+                <div class="error-container">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+            <form action="#" method="POST">
+                {% csrf_token %}
+                <!-- Email / Username -->
+                <div class="form-group">
+                    {{ form.username.label_tag }}
+                    <div class="input-wrapper">
+                       {{ form.username }}
                     </div>
-                    <div class="username-input">
-                        {{ form.username }}
-                    </div>
-                    <div>
-                        {{ form.password.label_tag }}
-                    </div>
-                    <div class="password-input">
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    {{ form.password.label_tag }}
+                    <div class="input-wrapper">
                         {{ form.password }}
                     </div>
-                    <div class="btn-container">
-                        <input type="submit" value="ورود">
-                    </div>
                 </div>
-                <div class="login-errors">
-                    {% if form.non_field_errors %}
-                    <div class="alert alert-danger">
-                        {% for error in form.non_field_errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
+
+                <!-- Options -->
+                <div class="form-options">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" checked>
+                        <span>مرا به خاطر بسپار</span>
+                    </label>
+                    <a href="#" class="forgot-link">رمز عبور را فراموش کردید؟</a>
                 </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="login-btn">ورود به مدرسه</button>
             </form>
         </div>
+
     </div>
 
 {% endblock %}

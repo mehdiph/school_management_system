@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'core',
     'report',
     'accounts',
+    'website',
 ]
 
 MIDDLEWARE = [
