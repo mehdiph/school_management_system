@@ -1,8 +1,7 @@
 from datetime import date, datetime
-
 from django.conf import settings
-
-from .models import AcademicYear, ClassSchedule
+from school.models import AcademicYear
+from scheduling.models import ClassSchedule
 
 
 DEFAULT_SCHEDULE_START_DATE = date(2025, 9, 23)

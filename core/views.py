@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from school.models import AcademicYear, ClassSubject
 from teaching.models import SchoolSession
-from school.utils import get_current_week_type, get_today_schedule_day
+from scheduling.utils import get_current_week_type, get_today_schedule_day
 from datetime import date
 
 
@@ -11,9 +11,6 @@ def dashboard(request):
     """
     Dashboard view for the teacher.
     """
-    
-    
-    
     # 2. Academic Year
     current_year = AcademicYear.objects.filter(is_current=True).first()
     academic_year_title = current_year.title if current_year else "تعریف نشده"

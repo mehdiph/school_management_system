@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django_jalali.admin.filters import JDateFieldListFilter
 import django_jalali.admin as jadmin
-from .models import AcademicYear, Grade, Subject, SchoolClass, ClassSubject, ClassSchedule
+from .models import AcademicYear, Grade, Subject, SchoolClass, ClassSubject
 
 
 @admin.register(AcademicYear)
@@ -97,9 +97,3 @@ class ClassSubjectAdmin(admin.ModelAdmin):
     get_class_subject_name.short_description = 'کلاس و درس'
 
 
-@admin.register(ClassSchedule)
-class ClassScheduleAdmin(admin.ModelAdmin):
-    list_display = ('class_room', 'day_of_week', 'week_type', 'start_time', 'end_time')
-    list_filter = ('day_of_week', 'week_type')
-    search_fields = ('class_room__school_class__section', 'class_room__subject__name')
-    ordering = ('day_of_week', 'start_time')
