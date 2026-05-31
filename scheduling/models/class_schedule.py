@@ -1,9 +1,6 @@
 from django.db import models
 from django.forms import ValidationError
-from school.models import ClassSubject
 from django_jalali.db import models as jmodels
-
-# Create your models here.
 
 class ClassSchedule(models.Model):
     class DayChoices(models.IntegerChoices):
@@ -20,7 +17,7 @@ class ClassSchedule(models.Model):
         BOTH = 3, 'هر دو هفته'
 
     class_room = models.ForeignKey(
-        ClassSubject,
+        'school.ClassSubject',
         on_delete=models.CASCADE,
         related_name='schedules',
         verbose_name='کلاس درس'
