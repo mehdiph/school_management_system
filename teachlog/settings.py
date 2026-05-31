@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'website',
     'scheduling',
     'staff',
+    'student',
 ]
 
 MIDDLEWARE = [

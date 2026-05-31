@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static '/student/css/dashboard.css' %}">
+{% endblock %}
+
+{% block title %}داشبورد دانش آموز{% endblock %}
+
+{% block navlinks %}
+    <nav class="navbar">
+        
+        <ul class="nav-links">
+            <li><a href="#" class="nav-item active"><i class="fas fa-home"></i> خانه</a></li>
+            <li><a href="#" class="nav-item"><i class="fas fa-chalkboard-teacher"></i> کلاس ها</a></li>
+            <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
+            <li><a href="#" class="nav-item"><i class="fas fa-book"></i> درس ها</a></li>
+            <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
+        </ul>
+
+    </nav>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <div class="profile-mini">
+            
+            <div class="profile-info-small">
+                <strong>سلام علی!</strong>
+                <span>دبستان نسل قلم - کلاس ۲ ب</span>
+            </div>
+        </div>
+        <div>
+            <a href="{% url 'accounts:logout' %}">خروج</a>
+        </div>
+    </div>
+{% endblock navlinks %}
+
+
+{% block content %}
+    <div class="dashboard-wrapper">
+        <main class="main-content">
+            
+            <!-- Hero Banner -->
+            <section class="hero-banner">
+                <div class="hero-text">
+                    <h1>سلام علی! 👋</h1>
+                    <p>امروز آماده یادگیری چیزهای جدید هستی؟</p>
+                </div>
+                <div class="hero-icon-box">
+                    <i class="fas fa-rocket"></i>
+                </div>
+            </section>
+
+            <!-- Achievements & Classes -->
+            <div class="grid-2-col">
+                <!-- Achievements -->
+                <section class="achievement-card">
+                    <h3>دستاوردها <i class="fas fa-star" style="color:#f9d65e;"></i></h3>
+                    
+                    <div class="badge-item">
+                        <span>🔥 Learning Streak <br><small>روز پشت سر هم</small></span>
+                        <i class="fas fa-fire" style="color:#ef7e41;"></i>
+                    </div>
+                    <div class="badge-item">
+                        <span>🏆 Homework Champion <br><small>تکلیف کامل شده</small></span>
+                        <i class="fas fa-trophy" style="color:#f9d65e;"></i>
+                    </div>
+                    <div class="badge-item">
+                        <span>⭐ Active Student <br><small>مشارکت عالی در کلاس</small></span>
+                        <i class="fas fa-star" style="color:#f9d65e;"></i>
+                    </div>
+                </section>
+
+                <!-- Classes -->
+                <section class="classes-section">
+                    <h3>کلاس های امروز <i class="far fa-clock" style="color:#ef7e41;"></i></h3>
+                    <div class="classes-grid">
+                        <!-- Class 1 -->
+                        <div class="class-card">
+                            <div class="class-icon" style="background:#d86f3b;"><i class="fas fa-flask"></i></div>
+                            <h4>علوم</h4>
+                            <p>استاد کریمی</p>
+                            <span class="class-time">۱۳:۳۰ - ۱۴:۰۰</span>
+                        </div>
+
+                        <!-- Class 2 -->
+                        <div class="class-card">
+                            <div class="class-icon" style="background:#65ccff;"><i class="fas fa-book-open"></i></div>
+                            <h4>فارسی</h4>
+                            <p>خانم احمدی</p>
+                            <span class="class-time">۱۱:۳۰ - ۱۲:۰۰</span>
+                        </div>
+
+                        <!-- Class 3 (Active) -->
+                        <div class="class-card" style="border:2px solid #ef7e41;">
+                            <div class="status-badge">در حال برگزاری</div>
+                            <div class="class-icon" style="background:#ef7e41;"><i class="fas fa-calculator"></i></div>
+                            <h4>ریاضی</h4>
+                            <p>استاد رضایی</p>
+                            <span class="class-time">۹:۳۰ - ۱۰:۰۰</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <div class="action-card"><i class="fas fa-file-alt"></i><span>تکالیف من</span></div>
+                <div class="action-card"><i class="fas fa-calendar-alt"></i><span>برنامه هفتگی</span></div>
+                <div class="action-card"><i class="fas fa-user-graduate"></i><span>پروفایل من</span></div>
+                <div class="action-card"><i class="fas fa-school"></i><span>جلسات آموزشی</span></div>
+            </section>
+
+            <!-- Homework -->
+            <section class="homework-section">
+                <h3>تکالیف فردا <i class="fas fa-check-circle" style="color:#ef7e41;"></i></h3>
+                
+                <div class="homework-card">
+                    <div class="hw-icon-circle"><i class="fas fa-book" style="color:#65ccff;"></i></div>
+                    <div class="hw-info">
+                        <h5>ریاضی - تمرین صفحه ۲۰</h5>
+                        <p>تاریخ: فردا صبح</p>
+                        <div class="hw-progress"><div class="hw-progress-fill" style="width:20%"></div></div>
+                    </div>
+                </div>
+
+                <div class="homework-card">
+                    <div class="hw-icon-circle" style="border-color:#ef7e41;"><i class="fas fa-leaf" style="color:#ef7e41;"></i></div>
+                    <div class="hw-info">
+                        <h5>علوم - نقاشی چرخه آب</h5>
+                        <p>نیمه انجام شده (۵۰٪)</p>
+                        <div class="hw-progress"><div class="hw-progress-fill" style="width:50%"></div></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+{% endblock content %}

@@ -18,7 +18,10 @@ def login_form(request):
                 if user is not None:
                     login(request, user)
                     messages.success(request, 'با موفقیت وارد شدید')
-                    return redirect('core:dashboard')
+                    if user.role == 'teacher':
+                        return redirect('core:dashboard')
+                    elif user.role == 'student':
+                        return redirect('student:dashboard')
                 else:
                     messages.error(request, 'نام کاربری یا رمز عبور اشتباه است')
             else:

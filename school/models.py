@@ -69,7 +69,7 @@ class SchoolClass(models.Model):
 class ClassSubject(models.Model):
     school_class = models.ForeignKey(SchoolClass, on_delete=models.DO_NOTHING, verbose_name='کلاس')
     subject = models.ForeignKey(Subject, on_delete=models.DO_NOTHING, verbose_name='درس')
-    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING, verbose_name='معلم')
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.DO_NOTHING, verbose_name='معلم', limit_choices_to={'role': 'teacher'})
     start_date = jmodels.jDateField(verbose_name='تاریخ شروع')
     end_date = jmodels.jDateField(verbose_name='تاریخ پایان')
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')

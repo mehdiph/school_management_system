@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     class Roles(models.TextChoices):
+        STUDENT = 'student', 'دانش آموز'
         TEACHER = 'teacher', 'معلم'
         SUPERVISOR = 'supervisor', 'پشتیبان'
         ACCOUNTANT = 'accountant', 'حسابدار'
