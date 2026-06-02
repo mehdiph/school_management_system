@@ -24,8 +24,8 @@
         <div class="profile-mini">
             
             <div class="profile-info-small">
-                <strong>سلام علی!</strong>
-                <span>دبستان نسل قلم - کلاس ۲ ب</span>
+                <strong>سلام {{ student }}!</strong>
+                <span>دبستان نسل قلم - کلاس  {{ school_class }}</span>
             </div>
         </div>
         <div>
@@ -42,7 +42,7 @@
             <!-- Hero Banner -->
             <section class="hero-banner">
                 <div class="hero-text">
-                    <h1>سلام علی! 👋</h1>
+                    <h1>سلام {{ student }}! 👋</h1>
                     <p>امروز آماده یادگیری چیزهای جدید هستی؟</p>
                 </div>
                 <div class="hero-icon-box">
@@ -75,23 +75,19 @@
                     <h3>کلاس های امروز <i class="far fa-clock" style="color:#ef7e41;"></i></h3>
                     <div class="classes-grid">
                         <!-- Class 1 -->
-                        <div class="class-card">
-                            <div class="class-icon" style="background:#d86f3b;"><i class="fas fa-flask"></i></div>
-                            <h4>علوم</h4>
-                            <p>استاد کریمی</p>
-                            <span class="class-time">۱۳:۳۰ - ۱۴:۰۰</span>
-                        </div>
+
+                        {% for cs in today_classes %}
+                            <div class="class-card">
+                                <div class="class-icon" style="background:#d86f3b;"><i class="fas fa-flask"></i></div>
+                                <h4>{{ cs.class_room.subject }}</h4>
+                                <p>{{ cs.class_room.teacher.get_full_name }}</p>
+                                <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>
+                            </div>
+                        {% endfor %}
 
                         <!-- Class 2 -->
-                        <div class="class-card">
-                            <div class="class-icon" style="background:#65ccff;"><i class="fas fa-book-open"></i></div>
-                            <h4>فارسی</h4>
-                            <p>خانم احمدی</p>
-                            <span class="class-time">۱۱:۳۰ - ۱۲:۰۰</span>
-                        </div>
-
                         <!-- Class 3 (Active) -->
-                        <div class="class-card" style="border:2px solid #ef7e41;">
+                        <!-- <div class="class-card" style="border:2px solid #ef7e41;">
                             <div class="status-badge">در حال برگزاری</div>
                             <div class="class-icon" style="background:#ef7e41;"><i class="fas fa-calculator"></i></div>
                             <h4>ریاضی</h4>
@@ -100,7 +96,7 @@
                             <div class="progress-bar">
                                 <div class="progress-fill"></div>
                             </div>
-                        </div>
+                        </div> -->
                     </div>
                 </section>
             </div>
@@ -115,25 +111,26 @@
 
             <!-- Homework -->
             <section class="homework-section">
-                <h3>تکالیف فردا <i class="fas fa-check-circle" style="color:#ef7e41;"></i></h3>
+                <h3>آخرین تکالیف  <i class="fas fa-check-circle" style="color:#ef7e41;"></i></h3>
                 
-                <div class="homework-card">
-                    <div class="hw-icon-circle"><i class="fas fa-book" style="color:#65ccff;"></i></div>
-                    <div class="hw-info">
-                        <h5>ریاضی - تمرین صفحه ۲۰</h5>
-                        <p>تاریخ: فردا صبح</p>
-                        <div class="hw-progress"><div class="hw-progress-fill" style="width:20%"></div></div>
+                {% for hw in homeworks %}
+                    <div class="homework-card">
+                        <div class="hw-icon-circle"><i class="fas fa-book" style="color:#65ccff;"></i></div>
+                        <div class="hw-info">
+                            <h4>درس : {{ hw.session.class_subject.subject }} </h4>
+                            <h5>موضوع : {{ hw.title }} </h5>
+                            <p>{{ hw.homework }}</p>
+                        </div>
                     </div>
-                </div>
-
-                <div class="homework-card">
-                    <div class="hw-icon-circle" style="border-color:#ef7e41;"><i class="fas fa-leaf" style="color:#ef7e41;"></i></div>
-                    <div class="hw-info">
-                        <h5>علوم - نقاشی چرخه آب</h5>
-                        <p>نیمه انجام شده (۵۰٪)</p>
-                        <div class="hw-progress"><div class="hw-progress-fill" style="width:50%"></div></div>
+                {% empty %}
+                    <div class="homework-card">
+                        <div class="hw-icon-circle"><i class="fas fa-book" style="color:#65ccff;"></i></div>
+                        <div class="hw-info">
+                            <h5>تکلیفی وجود ندارد</h5>
+                            <p>روز خوبی داشته باشید</p>
+                        </div>
                     </div>
-                </div>
+                {% endfor %}
             </section>
 
         </main>
