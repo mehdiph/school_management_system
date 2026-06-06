@@ -73,6 +73,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.teacher_info',
+                'student.context_processors.student_info',
             ],
         },
     },
@@ -131,3 +132,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+# media settings
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'

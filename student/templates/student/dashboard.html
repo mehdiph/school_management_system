@@ -4,6 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{% static '/student/css/dashboard.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
 
 {% block title %}داشبورد دانش آموز{% endblock %}
@@ -13,7 +14,7 @@
         
         <ul class="nav-links">
             <li><a href="#" class="nav-item active"><i class="fas fa-home"></i> خانه</a></li>
-            <li><a href="#" class="nav-item"><i class="fas fa-chalkboard-teacher"></i> کلاس ها</a></li>
+            <li><a href="/student/sessions/riazi" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-book"></i> درس ها</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
@@ -22,12 +23,11 @@
     </nav>
     <div style="display:flex; align-items:center; gap:10px;">
         <div class="profile-mini">
-            
-            <div class="profile-info-small">
-                <strong>سلام {{ student }}!</strong>
-                <span>دبستان نسل قلم - کلاس  {{ school_class }}</span>
-            </div>
+        <div class="profile-info-small">
+            <strong>سلام {{ student }}!</strong>
+            <span> کلاس {{ school_class }}</span>
         </div>
+    </div>
         <div>
             <a href="{% url 'accounts:logout' %}">خروج</a>
         </div>
@@ -46,7 +46,7 @@
                     <p>امروز آماده یادگیری چیزهای جدید هستی؟</p>
                 </div>
                 <div class="hero-icon-box">
-                    <i class="fas fa-rocket"></i>
+                    <img src="{{ user.avatar.url }}" alt="">
                 </div>
             </section>
 
@@ -83,6 +83,13 @@
                                 <p>{{ cs.class_room.teacher.get_full_name }}</p>
                                 <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>
                             </div>
+
+                        {% empty %}
+
+                            <div class="class-card no-class">
+                                <h2>امروز کلاسی ندارید!</h2>
+                                <p>روز خوبی داشته باشین</p>
+                            </div>
                         {% endfor %}
 
                         <!-- Class 2 -->
@@ -103,10 +110,10 @@
 
             <!-- Quick Actions -->
             <section class="quick-actions">
-                <div class="action-card"><i class="fas fa-file-alt"></i><span>تکالیف من</span></div>
-                <div class="action-card"><i class="fas fa-calendar-alt"></i><span>برنامه هفتگی</span></div>
-                <div class="action-card"><i class="fas fa-user-graduate"></i><span>پروفایل من</span></div>
-                <div class="action-card"><i class="fas fa-school"></i><span>جلسات آموزشی</span></div>
+                <div class="action-card"><img src="{% static 'icons/exercise_50dp_000000_FILL0_wght400_GRAD0_opsz48.svg' %}" alt=""><span>تکالیف من</span></div>
+                <div class="action-card"><img src="{% static 'icons/schedule_50dp_000000_FILL0_wght400_GRAD0_opsz48.svg' %}" alt=""><span>برنامه هفتگی</span></div>
+                <div class="action-card"><img src="{% static 'icons/account_circle_50dp_000000_FILL0_wght400_GRAD0_opsz48.svg' %}" alt=""><span>پروفایل من</span></div>
+                <div class="action-card"><img src="{% static 'icons/school_50dp_000000_FILL0_wght400_GRAD0_opsz48.svg' %}" alt=""><span>جلسات آموزشی</span></div>
             </section>
 
             <!-- Homework -->
@@ -115,7 +122,9 @@
                 
                 {% for hw in homeworks %}
                     <div class="homework-card">
-                        <div class="hw-icon-circle"><i class="fas fa-book" style="color:#65ccff;"></i></div>
+                        <div class="hw-icon-circle">
+                            <img src="{% static 'icons/person_raised_hand_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg' %}" alt="">
+                        </div>
                         <div class="hw-info">
                             <h4>درس : {{ hw.session.class_subject.subject }} </h4>
                             <h5>موضوع : {{ hw.title }} </h5>
@@ -124,7 +133,9 @@
                     </div>
                 {% empty %}
                     <div class="homework-card">
-                        <div class="hw-icon-circle"><i class="fas fa-book" style="color:#65ccff;"></i></div>
+                        <div class="hw-icon-circle">
+                            <img src="{% static 'icons/person_raised_hand_24dp_000000_FILL0_wght400_GRAD0_opsz24.svg' %}" alt="">
+                        </div>
                         <div class="hw-info">
                             <h5>تکلیفی وجود ندارد</h5>
                             <p>روز خوبی داشته باشید</p>

@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from teaching.models.session_content import SessionContent
 from scheduling.models.class_schedule import ClassSchedule
+from school.models.class_subject import ClassSubject
 from scheduling.utils import get_today_schedule_day
 from datetime import date
 
@@ -44,3 +45,23 @@ def student_dashboard(request):
     }
 
     return render(request, 'student/dashboard.html', context)
+
+
+
+def sessions_list(request, subject):
+    school_class = request.user.student_profile.school_class
+    class_subject_query = ClassSubject.objects\
+        .filter(school_class=school_class)\
+        .prefetch_related('sessions', 'sessions__session_contents')
+    # print(class_subject_query[4].subject)
+    # print(class_subject_query[4].icon)
+
+    lesson_class_subjects = class_subject_query.get(subject__slug=subject)
+
+    sessions = lesson_class_subjects.sessions.all()
+
+    context = {
+        'class_subjects': class_subject_query,
+        'sessions': sessions
+    }
+    return render(request, 'student/session_list.html', context)

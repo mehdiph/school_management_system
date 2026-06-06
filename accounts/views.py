@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 # from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from .forms import LoginForm
+from .utils import role_dashboard
 from django.contrib.auth import logout, login, authenticate
 
 # Create your views here.
@@ -18,10 +19,8 @@ def login_form(request):
                 if user is not None:
                     login(request, user)
                     messages.success(request, 'با موفقیت وارد شدید')
-                    if user.role == 'teacher':
-                        return redirect('core:dashboard')
-                    elif user.role == 'student':
-                        return redirect('student:dashboard')
+                    redirect_path = role_dashboard(user)
+                    return redirect(redirect_path)
                 else:
                     messages.error(request, 'نام کاربری یا رمز عبور اشتباه است')
             else:
@@ -31,7 +30,9 @@ def login_form(request):
             form = LoginForm()
         return render(request, 'accounts/login.html', {'form': form})
     else:
-        return redirect('core:dashboard')
+        redirect_path = role_dashboard(request.user)
+        return redirect(redirect_path)
+        
 
 def auth_logout(request):
     logout(request)

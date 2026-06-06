@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% load persian_filters %}
+
+{% block title %}جلسات{% endblock %}
+  
+  
+{% block styles %}
+<link rel="stylesheet" href="{% static 'student/css/session_list.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+  <div class="container">
+    
+{% block navlinks %}
+<nav class="navbar">
+        
+    <ul class="nav-links">
+        <li><a href="{% url 'student:dashboard' %}" class="nav-item active"><i class="fas fa-home"></i> داشبورد</a></li>
+        <li><a href="#" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
+        <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
+        <li><a href="#" class="nav-item"><i class="fas fa-book"></i> درس ها</a></li>
+        <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
+    </ul>
+
+</nav>
+<div style="display:flex; align-items:center; gap:15px;">
+    <div class="profile-mini">
+        <div class="profile-info-small">
+            <strong>سلام {{ student }}!</strong>
+            <span> کلاس {{ school_class }}</span>
+        </div>
+    </div>
+    <div>
+        <a href="{% url 'accounts:logout' %}">خروج</a>
+    </div>
+</div>
+{% endblock navlinks %}
+
+
+{% block content %}
+    <!-- بخش فیلترها و جستجو -->
+    <section class="filter-section">
+      <div class="filter-row">
+        
+        <div class="filter-group">
+          <label>نام درس</label>
+          <div class="filter-input-wrapper">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <select class="filter-control" id="course-select">
+              <option value="all">همه دروس</option>
+              <option value="math">ریاضیات تجربی</option>
+              <option value="physics">فیزیک ۳</option>
+              <option value="literature">ادبیات فارسی</option>
+              <option value="biology">زیست شناسی</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group" style="flex: 1.5;">
+          <label>بازه زمانی</label>
+          <div class="filter-input-wrapper">
+            <i class="fa-regular fa-calendar-days"></i>
+            <input type="text" class="filter-control" value="۱۴۰۲/۰۷/۰۱ - ۱۴۰۲/۰۹/۳۰" placeholder="انتخاب تاریخ">
+          </div>
+        </div>
+
+        <div class="actions-group">
+          <button class="btn-search">
+            <i class="fa-solid fa-filter"></i>
+            <span>جستجو</span>
+          </button>
+          <button class="btn-refresh" title="بارگذاری مجدد">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- کارت‌های دروس فوقانی -->
+    <section class="courses-grid">
+      
+      <!-- ریاضیات تجربی -->
+      {% for cs in class_subjects %}
+        <div class="course-card">
+          <div class="card-top">
+            <div class="course-icon-wrapper">
+              <i class="fa-solid {{ cs.icon }}"></i>
+            </div>
+            {% if cs.sessions.count == 0 %}
+              <span class="sessions-badge">جلسه ای ثبت نشده</span>
+            {% else %}
+              <span class="sessions-badge">{{ cs.sessions.count }} جلسه</span>
+            {% endif %}
+          </div>
+          <div class="course-info">
+            <div class="course-title"><a href="{% url 'student:sessions' cs.subject.slug %}">{{ cs.subject }}</a></div>
+            <div class="course-details">پایه {{ cs.school_class.grade }} • کلاس {{ cs.school_class.section }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </section>
+
+    <!-- بخش جزئیات جلسات به صورت تایم‌لاین -->
+    <section class="details-section">
+      
+      <div class="details-header">
+        <div class="details-title-wrapper">
+          <i class="fa-solid fa-folder-open"></i>
+          <h2 class="details-title" id="dynamic-title">جزئیات جلسات ریاضیات تجربی</h2>
+        </div>
+        <div class="utility-actions">
+          <!-- <button class="icon-btn" title="خروجی PDF"><i class="fa-solid fa-download"></i></button>
+          <button class="icon-btn" title="چاپ"><i class="fa-solid fa-print"></i></button> -->
+        </div>
+      </div>
+      {% for session in sessions %}
+        <div class="timeline-container">
+          <!-- خط راهنمای تایم‌لاین -->
+          <div class="timeline-line"></div>
+
+          <!-- آیتم جلسه در تایم‌لاین -->
+          <div class="timeline-item">
+            <!-- نقطه اتصال تایم‌لاین -->
+            <div class="timeline-node"></div>
+            
+            <div class="session-card-wrapper">
+
+              <!-- بدنه اصلی کارت جلسه -->
+              <div class="session-card" id="session-card-content">
+                <div class="session-meta">
+                  <span class="session-tag" id="session-badge-date">جلسه {{ session.session_number|persian_ordinal }} - {{ session.date|persian_date }}</span>
+                </div>
+                <h3 class="session-title" id="session-main-title">{{ session.session_contents.title }}</h3>
+                <p class="session-desc" id="session-main-desc">
+                  {{ session.session_contents.content }}
+                </p>
+                
+                <div class="session-footer">
+                  
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      {% empty %}
+
+        <div class="timeline-container">
+          <!-- خط راهنمای تایم‌لاین -->
+          <div class="timeline-line"></div>
+
+          <!-- آیتم جلسه در تایم‌لاین -->
+          <div class="timeline-item">
+            <!-- نقطه اتصال تایم‌لاین -->
+            <div class="timeline-node"></div>
+            
+            <div class="session-card-wrapper">
+
+              <!-- بدنه اصلی کارت جلسه -->
+              <div class="session-card" id="session-card-content">
+                <h3 class="session-title" id="session-main-title">جلسه ای ثبت نشده</h3>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      {% endfor %}
+
+    </section>
+
+  </div>
+{% endblock %}

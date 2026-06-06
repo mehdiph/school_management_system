@@ -104,7 +104,7 @@ def session_list(request, class_subject_id):
         'class_subject__school_class__grade',
         'class_subject__subject',
         'class_subject__teacher',
-        'sessioncontent'  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
+        'session_contents'  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
     ).order_by('-date', '-session_number')
     
     context = {

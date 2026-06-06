@@ -1,16 +1,11 @@
-{% extends 'base.html' %} {% load static %}
+{% extends 'base.html' %} 
+{% load static %}
+{% load persian_filters %}
 
 {% block title %} لیست جلسات درسی{% endblock %}
 
 {% block styles %}
-<style>
-    .topic-cell {
-        max-width: 250px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'teaching/css/session_list.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -61,10 +56,10 @@
                     <div style="font-weight: 600;">{{ session.class_subject }}</div>
                     <div style="font-size: 0.85rem; color: var(--gray-400);">{{ session.class_subject.school_class.year }}</div>
                 </td>
-                <td>{{ session.date }}</td>
+                <td>{{ session.date|persian_date }}</td>
                 <td class="topic-cell" title="{{ session.sessioncontent.title }}">
-                    {% if session.sessioncontent %}
-                    {{ session.sessioncontent.title }}
+                    {% if session.session_contents %}
+                    {{ session.session_contents.title }}
                     {% else %}
                     <span style="color: var(--warning); font-size: 0.9rem;">
                         <i class="fas fa-exclamation-triangle"></i>

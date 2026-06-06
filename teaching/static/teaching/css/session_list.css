@@ -1,0 +1,131 @@
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 0;
+    /* Added subtle border and backdrop blur */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
+    box-shadow: 3px 1px 1px 1px rgba(37, 99, 235, 0.1);
+    border-radius: 0 0 15px 15px;
+    padding: 15px 20px;
+}
+
+/* Tables */
+.table-container {
+    overflow-x: auto;
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.table-container th {
+    background-color: var(--gray-50);
+    padding: 16px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--gray-600);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.table-container td {
+    padding: 16px;
+    border-bottom: 1px solid var(--gray-100);
+    vertical-align: middle;
+}
+
+.table-container tr:last-child td {
+    border-bottom: none;
+}
+
+.table-container tr:hover td {
+    background-color: var(--gray-50);
+    padding: 15px;
+}
+
+/* Stats Card */
+.stats-card {
+    background-color: white;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+    border-right: 4px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stats-icon {
+    font-size: 2rem;
+    color: var(--primary);
+    background-color: var(--primary-lighter);
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.stats-info h3 {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    margin-bottom: 4px;
+}
+
+.stats-info .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray-600);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: var(--gray-300);
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    gap: 6px;
+}
+
+.status-held {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-canceled {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.status-makeup {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.status-pending {
+    background-color: #e0f2fe;
+    color: #075985;
+}

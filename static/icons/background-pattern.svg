@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <!-- پس‌زمینه نرم و گرم تداعی‌کننده کاغذ دفتر -->
+  <rect width="100%" height="100%" fill="#fae9d9"/>
+  
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <!-- ۱. ابر خندان (بالا چپ) -->
+    <g transform="translate(10, 10)">
+      <path d="M 40,75 C 30,75 25,65 35,55 C 30,40 45,30 55,40 C 65,30 80,35 75,50 C 85,55 80,75 65,75 Z" stroke="#E5DCD0" stroke-width="2.5" fill="#FFF"/>
+      <!-- چشم‌ها و لبخند ابر -->
+      <circle cx="48" cy="56" r="1.5" fill="#CBBFAD"/>
+      <circle cx="62" cy="56" r="1.5" fill="#CBBFAD"/>
+      <path d="M 52,62 Q 55,65 58,62" stroke="#CBBFAD" stroke-width="1.5"/>
+    </g>
+
+    <!-- ۲. مداد فانتزی چرخیده (بالا وسط) -->
+    <g transform="translate(190, 30) rotate(35)">
+      <rect x="0" y="0" width="12" height="35" rx="2" stroke="#E5DCD0" stroke-width="2.5" fill="#FFF"/>
+      <path d="M 0,0 L 6,-10 L 12,0" stroke="#E5DCD0" stroke-width="2.5" fill="#FFE395"/>
+      <line x1="6" y1="10" x2="6" y2="35" stroke="#E5DCD0" stroke-width="1.5"/>
+      <!-- پاک‌کن مداد -->
+      <path d="M 0,35 H 12 V 38 H 0 Z" fill="#FFB5B5" stroke="#E5DCD0" stroke-width="1.5"/>
+    </g>
+
+    <!-- ۳. لامپ ایده و خلاقیت (بالا راست) -->
+    <g transform="translate(310, 30)">
+      <path d="M 20,10 C 5,10 0,25 10,35 L 13,45 L 27,45 L 30,35 C 40,25 35,10 20,10 Z" stroke="#E5DCD0" stroke-width="2.5" fill="#FFF"/>
+      <path d="M 13,45 H 27 M 15,50 H 25" stroke="#E5DCD0" stroke-width="2"/>
+      <!-- پرتوهای نور فانتزی -->
+      <path d="M 20,0 V 4 M 3,17 L 7,19 M 37,17 L 33,19" stroke="#FFE395" stroke-width="2"/>
+    </g>
+
+    <!-- ۴. هواپیمای کاغذی در حال پرواز (وسط صفحه) -->
+    <g transform="translate(170, 170) rotate(-15)">
+      <path d="M 0,20 L 40,0 L 30,35 L 18,25 L 0,20 Z" stroke="#E5DCD0" stroke-width="2.5" fill="#FFF"/>
+      <path d="M 18,25 L 40,0 L 30,35" stroke="#E5DCD0" stroke-width="2.5"/>
+      <!-- خط باد پشت هواپیما -->
+      <path d="M -15,25 Q -30,15 -25,35 T -55,30" stroke="#B5D6FF" stroke-width="2" stroke-dasharray="4,4"/>
+    </g>
+
+    <!-- ۵. ستاره خوشحال (پایین چپ) -->
+    <g transform="translate(40, 270) scale(0.9)">
+      <path d="M 25,0 L 32,15 L 48,18 L 36,30 L 39,46 L 25,38 L 11,46 L 14,30 L 2,18 L 18,15 Z" stroke="#FFE395" stroke-width="2.5" fill="#FFFDF0"/>
+      <circle cx="21" cy="22" r="1.5" fill="#CBBFAD"/>
+      <circle cx="29" cy="22" r="1.5" fill="#CBBFAD"/>
+      <path d="M 23,27 Q 25,29 27,27" stroke="#CBBFAD" stroke-width="1.5"/>
+    </g>
+
+    <!-- ۶. کتاب داستان باز شده (پایین راست) -->
+    <g transform="translate(280, 270) rotate(8)">
+      <path d="M 10,15 Q 25,20 40,15 Q 55,20 70,15 L 70,35 Q 55,40 40,35 Q 25,40 10,35 Z" stroke="#E5DCD0" stroke-width="2.5" fill="#FFF"/>
+      <path d="M 40,15 V 35" stroke="#E5DCD0" stroke-width="2"/>
+      <!-- خطوط مشق داخل کتاب -->
+      <path d="M 18,22 H 32 M 18,28 H 32 M 48,22 H 62 M 48,28 H 62" stroke="#E5DCD0" stroke-width="1.5"/>
+    </g>
+
+    <!-- المان‌های تزئینی ریز و معلق در فضا (خرده ستاره‌ها، حباب‌ها و علامت مثبت) -->
+    <!-- ستاره‌های کوچک رنگی -->
+    <path d="M 110,60 L 112,65 L 117,65 L 113,68 L 115,73 L 110,70 L 105,73 L 107,68 L 103,65 L 108,65 Z" fill="#FFE395"/>
+    <path d="M 270,120 L 272,125 L 277,125 L 273,128 L 275,133 L 270,130 L 265,133 L 267,128 L 263,125 L 268,125 Z" fill="#B5D6FF"/>
+    
+    <!-- حباب‌های صورتی و آبی -->
+    <circle cx="100" cy="210" r="4" stroke="#FFB5B5" stroke-width="2" />
+    <circle cx="270" cy="220" r="3" stroke="#B5D6FF" stroke-width="2" />
+    <circle cx="150" cy="310" r="5" stroke="#FFE395" stroke-width="2" />
+
+    <!-- علامت‌های مثبت فانتزی -->
+    <path d="M 320,190 H 328 M 324,186 V 194" stroke="#FFB5B5" stroke-width="2" />
+    <path d="M 70,140 H 76 M 73,137 V 143" stroke="#E5DCD0" stroke-width="1.5" />
+
+  </g>
+</svg>

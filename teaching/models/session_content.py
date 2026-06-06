@@ -4,7 +4,7 @@ from django_jalali.db import models as jmodels
 
 
 class SessionContent(models.Model):
-    session = models.OneToOneField('teaching.SchoolSession', on_delete=models.DO_NOTHING, verbose_name='جلسه')
+    session = models.OneToOneField('teaching.SchoolSession', on_delete=models.DO_NOTHING, verbose_name='جلسه', related_name='session_contents')
     title = models.CharField(max_length=255, verbose_name='عنوان')
     content = models.TextField(verbose_name='محتوا')
     activity = models.TextField(verbose_name='فعالیت')

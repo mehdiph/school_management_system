@@ -7,7 +7,7 @@ class SchoolSession(models.Model):
         CANCELED = 'CD', 'کنسل شده'
         HELD = 'HD', 'برگزار شده'
 
-    class_subject = models.ForeignKey('school.ClassSubject', on_delete=models.DO_NOTHING, verbose_name='درس کلاس')
+    class_subject = models.ForeignKey('school.ClassSubject', on_delete=models.DO_NOTHING, verbose_name='درس کلاس', related_name='sessions')
     date = jmodels.jDateField(verbose_name='تاریخ جلسه')
     session_number = models.IntegerField(verbose_name='شماره جلسه')
     status = models.CharField(
