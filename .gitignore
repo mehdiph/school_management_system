@@ -1,6 +1,9 @@
+**/__pycache__/
+*.pyc
+*/models/__pycache__
+student/templatetags/__pycache__/
 .venv/
 db.sqlite3
 */__pycache__
 */migrations/
-*/models/__pycache__
 .env
