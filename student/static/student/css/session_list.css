@@ -1,0 +1,366 @@
+/* بخش فیلترها */
+.filter-section {
+  background-color: var(--card-bg);
+  backdrop-filter: blur(5px);
+  border-radius: 24px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+}
+
+.filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.filter-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filter-input-wrapper i {
+  position: absolute;
+  right: 15px;
+  color: var(--text-muted);
+}
+
+.filter-control {
+  width: 100%;
+  padding: 12px 45px 12px 15px;
+  border: 1px solid #e9e3db;
+  border-radius: 16px;
+  background-color: #fdfcfb;
+  font-size: 14px;
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.filter-control:focus {
+  border-color: var(--primary-orange);
+}
+
+.actions-group {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-search {
+  background-color: var(--primary-orange);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-search:hover {
+  background-color: var(--primary-orange-hover);
+}
+
+.btn-search:active {
+  transform: scale(0.98);
+}
+
+.btn-refresh {
+  background-color: #f1ede6;
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  transition: background-color 0.2s;
+}
+
+.btn-refresh:hover {
+  background-color: #e3ded6;
+}
+
+/* گرید کارت‌های دروس */
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.course-card {
+  background-color: var(--card-bg);
+  backdrop-filter: blur(5px);
+  border-radius: 24px;
+  padding: 25px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  border-bottom: 5px solid transparent;
+  overflow: hidden;
+}
+
+.course-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+}
+
+.course-card.active {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+/* تنظیم رنگ لبه پایینی و آیکون کارت‌ها بر اساس نوع درس */
+.course-card[data-type="math"] { border-bottom-color: var(--color-math); }
+.course-card[data-type="physics"] { border-bottom-color: var(--color-physics); }
+.course-card[data-type="literature"] { border-bottom-color: var(--color-literature); }
+.course-card[data-type="biology"] { border-bottom-color: var(--color-biology); }
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.sessions-badge {
+  background-color: #fdf6ed;
+  color: #9a7243;
+  padding: 4px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.course-icon-wrapper {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+/* رنگ‌های اختصاصی آیکون‌ها */
+.course-card[data-type="math"] .course-icon-wrapper { background-color: #fef5e7; color: var(--color-math); }
+.course-card[data-type="physics"] .course-icon-wrapper { background-color: #e8f8f5; color: var(--color-physics); }
+.course-card[data-type="literature"] .course-icon-wrapper { background-color: #ebf5fb; color: var(--color-literature); }
+.course-card[data-type="biology"] .course-icon-wrapper { background-color: #fdedec; color: var(--color-biology); }
+
+.course-info {
+  text-align: right; /* تراز کردن اطلاعات کارت طبق نمونه به چپ */
+}
+
+.course-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 5px;
+}
+
+.course-details {
+  font-size: 12px;
+  color: var(--text-muted);
+  direction: rtl;
+}
+
+/* بخش جزئیات جلسات */
+.details-section {
+  background-color: var(--card-bg);
+  backdrop-filter: blur(5px);
+  border-radius: 28px;
+  padding: 35px;
+  box-shadow: 0 4px 25px rgba(0,0,0,0.02);
+  position: relative;
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #f1ede6;
+  padding-bottom: 15px;
+}
+
+.details-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.details-title-wrapper i {
+  color: var(--primary-orange);
+  font-size: 20px;
+}
+
+.details-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  transition: opacity 0.3s;
+}
+
+.utility-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* تایم‌لاین جلسات */
+.timeline-container {
+  position: relative;
+  padding-right: 30px;
+  margin-top: 20px;
+}
+
+.timeline-line {
+  position: absolute;
+  right: 7px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #f3eae1;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.timeline-node {
+  position: absolute;
+  right: -28px;
+  top: 20px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--primary-orange);
+  border: 3px solid var(--card-bg);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.2);
+  z-index: 2;
+}
+
+.session-card-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.session-card {
+  background-color: #fdfaf5;
+  border-radius: 20px;
+  padding: 25px;
+  flex-grow: 1;
+  position: relative;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.session-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.session-tag {
+  background-color: #f2e3d5;
+  color: #7d5738;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 16px;
+  border-radius: 20px;
+}
+
+.session-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 10px;
+}
+
+.session-desc {
+  font-size: 14px;
+  color: #635850;
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+
+.session-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-outline {
+  background-color: var(--card-bg);
+  border: 1px solid #e2dacd;
+  border-radius: 12px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  background-color: #fbf9f5;
+  border-color: var(--text-muted);
+}
+
+/* دکمه شناور ایجاد جلسه جدید */
+.btn-add-floating {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: var(--primary-orange);
+  color: white;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.btn-add-floating:hover {
+  background-color: var(--primary-orange-hover);
+  transform: scale(1.05);
+}
+
+/* انیمیشن برای تغییرات پویا */
+.fade-out {
+  opacity: 0;
+  transform: translateY(5px);
+}

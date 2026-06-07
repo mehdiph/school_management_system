@@ -2,4 +2,5 @@
 db.sqlite3
 */__pycache__
 */migrations/
+*/models/__pycache__
 .env

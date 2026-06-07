@@ -23,7 +23,7 @@ def _resolve_start_date():
     return DEFAULT_SCHEDULE_START_DATE
 
 
-def get_current_week_type(current_date=None):
+def get_current_week_type(current_date):
     if current_date is None:
         current_date = date.today()
 

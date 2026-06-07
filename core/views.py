@@ -2,7 +2,9 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from school.models import AcademicYear, ClassSubject
 from teaching.models import SchoolSession
+from scheduling.models.class_schedule import ClassSchedule
 from scheduling.utils import get_current_week_type, get_today_schedule_day
+from django.db.models import Q
 from datetime import date
 
 
@@ -14,24 +16,33 @@ def dashboard(request):
     # 2. Academic Year
     current_year = AcademicYear.objects.filter(is_current=True).first()
     academic_year_title = current_year.title if current_year else "تعریف نشده"
-
     # 3. Class Subjects (Active only)
     # Filter by user and current year (if exists)
     class_subjects_query = ClassSubject.objects.filter(
             teacher=request.user,
             is_active=True,
             school_class__is_active=True,
+            school_class__year=current_year,
         )\
         .select_related('school_class', 'school_class__grade', 'subject', 'teacher')\
         .prefetch_related('schedules')\
         .order_by('school_class__grade__level', 'subject__name', 'school_class__section')
 
-    today_day = get_today_schedule_day(date.today())
     week_type = get_current_week_type(date.today())
+    today_day = get_today_schedule_day(date.today())
+   
     if current_year:
-        class_subjects_query = class_subjects_query.filter(school_class__year=current_year,
-                                                           schedules__day_of_week=today_day,
-                                                           schedules__week_type=week_type)
+        class_subjects_query = class_subjects_query.filter(
+            school_class__year=current_year,
+            schedules__day_of_week=today_day
+        ).filter(
+            Q(  
+                schedules__week_type=week_type
+            ) |
+            Q(
+                schedules__week_type=ClassSchedule.WeekTypeChoices.BOTH
+            )
+        ).distinct()
 
     # Process data for "Today's Teaching" cards AND "My Classes" list
     # Since we don't have a daily schedule model, we show all active classes as potential teaching targets.
