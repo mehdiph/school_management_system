@@ -1,7 +1,7 @@
 **/__pycache__/
 *.pyc
 */models/__pycache__
-student/templatetags/__pycache__/
+*/templatetags/__pycache__/*
 .venv/
 db.sqlite3
 */__pycache__
