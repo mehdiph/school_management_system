@@ -15,7 +15,7 @@
 
 (function() {
     // Configure auto-dismiss timeout (milliseconds)
-    const AUTO_DISMISS_DELAY = 5000000;  // 5 seconds
+    const AUTO_DISMISS_DELAY = 5000;  // 5 seconds
 
     // Function to add close button and attach dismiss logic to a single message
     function enhanceMessage(messageEl) {

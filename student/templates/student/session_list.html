@@ -82,9 +82,8 @@
     <!-- کارت‌های دروس فوقانی -->
     <section class="courses-grid">
       
-      <!-- ریاضیات تجربی -->
       {% for cs in class_subjects %}
-        <div class="course-card">
+        <div class="course-card" data-subject-slug="{{ cs.subject.slug }}">
           <div class="card-top">
             <div class="course-icon-wrapper">
               <i class="fa-solid {{ cs.icon }}"></i>
@@ -96,7 +95,7 @@
             {% endif %}
           </div>
           <div class="course-info">
-            <div class="course-title"><a href="{% url 'student:sessions' cs.subject.slug %}">{{ cs.subject }}</a></div>
+            <div class="course-title">{{ cs.subject }}</div>
             <div class="course-details">پایه {{ cs.school_class.grade }} • کلاس {{ cs.school_class.section }}</div>
           </div>
         </div>
@@ -116,7 +115,12 @@
           <button class="icon-btn" title="چاپ"><i class="fa-solid fa-print"></i></button> -->
         </div>
       </div>
-      {% for session in sessions %}
+
+      <div class="subject-sessions">
+
+      </div>
+
+      <template id="subject-sessions-template">
         <div class="timeline-container">
           <!-- خط راهنمای تایم‌لاین -->
           <div class="timeline-line"></div>
@@ -131,12 +135,10 @@
               <!-- بدنه اصلی کارت جلسه -->
               <div class="session-card" id="session-card-content">
                 <div class="session-meta">
-                  <span class="session-tag" id="session-badge-date">جلسه {{ session.session_number|persian_ordinal }} - {{ session.date|persian_date }}</span>
+                  <span class="session-tag" id="session-badge-date"></span>
                 </div>
-                <h3 class="session-title" id="session-main-title">{{ session.session_contents.title }}</h3>
-                <p class="session-desc" id="session-main-desc">
-                  {{ session.session_contents.content }}
-                </p>
+                <h3 class="session-title" id="session-main-title"></h3>
+                <p class="session-desc" id="session-main-desc"></p>
                 
                 <div class="session-footer">
                   
@@ -145,33 +147,14 @@
 
             </div>
           </div>
-
         </div>
-      {% empty %}
-
-        <div class="timeline-container">
-          <!-- خط راهنمای تایم‌لاین -->
-          <div class="timeline-line"></div>
-
-          <!-- آیتم جلسه در تایم‌لاین -->
-          <div class="timeline-item">
-            <!-- نقطه اتصال تایم‌لاین -->
-            <div class="timeline-node"></div>
-            
-            <div class="session-card-wrapper">
-
-              <!-- بدنه اصلی کارت جلسه -->
-              <div class="session-card" id="session-card-content">
-                <h3 class="session-title" id="session-main-title">جلسه ای ثبت نشده</h3>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-      {% endfor %}
+      </template>
 
     </section>
 
   </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static '/student/js/session_list.js' %}"></script>
 {% endblock %}

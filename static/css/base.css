@@ -319,7 +319,7 @@ textarea.form-control {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    width: 300px;
+    width: 400px;
     pointer-events: none; /* so clicks pass through container */
     color: white;
   }
@@ -330,7 +330,7 @@ textarea.form-control {
     position: relative;
     padding: 1rem 2.5rem 1rem 1.5rem;
     border-radius: 12px;
-    font-size: 0.95rem;
+    font-size: 2rem;
     font-weight: 500;
     backdrop-filter: blur(8px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
@@ -346,7 +346,7 @@ textarea.form-control {
     border-left: 4px solid #34d399;
   }
   .alert-error {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: linear-gradient(135deg, #6d2626, #f84d4d);
     color: white;
     border-left: 4px solid #f87171;
   }
