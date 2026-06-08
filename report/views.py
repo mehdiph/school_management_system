@@ -3,12 +3,11 @@ from django.views import View
 from django.http import HttpResponse
 from django.template.loader import get_template
 from django.conf import settings
-from django.utils import timezone
 from jdatetime import datetime
 import os
 
 # Third-party for PDF
-from weasyprint import HTML, CSS
+from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 
 from school.models import SchoolClass, ClassSubject, AcademicYear, Grade
@@ -133,7 +132,7 @@ class ReportsView(BaseReportView):
             'subject', 'teacher'
         ).prefetch_related(
             'schoolsession_set',
-            'schoolsession_set__sessioncontent'
+            'schoolsession_set__session_contents'
         ).order_by('subject__name')
 
         subjects_data = []
@@ -158,8 +157,8 @@ class ReportsView(BaseReportView):
                 cs_last_date = session.date 
                 
                 content_summary = ""
-                if hasattr(session, 'sessioncontent'):
-                    content_summary = session.sessioncontent.title + ": " + session.sessioncontent.content
+                if hasattr(session, 'session_contents'):
+                    content_summary = session.session_contents.title + ": " + session.session_contents.content
 
                 session_list.append({
                     'number': session.session_number,
