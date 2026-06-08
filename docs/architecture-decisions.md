@@ -347,6 +347,13 @@ Benefits:
 
 ---
 
+# ADR-013: Reports are generated through a shared BaseReportView.
+
+## Reason:
+* To guarantee identical business logic between HTML and PDF outputs and avoid duplicated report-generation code.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:
