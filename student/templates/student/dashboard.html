@@ -14,7 +14,7 @@
         
         <ul class="nav-links">
             <li><a href="#" class="nav-item active"><i class="fas fa-home"></i> خانه</a></li>
-            <li><a href="/student/sessions/riazi" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
+            <li><a href="{% url 'student:sessions' %}" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-book"></i> درس ها</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
@@ -70,7 +70,7 @@
                     </div>
                 </section>
 
-                <!-- Classes -->
+                <!-- Today Classes -->
                 <section class="classes-section">
                     <h3>کلاس های امروز <i class="far fa-clock" style="color:#ef7e41;"></i></h3>
                     <div class="classes-grid">
@@ -104,6 +104,45 @@
                                 <div class="progress-fill"></div>
                             </div>
                         </div> -->
+                        
+                    </div>
+                </section>
+
+                <!-- Tomorrow Classes -->
+                <section class="classes-section tomorrow-classes">
+                    <h3>کلاس های فردا <i class="far fa-clock" style="color:#ef7e41;"></i></h3>
+                    <div class="classes-grid">
+                        <!-- Class 1 -->
+
+                        {% for cs in tomorrow_classes %}
+                            <div class="class-card">
+                                <div class="class-icon" style="background:#d86f3b;"><i class="fas fa-flask"></i></div>
+                                <h4>{{ cs.class_room.subject }}</h4>
+                                <p>{{ cs.class_room.teacher.get_full_name }}</p>
+                                <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>
+                            </div>
+
+                        {% empty %}
+
+                            <div class="class-card no-class">
+                                <h2>فردا کلاسی ندارید!</h2>
+                                <p>روز خوبی داشته باشین</p>
+                            </div>
+                        {% endfor %}
+
+                        <!-- Class 2 -->
+                        <!-- Class 3 (Active) -->
+                        <!-- <div class="class-card" style="border:2px solid #ef7e41;">
+                            <div class="status-badge">در حال برگزاری</div>
+                            <div class="class-icon" style="background:#ef7e41;"><i class="fas fa-calculator"></i></div>
+                            <h4>ریاضی</h4>
+                            <p>استاد رضایی</p>
+                            <span class="class-time">۹:۳۰ - ۱۰:۰۰</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div> -->
+                        
                     </div>
                 </section>
             </div>

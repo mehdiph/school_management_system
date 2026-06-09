@@ -1,19 +1,19 @@
 from django.shortcuts import render
 from teaching.models.session_content import SessionContent
-from scheduling.models.class_schedule import ClassSchedule
 from school.models.class_subject import ClassSubject
-from scheduling.utils import get_today_schedule_day
-from datetime import date
+from datetime import date, timedelta
 from django.http import JsonResponse
 from .templatetags import persian_filters
+from .services import get_classes_for_day
 
 # Create your views here.
 
 def student_dashboard(request):
     student = request.user.student_profile
     school_class = student.school_class
+    today_classes = get_classes_for_day(school_class, date.today())
+    tomorrow_classes = get_classes_for_day(school_class, date.today() - timedelta(days=1))
     
-
     homeworks = (
         SessionContent.objects
         .filter(
@@ -28,19 +28,9 @@ def student_dashboard(request):
         .order_by('-session__date')[:5]
     )
 
-    today_classes = ClassSchedule.objects.filter(
-        class_room__school_class=school_class,
-        day_of_week=get_today_schedule_day(date.today())
-    ).select_related(
-        'class_room',
-        'class_room__subject',
-        'class_room__teacher'
-    ).order_by(
-        'start_time'
-    )
-    
     context = {
         'today_classes': today_classes,
+        'tomorrow_classes': tomorrow_classes,
         'homeworks': homeworks,
         'student': student, 
         'school_class': school_class
@@ -50,7 +40,7 @@ def student_dashboard(request):
 
 
 
-def sessions_list(request, subject):
+def sessions_list(request):
     school_class = request.user.student_profile.school_class
     class_subject_query = ClassSubject.objects\
         .filter(school_class=school_class)\

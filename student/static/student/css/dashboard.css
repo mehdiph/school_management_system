@@ -85,7 +85,10 @@
 
 .classes-section h3 { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; color: #2c3e50; }
 .classes-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-
+.tomorrow-classes {
+    grid-column-start: 3;
+    grid-column-end: 2;
+}
 .class-card {
     background-color: var(--card-bg);
     backdrop-filter: blur(5px);
