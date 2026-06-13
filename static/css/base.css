@@ -27,12 +27,36 @@
     --radius: 8px;
     --radius-lg: 12px;
     --transition: all 0.2s ease;
+    --primary-gradient: linear-gradient(135deg, #ff9f43, #ff6b6b);
+    --shadow-light: 0 8px 24px rgba(221, 186, 163, 0.12);
+    --shadow-hover: 0 12px 30px rgba(221, 186, 163, 0.25);
+    --border-radius-lg: 24px;
+    --border-radius-md: 16px;
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* رنگ‌بندی تم کارت‌ها */
-    --color-math: #d512f3;
+          /* رنگ‌بندی تفکیک‌شده دروس */
+    --color-math: #3498db;
+    --color-math-bg: #d4ebf9;
+    --color-science: #2ecc71;
+    --color-science-bg: #d6fae8;
+    --color-persian: #e67e22;
+    --color-persian-bg: #f9e2cf;
+    --color-computer: #9b59b6;
+    --color-computer-bg: #f5eef8;
+    --color-art: #e91e63;
+    --color-art-bg: #f9cedc;
+    --color-sports: #1abc9c;
+    --color-sports-bg: #e6f9f5;
+    --color-quran: #f1c40f;
+    --color-quran-bg: #f8eecc;
     --color-physics: #1abc9c;
     --color-literature: #3498db;
     --color-biology: #e74c3c;
+    --color-motaleat: #b10ff1;
+    --color-motaleat-bg: #f0e2f6;
+    --color-negaresh: #f10f0f;
+    --color-negaresh-bg: #eed4d4;
+    
 }
 
 @font-face {

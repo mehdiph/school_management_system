@@ -27,7 +27,8 @@ urlpatterns = [
     path('report/', include('report.urls')),
     path('dashboard/', include('core.urls')),
     path('auth/', include('accounts.urls')),
-    path('student/', include('student.urls'))
+    path('student/', include('student.urls')),
+    path('scheduling/', include('scheduling.urls')),
 ]
 
 if settings.DEBUG:

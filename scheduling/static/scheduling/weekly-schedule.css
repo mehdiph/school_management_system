@@ -1,0 +1,351 @@
+
+/* هدر سامانه */
+.hero-header {
+    background: var(--primary-gradient);
+    border-radius: var(--border-radius-lg);
+    padding: 25px 20px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(255, 107, 107, 0.15);
+}
+
+.hero-title {
+    font-size: 22px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.student-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 6px 18px;
+    border-radius: 50px;
+    backdrop-filter: blur(5px);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* دکمه انتخاب هفته */
+.week-selector-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.week-selector {
+    background-color: #f1ede6;
+    padding: 5px;
+    border-radius: 50px;
+    display: inline-flex;
+    gap: 5px;
+    margin-bottom: 1rem;
+}
+
+.week-btn {
+    border: none;
+    background: none;
+    padding: 8px 24px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.week-btn.active {
+    background-color: var(--card-bg);
+    color: var(--primary-orange);
+    box-shadow: 0 4px 10px rgba(255, 122, 89, 0.1);
+}
+
+/* استایل کارت‌های فشرده دروس */
+.schedule-card {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius-md);
+    padding: 10px 14px;
+    box-shadow: var(--shadow-light);
+    border-right: 4px solid var(--subject-color, #ccc);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+
+.schedule-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.schedule-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.subject-icon-box {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background-color: var(--subject-bg);
+    color: var(--subject-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.subject-details h3 {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+.subject-details p {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.card-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.card-time {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background-color: #fafafa;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+
+.period-badge-mobile {
+    font-size: 9px;
+    font-weight: 800;
+    background-color: #f1ede6;
+    color: var(--text-main);
+    padding: 1px 6px;
+    border-radius: 5px;
+}
+
+/* تعریف رنگ کلاس‌ها */
+.class-riazi { --subject-color: var(--color-math); --subject-bg: var(--color-math-bg); }
+.class-oloom { --subject-color: var(--color-science); --subject-bg: var(--color-science-bg); }
+.class-farsi { --subject-color: var(--color-persian); --subject-bg: var(--color-persian-bg); }
+.class-computer { --subject-color: var(--color-computer); --subject-bg: var(--color-computer-bg); }
+.class-honar { --subject-color: var(--color-art); --subject-bg: var(--color-art-bg); }
+.class-varzesh { --subject-color: var(--color-sports); --subject-bg: var(--color-sports-bg); }
+.class-qoran { --subject-color: var(--color-quran); --subject-bg: var(--color-quran-bg); }
+.class-motaleat { --subject-color: var(--color-motaleat); --subject-bg: var(--color-motaleat-bg); }
+.class-negaresh { --subject-color: var(--color-negaresh); --subject-bg: var(--color-negaresh-bg); }
+
+/* چیدمان موبایل */
+.mobile-schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.day-section {
+    background-color: rgba(255, 255, 255, 0.4);
+    border-radius: var(--border-radius-lg);
+    padding: 15px;
+    border: 1px dashed #e6dec3;
+}
+
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.day-name {
+    font-size: 15px;
+    font-weight: 900;
+    color: var(--text-main);
+}
+
+.today-badge {
+    background: var(--primary-gradient);
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.day-section.is-today {
+    background-color: #fffaf0;
+    border: 2px solid var(--primary-orange);
+}
+
+.day-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* پابرگ راهنمای رنگ */
+.legend-section {
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-light);
+}
+
+.legend-title {
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--text-muted);
+}
+
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.legend-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--dot-color);
+}
+
+/* مخفی‌سازی دسکتاپ به صورت پیش‌فرض */
+.desktop-timetable {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .day-cards-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    }
+    .legend-grid {
+    grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* استایل‌دهی دسکتاپ بر پایه چرخش سطر و ستون (روزها عمودی / زنگ‌ها افقی) */
+@media (min-width: 1024px) {
+    .mobile-schedule {
+    display: none;
+    }
+
+    .desktop-timetable {
+    display: block;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius-lg);
+    padding: 22px;
+    box-shadow: var(--shadow-light);
+    overflow-x: auto;
+    }
+
+    .desktop-timetable * p {
+        font-size: 0.8rem;
+    }
+
+    .desktop-timetable * h3 {
+    font-size: 1rem;
+    }
+
+    .timetable-grid {
+    display: grid;
+    /* ۱ ستون برای روزها (100px) + ۶ ستون برای زنگ‌ها (1fr) */
+    grid-template-columns: 100px repeat(6, 1fr);
+    gap: 12px;
+    min-width: 1100px; /* جلوگیری از مچاله شدن کارت‌ها روی صفحات متوسط */
+    }
+
+    .grid-header {
+    font-weight: 900;
+    text-align: center;
+    padding: 10px;
+    background-color: #faead2;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    }
+
+    .grid-header span {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+    }
+
+    .day-col-header {
+    background-color: black;
+    color:white;
+    font-size: 12px;
+    }
+
+    /* استایل برچسب روزها در ستون اول عمودی */
+    .day-row-label {
+    font-weight: 900;
+    font-size: 14px;
+    color: var(--text-main);
+    background-color: #faead2;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-left: 4px solid #e6dec3;
+    }
+
+    /* روز جاری در سطر دسکتاپ متمایز می‌شود */
+    .day-row-label.is-today {
+    background: var(--primary-gradient);
+    color: white;
+    border-left-color: #ff5252;
+    box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2);
+    }
+
+    .day-row-label.is-today span {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: white;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    }
+
+    .empty-slot {
+    grid-column-start: 2;
+    grid-column-end: 8;
+    background-color: #fcfcfc;
+    border: 2px dashed #f1ede6;
+    border-radius: var(--border-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ddd4ca;
+    font-size: 11px;
+    }
+
+    .legend-grid {
+    grid-template-columns: repeat(7, 1fr);
+    }
+}

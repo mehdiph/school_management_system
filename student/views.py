@@ -12,8 +12,8 @@ def student_dashboard(request):
     student = request.user.student_profile
     school_class = student.school_class
     today_classes = get_classes_for_day(school_class, date.today())
-    tomorrow_classes = get_classes_for_day(school_class, date.today() - timedelta(days=1))
-    
+    tomorrow_classes = get_classes_for_day(school_class, date.today() + timedelta(days=1))
+    print(today_classes[4].class_room.icon)
     homeworks = (
         SessionContent.objects
         .filter(

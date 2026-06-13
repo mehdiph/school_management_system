@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% load report_tags %}
+
+{% block title %} برنامه هفتگی {% endblock title %}
+
+{% block styles %} 
+<link rel="stylesheet" href="{% static '/scheduling/weekly-schedule.css' %}">
+{% endblock styles %}
+
+
+{% block content %}
+
+
+    <!-- انتخاب هفته -->
+    <section class="week-selector-wrapper">
+      <div class="week-selector">
+        <button class="week-btn active">هفته اول</button>
+        <button class="week-btn">هفته دوم</button>
+      </div>
+    </section>
+
+    <!-- ۱. چیدمان موبایل (روزانه و عمودی) -->
+    <main class="mobile-schedule">
+      
+      <!-- دوشنبه (به عنوان نمونه متحرک و پویا) -->
+      <section class="day-section is-today">
+        <div class="day-header">
+          <h2 class="day-name">دوشنبه</h2>
+          <span class="today-badge">امروز</span>
+        </div>
+        <div class="day-cards-list">
+          
+          <div class="schedule-card class-math">
+            <div class="card-header">
+              <div class="subject-icon-box"><i class="fa-solid fa-square-root-variable"></i></div>
+              <div class="subject-details">
+                <h3>ریاضی</h3>
+                <p>آقای رضایی</p>
+              </div>
+            </div>
+            <div class="card-meta-row">
+              <div class="card-time">۰۸:۰۰ - ۰۸:۴۵</div>
+              <span class="period-badge-mobile">زنگ ۱</span>
+            </div>
+          </div>
+
+          <div class="schedule-card class-persian">
+            <div class="card-header">
+              <div class="subject-icon-box"><i class="fa-solid fa-book-open"></i></div>
+              <div class="subject-details">
+                <h3>ادبیات فارسی</h3>
+                <p>خانم حسینی</p>
+              </div>
+            </div>
+            <div class="card-meta-row">
+              <div class="card-time">۰۸:۵۵ - ۰۹:۴۰</div>
+              <span class="period-badge-mobile">زنگ ۲</span>
+            </div>
+          </div>
+
+          <div class="schedule-card class-science">
+            <div class="card-header">
+              <div class="subject-icon-box"><i class="fa-solid fa-flask"></i></div>
+              <div class="subject-details">
+                <h3>علوم تجربی</h3>
+                <p>خانم احمدی</p>
+              </div>
+            </div>
+            <div class="card-meta-row">
+              <div class="card-time">۰۹:۵۵ - ۱۰:۴۰</div>
+              <span class="period-badge-mobile">زنگ ۳</span>
+            </div>
+          </div>
+
+          <div class="schedule-card class-quran">
+            <div class="card-header">
+              <div class="subject-icon-box"><i class="fa-solid fa-star-and-crescent"></i></div>
+              <div class="subject-details">
+                <h3>آموزش قرآن</h3>
+                <p>آقای تقوی</p>
+              </div>
+            </div>
+            <div class="card-meta-row">
+              <div class="card-time">۱۰:۵۰ - ۱۱:۳۵</div>
+              <span class="period-badge-mobile">زنگ ۴</span>
+            </div>
+          </div>
+
+          <div class="schedule-card class-computer">
+            <div class="card-header">
+              <div class="subject-icon-box"><i class="fa-solid fa-laptop-code"></i></div>
+              <div class="subject-details">
+                <h3>کامپیوتر</h3>
+                <p>آقای مهدوی</p>
+              </div>
+            </div>
+            <div class="card-meta-row">
+              <div class="card-time">۱۱:۵۰ - ۱۲:۳۵</div>
+              <span class="period-badge-mobile">زنگ ۵</span>
+            </div>
+          </div>
+
+          <div class="schedule-card class-sports">
+            <div class="card-header">
+              <div class="subject-icon-box"><i class="fa-solid fa-basketball"></i></div>
+              <div class="subject-details">
+                <h3>ورزش و سلامت</h3>
+                <p>آقای کریمی</p>
+              </div>
+            </div>
+            <div class="card-meta-row">
+              <div class="card-time">۱۲:۴۵ - ۱۳:۳۰</div>
+              <span class="period-badge-mobile">زنگ ۶</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <div style="text-align: center; color: var(--text-muted); font-size: 13px; font-weight: 700;">
+        (برای مشاهده کامل برنامه هفتگی چرخیده شده دسکتاپ، عرض مرورگر خود را افزایش دهید.)
+      </div>
+
+    </main>
+
+    <!-- ۲. چیدمان دسکتاپ مایل (روزها در سطر عمودی / زنگ‌ها در ستون افقی) -->
+    <main class="desktop-timetable">
+      <div class="timetable-grid">
+        
+        <!-- ردیف هدر فوقانی (نام زنگ‌ها و زمان‌ها) -->
+        <div class="grid-header day-col-header">زنگ ها <br> / <br>  روز های هفته</div>
+        {% for bell in bells %}
+        <div class="grid-header"> {{ bell.title }} <span>{{ bell.start_time|time:"H:i"|to_persian }} الی {{ bell.end_time|time:"H:i"|to_persian }}</span></div>
+        {% endfor %}
+
+        <!-- سطر اول: شنبه -->
+        <div class="day-row-label is-today">شنبه</div>
+        {% for cs in weekly_schedule.0 %}
+        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
+            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-slot">خالی</div>
+        {% endfor %}
+        <!-- <div class="schedule-card class-persian">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid fa-book-open"></i></div>
+            <div class="subject-details"><h3>فارسی</h3><p>خانم حسینی</p></div>
+          </div>
+        </div>
+        <div class="schedule-card class-science">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid fa-flask"></i></div>
+            <div class="subject-details"><h3>علوم</h3><p>خانم احمدی</p></div>
+          </div>
+        </div>
+        <div class="schedule-card class-quran">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid fa-star-and-crescent"></i></div>
+            <div class="subject-details"><h3>قرآن</h3><p>آقای تقوی</p></div>
+          </div>
+        </div>
+        <div class="schedule-card class-computer">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid fa-laptop-code"></i></div>
+            <div class="subject-details"><h3>فناوری</h3><p>آقای مهدوی</p></div>
+          </div>
+        </div> -->
+        <!-- <div class="empty-slot">خالی</div> -->
+
+        <!-- سطر دوم: یکشنبه -->
+        <div class="day-row-label">یکشنبه</div>
+        {% for cs in weekly_schedule.1 %}
+        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
+            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-slot">خالی</div>
+        {% endfor %}
+
+        <!-- سطر سوم: دوشنبه (امروز - برجسته شده) -->
+        <div class="day-row-label ">دوشنبه</div>
+        {% for cs in weekly_schedule.2 %}
+        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
+            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-slot">خالی</div>
+        {% endfor %}
+
+        <!-- سطر چهارم: سه‌شنبه -->
+        <div class="day-row-label">سه‌شنبه</div>
+        {% for cs in weekly_schedule.3 %}
+        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
+            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-slot">خالی</div>
+        {% endfor %}
+
+        <!-- سطر پنجم: چهارشنبه -->
+        <div class="day-row-label">چهارشنبه</div>
+        {% for cs in weekly_schedule.4 %}
+        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
+          <div class="schedule-card-header">
+            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
+            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-slot">خالی</div>
+        {% endfor %}
+
+      </div>
+    </main>
+  </div>
+
+{% endblock content %}

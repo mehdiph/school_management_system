@@ -16,7 +16,7 @@
             <li><a href="#" class="nav-item active"><i class="fas fa-home"></i> خانه</a></li>
             <li><a href="{% url 'student:sessions' %}" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
-            <li><a href="#" class="nav-item"><i class="fas fa-book"></i> درس ها</a></li>
+            <li><a href="{% url 'scheduling:weekly-schedule' %}" class="nav-item"><i class="fas fa-book"></i> برنامه هفتگی </a></li>
             <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
         </ul>
 
@@ -78,7 +78,7 @@
 
                         {% for cs in today_classes %}
                             <div class="class-card">
-                                <div class="class-icon" style="background:#d86f3b;"><i class="fas fa-flask"></i></div>
+                                <div class="class-icon" style="background:#d86f3b;"><i class="fas {{ cs.class_room.icon }}"></i></div>
                                 <h4>{{ cs.class_room.subject }}</h4>
                                 <p>{{ cs.class_room.teacher.get_full_name }}</p>
                                 <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>
@@ -116,7 +116,7 @@
 
                         {% for cs in tomorrow_classes %}
                             <div class="class-card">
-                                <div class="class-icon" style="background:#d86f3b;"><i class="fas fa-flask"></i></div>
+                                <div class="class-icon" style="background:#d86f3b;"><i class="fas {{ cs.class_room.icon }}"></i></div>
                                 <h4>{{ cs.class_room.subject }}</h4>
                                 <p>{{ cs.class_room.teacher.get_full_name }}</p>
                                 <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>

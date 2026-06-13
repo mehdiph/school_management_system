@@ -10,7 +10,7 @@ def get_classes_for_day(school_class, targed_date):
         'class_room__subject',
         'class_room__teacher'
     ).order_by(
-        'start_time'
+        'bell__start_time'
     )
 
     return classes
