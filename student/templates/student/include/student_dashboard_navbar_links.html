@@ -1,0 +1,22 @@
+<nav class="navbar">
+        
+    <ul class="nav-links">
+        <li><a href="#" class="nav-item active"><i class="fas fa-home"></i> خانه</a></li>
+        <li><a href="{% url 'student:sessions' %}" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
+        <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
+        <li><a href="{% url 'scheduling:weekly-schedule' %}" class="nav-item"><i class="fas fa-book"></i> برنامه هفتگی </a></li>
+        <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
+    </ul>
+
+</nav>
+<div style="display:flex; align-items:center; gap:10px;">
+    <div class="profile-mini">
+    <div class="profile-info-small">
+        <strong>سلام {{ student }}!</strong>
+        <span> کلاس {{ school_class }}</span>
+    </div>
+</div>
+    <div>
+        <a href="{% url 'accounts:logout' %}" class="logout-btn">خروج</a>
+    </div>
+</div>
