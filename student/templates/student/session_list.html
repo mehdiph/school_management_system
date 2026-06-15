@@ -14,28 +14,7 @@
   <div class="container">
     
 {% block navlinks %}
-<nav class="navbar">
-        
-    <ul class="nav-links">
-        <li><a href="{% url 'student:dashboard' %}" class="nav-item active"><i class="fas fa-home"></i> داشبورد</a></li>
-        <li><a href="#" class="nav-item"><i class="fas fa-chalkboard-teacher"></i>جلسات</a></li>
-        <li><a href="#" class="nav-item"><i class="fas fa-file-alt"></i> تکالیف</a></li>
-        <li><a href="#" class="nav-item"><i class="fas fa-book"></i> درس ها</a></li>
-        <li><a href="#" class="nav-item"><i class="fas fa-trophy"></i> دستاوردها</a></li>
-    </ul>
-
-</nav>
-<div style="display:flex; align-items:center; gap:15px;">
-    <div class="profile-mini">
-        <div class="profile-info-small">
-            <strong>سلام {{ student }}!</strong>
-            <span> کلاس {{ school_class }}</span>
-        </div>
-    </div>
-    <div>
-        <a href="{% url 'accounts:logout' %}">خروج</a>
-    </div>
-</div>
+    {% include 'student/include/student_dashboard_navbar_links.html' %}
 {% endblock navlinks %}
 
 
