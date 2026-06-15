@@ -32,6 +32,54 @@
 
 <!-- main content for landing page -->
 {% block content %}
+
+<!-- ===== MAIN FULL-IMAGE BACKGROUND SLIDER SECTION ===== -->
+<section class="main-slider">
+    <div class="slider-wrapper">
+        
+        <!-- Slide 1: Robotics Background -->
+        <div class="main-slide active" style="background-image: linear-gradient(to left, rgba(220, 132, 87, 0.85) 15%, rgba(249, 214, 94, 0.35) 100%), url('{% static 'website/images/robatic-slider.jpeg' %}');">
+            <div class="slide-content">
+                <span class="slide-badge">توسعه خلاقیت و مهارت 🤖</span>
+                <h2>کلاس‌های رباتیک و کدنویسی نسل قلم</h2>
+                <p>محیطی تعاملی و عملی برای آشنایی دانش‌آموزان با دنیای برنامه‌نویسی خلاق، ساخت کیت‌های رباتیک و اینترنت اشیاء.</p>
+                <a href="#" class="slide-btn">مشاهده شرایط و ثبت‌نام</a>
+            </div>
+        </div>
+
+        <!-- Slide 2: Art and Craft Background -->
+        <div class="main-slide" style="background-image: linear-gradient(to left, rgba(110, 162, 246, 0.684) 15%, rgba(99, 102, 241, 0.35) 100%), url('{% static 'website/images/painting.jpeg' %}');">
+            <div class="slide-content">
+                <span class="slide-badge">کارگاه هنر و رنگ 🎨</span>
+                <h2>پرورش خلاقیت در زنگ هنر و نقاشی</h2>
+                <p>کشف استعدادهای هنری کودکان با استفاده از تکنیک‌های نوین تصویرسازی، کاردستی‌های خلاقانه و بازی با رنگ‌ها.</p>
+                <a href="#" class="slide-btn">گالری آثار دانش‌آموزان</a>
+            </div>
+        </div>
+
+        <!-- Slide 3: Sports and Health Background -->
+        <div class="main-slide" style="background-image: linear-gradient(to left, rgba(118, 192, 167, 0.623) 15%, rgba(20, 184, 166, 0.35) 100%), url('{% static 'website/images/exercise.jpeg' %}');">
+            <div class="slide-content">
+                <span class="slide-badge">پویایی و تندرستی 🏃‍♂️</span>
+                <h2>تربیت بدنی و بازی‌های گروهی پویا</h2>
+                <p>تقویت روحیه تیمی و مهارت‌های حرکتی پایه در سالن‌های ورزشی سرپوشیده و مدرن مدرسه نسل قلم.</p>
+                <a href="#" class="slide-btn">مشاهده امکانات ورزشی</a>
+            </div>
+        </div>
+
+        <!-- دکمه‌های ناوبری اسلایدر -->
+        <button class="slider-arrow prev" id="mainSlidePrev" aria-label="اسلاید قبلی">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <button class="slider-arrow next" id="mainSlideNext" aria-label="اسلاید بعدی">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <!-- نقاط موقعیت‌نما (Dots) -->
+        <div class="slide-dots" id="mainSlideDots"></div>
+    </div>
+</section>
+
 <!-- ===== HERO SECTION ===== -->
 <section class="hero">
     <div class="hero-image">
@@ -153,7 +201,7 @@
 
         <div class="slider-container">
             <button class="slider-btn prev-btn" id="prevBtn" aria-label="معلم قبلی">
-                <i class="fas fa-chevron-right"><</i>
+                <i class="fas fa-chevron-right"></i>
             </button>
             
             <div class="instructors-grid-wrapper">
@@ -217,7 +265,7 @@
             </div>
 
             <button class="slider-btn next-btn" id="nextBtn" aria-label="معلم بعدی">
-                <i class="fas fa-chevron-left">></i>
+                <i class="fas fa-chevron-left"></i>
             </button>
         </div>
     </div>
@@ -229,6 +277,7 @@
 
 
 {% block scripts %} 
+<script src="{% static '/website/js/slider.js' %}" ></script>
 <script src="{% static '/website/js/index.js' %}" ></script>
 {% endblock scripts %}
 

@@ -10,6 +10,156 @@ ul {
     list-style: none;
 }
 
+/* ===== MODERN FULL-IMAGE BACKGROUND SLIDER ===== */
+.main-slider {
+    margin-top: 20px;
+    position: relative;
+}
+
+.slider-wrapper {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    border-radius: 30px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    background-color: #f5dac8;
+}
+
+.main-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* تراز محتوا به راست در ساختار راست‌چین */
+    padding: 40px 60px;
+    color: white;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.main-slide.active {
+    opacity: 1;
+    z-index: 2;
+}
+
+.slide-content {
+    max-width: 65%;
+    margin-right: 20px;
+    z-index: 3;
+    text-align: right;
+}
+
+.slide-badge {
+    background-color: rgba(255, 255, 255, 0.25);
+    padding: 4px 14px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    display: inline-block;
+    margin-bottom: 12px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.slide-content h2 {
+    font-size: 2rem;
+    font-weight: 900;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.slide-content p {
+    font-size: 1rem;
+    opacity: 0.95;
+    margin-bottom: 25px;
+    line-height: 1.8;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.slide-btn {
+    background-color: white;
+    color: #ef7e41;
+    padding: 10px 25px;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: inline-block;
+    transition: transform 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.slide-btn:hover {
+    background-color: #fbfbfb;
+    transform: scale(1.03);
+}
+
+/* دکمه‌های ناوبری اسلایدر */
+.slider-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, color 0.3s;
+    z-index: 10;
+}
+
+.slider-arrow:hover {
+    background-color: white;
+    color: #ef7e41;
+}
+
+.slider-arrow.prev {
+    right: 20px;
+}
+
+.slider-arrow.next {
+    left: 20px;
+}
+
+.slide-dots {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.slide-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: background-color 0.3s, width 0.3s;
+}
+
+.slide-dot.active {
+    background-color: white;
+    width: 24px;
+    border-radius: 10px;
+}
 
 
 
