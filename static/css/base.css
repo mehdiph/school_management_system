@@ -3,13 +3,12 @@
 :root {
     --primary: #d96a30;
     --primary-light: #ff8d50;
-    --primary-lighter: #fdd0b8;
+    --primary-lighter: #f8ede7;
+    --primary-dark: #C16A37;
+    --primary-darker: #A8552A;
     --primary-orange: #f5a623;
     --primary-orange-hover: #e09210;
     --secondary: #10b981;
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --success: #22c55e;
     --gray-50: #f9fafb;
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
@@ -19,20 +18,42 @@
     --gray-600: #4b5563;
     --gray-700: #374151;
     --gray-800: #1f2937;
-    --card-bg: rgba(255, 255, 255, 0.601);;
+
+    --card-bg: #FFF8F3;
+
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-    --radius: 8px;
-    --radius-lg: 12px;
+
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 24px;
+    --radius-pill: 999px;
+
     --transition: all 0.2s ease;
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
     --primary-gradient: linear-gradient(135deg, #ff9f43, #ff6b6b);
+
     --shadow-light: 0 8px 24px rgba(221, 186, 163, 0.12);
     --shadow-hover: 0 12px 30px rgba(221, 186, 163, 0.25);
+
+    --border: #E8D7C8;
     --border-radius-lg: 24px;
     --border-radius-md: 16px;
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --success: #4CAF50;
+    --success-bg: #E7F4E8;
+    --success-text: #2E7D32;
+
+    --warning: #FFB74D;
+    --warning-bg: #FFF3E2;
+    --warning-text: #9A5B13;
+
+    --danger: #E57373;
+    --danger-bg: #FBEAEA;
+    --danger-text: #C0392B;
 
           /* رنگ‌بندی تفکیک‌شده دروس */
     --color-math: #3498db;
@@ -83,7 +104,7 @@ ul {
 }
 
 /* ===== HEADER / NAVBAR ===== */
-header {
+.main-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -301,7 +322,7 @@ body {
 
 /* Cards */
 .card {
-    background-color: white;
+    background-color: var(--card-bg);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     padding: 24px;

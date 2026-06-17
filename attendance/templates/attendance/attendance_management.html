@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static "/attendance/css/style.css" %}">
+{% endblock %}
+
+{% block title %} حضور غیاب {% endblock %}
+
+{% block navlinks %} {% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <!-- ============ 1. PAGE HEADER ============ -->
+  <header class="attendance-header">
+    <div class="header-decoration" aria-hidden="true"></div>
+    <div class="header-main">
+      <span class="title-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8 11l2 2 4-4"/><path d="M8 16h8"/></svg>
+      </span>
+      <div class="header-text">
+        <h1>ثبت حضور و غیاب</h1>
+        <p class="header-subtitle"> {{ class_subject }}· جلسه آموزشی امروز</p>
+      </div>
+    </div>
+
+    <div class="session-info-card" aria-label="اطلاعات جلسه">
+      <div class="session-item">
+        <span class="session-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        <span>
+          <span class="session-label">کلاس</span>
+          <span class="session-value">{{ class_subject }}</span>
+        </span>
+      </div>
+      <div class="session-item">
+        <span class="session-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </span>
+        <span>
+          <span class="session-label">معلم</span>
+          <span class="session-value">{{ class_subject.teacher.get_full_name }}</span>
+        </span>
+      </div>
+      <div class="session-item">
+        <span class="session-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+        </span>
+        <span>
+          <span class="session-label">تاریخ</span>
+          <span class="session-value">{{ session.date }}</span>
+        </span>
+      </div>
+      <div class="session-item">
+        <span class="session-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </span>
+        <span>
+          <span class="session-label">شماره جلسه</span>
+          <span class="session-value">جلسه {{ session.session_number }}</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 2. PROGRESS SECTION ============ -->
+
+  <form class="attendance-form" method="post" action="#">
+
+    <!-- ============ 3 & 4. ATTENDANCE CARD + TABLE ============ -->
+    <section class="card attendance-card" aria-labelledby="attendance-heading">
+      <div class="card-header">
+        <h2 id="attendance-heading">لیست دانش‌آموزان</h2>
+        <div class="card-toolbar">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <label for="student-search" class="sr-only">جستجوی دانش‌آموز</label>
+            <input type="search" id="student-search" placeholder="جستجوی نام دانش‌آموز...">
+          </div>
+          <div class="summary-badges">
+            <span class="badge badge--present"><span class="badge-dot"></span>حاضر: ۱۲</span>
+            <span class="badge badge--absent"><span class="badge-dot"></span>غایب: ۰</span>
+            <span class="badge badge--late"><span class="badge-dot"></span>تاخیر: ۰</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="attendance-table">
+          <thead>
+            <tr>
+              <th scope="col">دانش‌آموز</th>
+              <th scope="col">وضعیت حضور</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+              {% csrf_token %}
+              <tr class="student-row">
+                <td>
+                  <div class="student-cell">
+                    <span class="avatar" aria-hidden="true">ع.ا</span>
+                    <span class="student-name">{{ student.user.get_full_name }}</span>
+                  </div>
+                </td>
+                <td class="status-cell">
+                  <fieldset class="status-group">
+                    <legend class="sr-only"> وضعیت حضور {{ student.user.get_full_name }}</legend>
+                    <label class="status-chip status-chip--present">
+                      <input type="radio" name="status-{{ student.id }}" value="present"
+                      {% if student.current_status == 'present' %}checked{% endif %}>
+                      <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+                      <span class="chip-text">حاضر</span>
+                    </label>
+                    <label class="status-chip status-chip--absent">
+                      <input type="radio" name="status-{{ student.id }}" value="absent"
+                      {% if student.current_status == 'absent' %}checked{% endif %}>
+                      <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+                      <span class="chip-text">غایب</span>
+                    </label>
+                    <label class="status-chip status-chip--late">
+                      <input type="radio" name="status-{{ student.id }}" value="late"
+                      {% if student.current_status == 'late' %}checked{% endif %}>
+                      <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+                      <span class="chip-text">تاخیر</span>
+                    </label>
+                  </fieldset>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2">دانش‌آموزی در این کلاس یافت نشد.</td>
+              </tr>
+            {% endfor %}
+            
+
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 5. TEACHER NOTES ============ -->
+    <section class="card notes-card">
+      <label for="notes" class="notes-label">توضیحات حضور و غیاب</label>
+      <textarea id="notes" name="notes" rows="4" placeholder="در صورت نیاز توضیحات مربوط به غیبت یا تاخیر دانش‌آموزان را وارد کنید..."></textarea>
+      <p class="notes-hint">این بخش اختیاری است و فقط برای معلم و مدیر مدرسه قابل مشاهده خواهد بود.</p>
+    </section>
+
+    <!-- ============ 6. ACTION BUTTONS ============ -->
+    <div class="action-bar">
+      <button type="submit" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        ثبت حضور و غیاب
+      </button>
+      <button type="button" class="btn btn-secondary">بازگشت</button>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+
+{% endblock %}
