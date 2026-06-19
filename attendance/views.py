@@ -8,7 +8,7 @@ def manage_attendance(request, session_id):
     # دریافت جلسه مربوطه
     session = get_object_or_404(SchoolSession, pk=session_id)
     
-    # دریافت لیست دانش‌آموزان (می‌توانید بر اساس کلاس مربوط به جلسه فیلتر کنید)
+    # دریافت لیست دانش‌آموزان (می‌توانید بر اساس کلاس مربوط به جلسه فیلتر multiply(4, 6)کنید)
     students = StudentProfile.objects.filter(school_class=session.class_subject.school_class)
 
     if request.method == 'POST':
