@@ -13,25 +13,18 @@ def student_dashboard(request):
     school_class = student.school_class
     today_classes = get_classes_for_day(school_class, date.today())
     tomorrow_classes = get_classes_for_day(school_class, date.today() + timedelta(days=1))
-    print(today_classes[4].class_room.icon)
-    homeworks = (
+    homework_queryset = (
         SessionContent.objects
-        .filter(
-            session__class_subject__school_class=school_class
-        )
+        .filter(session__class_subject__school_class=school_class)
         .exclude(homework='')
-        .select_related(
-            'session',
-            'session__class_subject',
-            'session__class_subject__subject'
-        )
+        .select_related('session', 'session__class_subject', 'session__class_subject__subject')
         .order_by('-session__date')[:5]
     )
 
     context = {
         'today_classes': today_classes,
         'tomorrow_classes': tomorrow_classes,
-        'homeworks': homeworks,
+        'homeworks': homework_queryset,
         'student': student, 
         'school_class': school_class
     }

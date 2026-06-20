@@ -1,9 +1,10 @@
 **/__pycache__/
 *.pyc
 */models/__pycache__
-*/templatetags/__pycache__/*
+*/templatetags/__pycache__/
 .venv/
 db.sqlite3
 */__pycache__
 */migrations/
 .env
+.continue/
