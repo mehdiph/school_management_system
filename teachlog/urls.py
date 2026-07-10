@@ -29,6 +29,7 @@ urlpatterns = [
     path('auth/', include('accounts.urls')),
     path('student/', include('student.urls')),
     path('scheduling/', include('scheduling.urls')),
+    path('attendance/', include('attendance.urls')),
 ]
 
 if settings.DEBUG:

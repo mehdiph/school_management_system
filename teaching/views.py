@@ -34,7 +34,7 @@ def school_session_form(request, class_subject_id):
                     )
                     
                     # انتقال به لیست جلسات یا صفحه جدید
-                    return redirect('teaching:session_list', class_subject_id)
+                    return redirect('attendance:attendance_form', session.id)
                     
             except Exception as e:
                 # در صورت بروز خطا
@@ -68,15 +68,15 @@ def school_session_form(request, class_subject_id):
 def update_session(request, session_id):
     session = SchoolSession.objects.get(id=session_id)
     session_form = SchoolSessionForm(instance=session)
-    content_form = SessionContentForm(instance=session.sessioncontent)
+    content_form = SessionContentForm(instance=session.session_contents)
     
     if request.method == 'POST':
         session_form = SchoolSessionForm(request.POST, instance=session)
-        content_form = SessionContentForm(request.POST, instance=session.sessioncontent)
+        content_form = SessionContentForm(request.POST, instance=session.session_contents)
         if session_form.is_valid() and content_form.is_valid():
             session_form.save()
             content_form.save()
-            return redirect('teaching:session_list', session.class_subject_id)
+            return redirect('attendance:attendance_form', session.id)
     
     context = {
         'session_form': session_form,

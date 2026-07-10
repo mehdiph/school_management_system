@@ -103,7 +103,7 @@
     gap: 0.75rem;
     padding: 1rem;
     border: 1px solid var(--gray-200);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     background: #fff;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;

@@ -73,8 +73,8 @@ def dashboard(request):
             last_session_num = last_session.session_number
             # efficient way? Maybe prefetch related would be better but loop is fine for N < 20
             try:
-                 if hasattr(last_session, 'sessioncontent'):
-                     last_summary = last_session.sessioncontent.content
+                 if hasattr(last_session, 'session_contents'):
+                     last_summary = last_session.session_contents.content
             except:
                  pass
         
