@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'student',
     'django_extensions',
     'attendance',
+    'django_erd_generator',
 ]
 
 MIDDLEWARE = [
