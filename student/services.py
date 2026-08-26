@@ -3,12 +3,12 @@ from scheduling.utils import get_today_schedule_day
 
 def get_classes_for_day(school_class, targed_date):
     classes = ClassSchedule.objects.filter(
-        class_room__school_class=school_class,
+        class_subject__school_class=school_class,
         day_of_week=get_today_schedule_day(targed_date)
     ).select_related(
-        'class_room',
-        'class_room__subject',
-        'class_room__teacher'
+        'class_subject',
+        'class_subject__subject',
+        'class_subject__teacher_assignment__teacher'
     ).order_by(
         'bell__start_time'
     )

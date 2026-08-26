@@ -16,6 +16,10 @@
 {% block form_subtitle %}اطلاعات جلسه و محتوای تدریس شده را وارد کنید{% endblock %}
 
 {% block form_content %}
+<div class="errors">
+    {{ session_form.errors }}
+</div>
+
 <form method="POST" id="sessionForm">
     {% csrf_token %}
 
@@ -25,7 +29,7 @@
             <i class="fas fa-calendar-check"></i>
             اطلاعات جلسه
         </h3>
-
+        
         <div class="form-grid">
             <!-- Class Subject -->
             <div class="form-group full-width">

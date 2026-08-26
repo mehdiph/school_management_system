@@ -61,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.branch.BranchMiddleware',
 ]
 
 ROOT_URLCONF = 'teachlog.urls'
@@ -75,8 +76,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'core.context_processors.teacher_info',
                 'student.context_processors.student_info',
+                'core.context_processors.branch.branch_context',
+                'core.context_processors.teacher_info.teacher_info_context'
             ],
         },
     },

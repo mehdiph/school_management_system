@@ -44,7 +44,7 @@
         </span>
         <span>
           <span class="session-label">معلم</span>
-          <span class="session-value">{{ class_subject.teacher.get_full_name }}</span>
+          <span class="session-value">{{ class_subject.teacher_assignment.teacher }}</span>
         </span>
       </div>
       <div class="session-item">
@@ -105,12 +105,12 @@
                 <td>
                   <div class="student-cell">
                     <span class="avatar" aria-hidden="true">ع.ا</span>
-                    <span class="student-name">{{ student.user.get_full_name }}</span>
+                    <span class="student-name">{{ student.student.user.get_full_name }}</span>
                   </div>
                 </td>
                 <td class="status-cell">
                   <fieldset class="status-group">
-                    <legend class="sr-only"> وضعیت حضور {{ student.user.get_full_name }}</legend>
+                    <legend class="sr-only"> وضعیت حضور {{ student.student.user.get_full_name }}</legend>
                     <label class="status-chip status-chip--present">
                       <input type="radio" name="status-{{ student.id }}" value="present"
                       {% if student.current_status == 'present' %}checked{% endif %}>

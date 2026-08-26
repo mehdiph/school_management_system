@@ -3,5 +3,6 @@ from .class_subject import ClassSubject
 from .grade import Grade
 from .school_class import SchoolClass
 from .subject import Subject
+from .branch import Branch
 
-__all__ = ['AcademicYear', 'ClassSubject', 'Grade', 'SchoolClass', 'Subject']
+__all__ = ['AcademicYear', 'ClassSubject', 'Grade', 'SchoolClass', 'Subject', 'Branch']

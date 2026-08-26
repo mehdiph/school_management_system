@@ -57,10 +57,10 @@
 
                         {% for cs in today_classes %}
                             <div class="class-card">
-                                <div class="class-icon" style="background:#d86f3b;"><i class="fas {{ cs.class_room.icon }}"></i></div>
-                                <h4>{{ cs.class_room.subject }}</h4>
-                                <p>{{ cs.class_room.teacher.get_full_name }}</p>
-                                <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>
+                                <div class="class-icon" style="background:#d86f3b;"><i class="fas {{ cs.class_subject.icon }}"></i></div>
+                                <h4>{{ cs.class_subject.subject }}</h4>
+                                <p>{{ cs.class_subject.teacher_assignment.teacher }}</p>
+                                <span class="class-time">{{ cs.bell.end_time }} - {{ cs.bell.start_time }}</span>
                             </div>
 
                         {% empty %}
@@ -95,10 +95,10 @@
 
                         {% for cs in tomorrow_classes %}
                             <div class="class-card">
-                                <div class="class-icon" style="background:#d86f3b;"><i class="fas {{ cs.class_room.icon }}"></i></div>
-                                <h4>{{ cs.class_room.subject }}</h4>
-                                <p>{{ cs.class_room.teacher.get_full_name }}</p>
-                                <span class="class-time">{{ cs.end_time }} - {{ cs.start_time }}</span>
+                                <div class="class-icon" style="background:#d86f3b;"><i class="fas {{ cs.class_subject.icon }}"></i></div>
+                                <h4>{{ cs.class_subject.subject }}</h4>
+                                <p>{{ cs.class_subject.teacher_assignment.teacher }}</p>
+                                <span class="class-time">{{ cs.bell.end_time }} - {{ cs.bell.start_time }}</span>
                             </div>
 
                         {% empty %}

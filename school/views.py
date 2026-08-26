@@ -13,17 +13,21 @@ def class_list(request):
     Shows list of ClassSubjects assigned to the logged-in teacher.
     Supports filtering by Grade and Subject.
     """
+    teacher_profile = request.user.staff_profile.teacher_profile
     # Base query: Active assignments for this teacher
-    queryset = ClassSubject.objects.filter(
-        teacher=request.user,
-        is_active=True,
-        school_class__is_active=True
-    ).select_related(
-        'school_class',
-        'school_class__grade',
-        'school_class__year',
-        'subject'
-    ).order_by('school_class__grade__level', 'school_class__section', 'subject__name')
+    queryset = (
+        ClassSubject.objects
+        .for_teacher(teacher_profile)
+        .filter(
+            is_active=True,
+            school_class__is_active=True
+        ).select_related(
+            'school_class',
+            'school_class__grade',
+            'school_class__year',
+            'subject'
+        ).order_by('school_class__grade__level', 'school_class__section', 'subject__name')
+    )
 
     # Filtering
     grade_id = request.GET.get('grade')

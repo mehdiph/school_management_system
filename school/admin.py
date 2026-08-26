@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django_jalali.admin.filters import JDateFieldListFilter
 import django_jalali.admin as jadmin
-from .models import AcademicYear, Grade, Subject, SchoolClass, ClassSubject
+from .models import AcademicYear, Grade, Subject, SchoolClass, ClassSubject, Branch
 
 
 @admin.register(AcademicYear)
@@ -21,6 +21,9 @@ class AcademicYearAdmin(admin.ModelAdmin):
         }),
     )
 
+@admin.register(Branch)
+class BranchAdmin(admin.ModelAdmin):
+    list_display = ['name', 'address', 'phone_number']
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
@@ -52,15 +55,14 @@ class SubjectAdmin(admin.ModelAdmin):
 
 @admin.register(SchoolClass)
 class SchoolClassAdmin(admin.ModelAdmin):
-    list_display = ('get_class_name', 'year', 'grade', 'section', 'is_active', 'created_at')
-    list_filter = ('year', 'grade', 'is_active')
+    list_display = ('get_class_name', 'year', 'grade', 'section', 'branch', 'created_at')
+    list_filter = ('year', 'grade', 'is_active', 'branch')
     search_fields = ('section', 'grade__name', 'year__title')
-    list_editable = ('is_active',)
     ordering = ('-created_at',)
     
     fieldsets = (
         ('اطلاعات اصلی', {
-            'fields': ('year', 'grade', 'section')
+            'fields': ('year', 'grade', 'branch', 'section')
         }),
         ('وضعیت', {
             'fields': ('is_active',)
@@ -74,15 +76,15 @@ class SchoolClassAdmin(admin.ModelAdmin):
 
 @admin.register(ClassSubject)
 class ClassSubjectAdmin(admin.ModelAdmin):
-    list_display = ('get_class_subject_name', 'school_class', 'subject', 'teacher', 'start_date', 'end_date', 'is_active')
+    list_display = ('get_class_subject_name', 'school_class', 'subject', 'get_teacher', 'start_date', 'end_date', 'is_active')
     list_filter = ('subject', 'is_active', 'school_class__grade')
-    search_fields = ('school_class__section', 'subject__name', 'teacher__username', 'teacher__first_name', 'teacher__last_name')
+    search_fields = ('school_class__section', 'subject__name')
     list_editable = ('is_active',)
     ordering = ('-created_at',)
     
     fieldsets = (
         ('اطلاعات اصلی', {
-            'fields': ('school_class', 'subject', 'teacher')
+            'fields': ('school_class', 'subject', 'teacher_assignment')
         }),
         ('دوره تدریس', {
             'fields': (('start_date', 'end_date'),)
@@ -91,7 +93,14 @@ class ClassSubjectAdmin(admin.ModelAdmin):
             'fields': ('is_active',)
         }),
     )
-    
+    def get_teacher(self, obj):
+        if obj:
+            return obj.teacher_assignment.teacher.staff.user.get_full_name()
+
+        return "-"
+
+
+    get_teacher.short_description = "معلم"
     def get_class_subject_name(self, obj):
         return f"{obj.school_class.grade.name} {obj.school_class.section} - {obj.subject.name}"
     get_class_subject_name.short_description = 'کلاس و درس'

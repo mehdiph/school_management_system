@@ -9,7 +9,8 @@ from .services import get_classes_for_day
 # Create your views here.
 
 def student_dashboard(request):
-    student = request.user.student_profile
+    student = request.user.student_profile.enrollments.all()[0]
+    print(f"student: {student}")
     school_class = student.school_class
     today_classes = get_classes_for_day(school_class, date.today())
     tomorrow_classes = get_classes_for_day(school_class, date.today() + timedelta(days=1))
@@ -20,6 +21,8 @@ def student_dashboard(request):
         .select_related('session', 'session__class_subject', 'session__class_subject__subject')
         .order_by('-session__date')[:5]
     )
+
+    print(today_classes)
 
     context = {
         'today_classes': today_classes,
@@ -34,7 +37,9 @@ def student_dashboard(request):
 
 
 def sessions_list(request):
-    school_class = request.user.student_profile.school_class
+    # print(type(request.user.student_profile.enrollments.all()[0]))
+    # print(hasattr(request.user.student_profile.enrollments.all()[0], 'school_class'))
+    school_class = request.user.student_profile.enrollments.get().school_class
     class_subject_query = ClassSubject.objects\
         .filter(school_class=school_class)\
         .prefetch_related('sessions', 'sessions__session_contents')
@@ -46,23 +51,40 @@ def sessions_list(request):
 
 
 def session_list_json(request, subject):
-    school_class = request.user.student_profile.school_class
-    class_subject_query = ClassSubject.objects\
-        .filter(school_class=school_class)\
-        .prefetch_related('sessions', 'sessions__session_contents')
+    school_class = request.user.student_profile.enrollments.get().school_class
 
-    lesson_class_subjects = class_subject_query.get(subject__slug=subject)
+    class_subject = (
+        ClassSubject.objects
+        .filter(
+            school_class=school_class,
+            subject__slug=subject
+        )
+        .select_related('subject')
+        .prefetch_related(
+            'sessions',
+            'sessions__session_contents'
+        )
+        .get()
+    )
 
-    sessions = lesson_class_subjects.sessions.all()
+    sessions = class_subject.sessions.all()
 
     data = [
         {
             'id': session.id,
-            'label': f'جلسه {persian_filters.persian_ordinal(session.session_number)} - {persian_filters.persian_date(session.date)}',
-            # Add extra raw fields if you ever need them
+            'label': (
+                f'جلسه '
+                f'{persian_filters.persian_ordinal(session.session_number)}'
+                f' - '
+                f'{persian_filters.persian_date(session.date)}'
+            ),
             'title': session.session_contents.title,
-            'content': session.session_contents.content
+            'content': session.session_contents.content,
         }
         for session in sessions
     ]
-    return JsonResponse({'sessions': data})
+
+    return JsonResponse({
+        'subject': str(class_subject.subject),
+        'sessions': data,
+    })

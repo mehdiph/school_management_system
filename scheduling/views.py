@@ -5,7 +5,7 @@ from .models.bell import Bell
 # Create your views here.
 
 def weekly_schedule(request):
-    student = request.user.student_profile
+    student = request.user.student_profile.enrollments.get()
     school_class = student.school_class
 
     weekly_schedule = get_class_weekly_schedule(school_class)

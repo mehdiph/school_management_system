@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Staff, TeacherProfile
+from .models import Staff, TeacherProfile, TeacherAssignment, BranchAccess
 
 # Register your models here.
 
@@ -10,3 +10,11 @@ class StaffAdmin(admin.ModelAdmin):
 @admin.register(TeacherProfile)
 class TeacherProfileAdmin(admin.ModelAdmin):
     list_display = ['staff', 'education', 'teaching_experience']
+
+@admin.register(TeacherAssignment)
+class TeacherAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['teacher', 'branch', 'status']
+
+@admin.register(BranchAccess)
+class BranchAccessesAdmin(admin.ModelAdmin):
+    list_display = ['staff', 'branch']

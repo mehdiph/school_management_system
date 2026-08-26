@@ -6,47 +6,62 @@ from school.models import ClassSubject
 
 
 class SchoolSessionForm(forms.ModelForm):
+
     class Meta:
         model = SchoolSession
-        fields = ['class_subject', 'date', 'session_number', 'status']
+        fields = [
+            "class_subject",
+            "date",
+            "status",
+        ]
 
         labels = {
-            'class_subject': 'درس کلاس',
-            'date': 'تاریخ جلسه',
-            'session_number': 'شماره جلسه',
-            'status': 'وضعیت'
+            "class_subject": "درس کلاس",
+            "date": "تاریخ جلسه",
+            "status": "وضعیت",
         }
 
         widgets = {
-            'class_subject': forms.Select(attrs={
-                'class': 'form-control',
-                'required': True
-            }),
-            'session_number': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'min': '1',
-                'required': True
-            }),
-            'status': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'date': forms.DateInput(attrs={
-                'class': 'form-control'
-            }),
+            "class_subject": forms.Select(
+                attrs={
+                    "class": "form-control",
+                }
+            ),
+            "date": AdminjDateWidget(
+                attrs={
+                    "class": "form-control",
+                }
+            ),
+            "status": forms.Select(
+                attrs={
+                    "class": "form-control",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
-        super(SchoolSessionForm, self).__init__(*args, **kwargs)
-        # فیلتر کردن فقط کلاس‌های فعال
-        self.fields['class_subject'].queryset = ClassSubject.objects.filter(
-            is_active=True,
-            school_class__is_active=True
-        ).select_related('school_class', 'subject', 'teacher')
-        
-        # تنظیم فیلدهای الزامی
-        self.fields['class_subject'].required = True
-        self.fields['date'].required = True
-        self.fields['session_number'].required = True
+        super().__init__(*args, **kwargs)
+
+        self.fields["class_subject"].queryset = (
+            ClassSubject.objects.filter(
+                is_active=True,
+                school_class__is_active=True,
+            )
+            .select_related(
+                "school_class",
+                "subject",
+                "teacher_assignment",
+            )
+            .order_by(
+                "school_class__branch__name",
+                "school_class__grade__level",
+                "school_class__section",
+                "subject__name",
+            )
+        )
+
+        self.fields["class_subject"].required = True
+        self.fields["date"].required = True
 
 
 class SessionContentForm(forms.ModelForm):

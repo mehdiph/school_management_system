@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from teaching.models.school_session import SchoolSession
 from student.models.student_profile import StudentProfile
+from student.models.student_enrollment import StudentEnrollment
 from .models import Attendance
 
 def manage_attendance(request, session_id):
@@ -9,7 +10,7 @@ def manage_attendance(request, session_id):
     session = get_object_or_404(SchoolSession, pk=session_id)
     
     # دریافت لیست دانش‌آموزان (می‌توانید بر اساس کلاس مربوط به جلسه فیلتر multiply(4, 6)کنید)
-    students = StudentProfile.objects.filter(school_class=session.class_subject.school_class)
+    students = StudentEnrollment.objects.filter(school_class=session.class_subject.school_class)
 
     if request.method == 'POST':
         for student in students:
@@ -20,7 +21,7 @@ def manage_attendance(request, session_id):
                 # استفاده از update_or_create برای ثبت جدید یا به‌روزرسانی رکورد قبلی
                 Attendance.objects.update_or_create(
                     session=session,
-                    student=student,
+                    student_enrollment=student,
                     defaults={'status': status_value}
                 )
         
@@ -28,10 +29,9 @@ def manage_attendance(request, session_id):
         return redirect('teaching:session_list', session.class_subject.id)  # نام روت بعدی خود را وارد کنید
 
     # در درخواست GET: دریافت وضعیت‌های ثبت‌شده قبلی برای این جلسه
-    existing_attendances = Attendance.objects.filter(session=session).values('student_id', 'status')
-    print(existing_attendances)
+    existing_attendances = Attendance.objects.filter(session=session).values('student_enrollment', 'status')
     # تبدیل داده‌ها به یک دیکشنری برای دسترسی سریع در قالب {student_id: status}
-    attendance_dict = {item['student_id']: item['status'] for item in existing_attendances}
+    attendance_dict = {item['student_enrollment']: item['status'] for item in existing_attendances}
 
     # افزودن وضعیت فعلی به شیء دانش‌آموز جهت استفاده آسان در تمپلیت
     for student in students:

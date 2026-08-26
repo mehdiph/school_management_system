@@ -134,7 +134,7 @@
 }
 
 /* تعریف رنگ کلاس‌ها */
-.class-riazi { --subject-color: var(--color-math); --subject-bg: var(--color-math-bg); }
+.class-math { --subject-color: var(--color-math); --subject-bg: var(--color-math-bg); }
 .class-oloom { --subject-color: var(--color-science); --subject-bg: var(--color-science-bg); }
 .class-farsi { --subject-color: var(--color-persian); --subject-bg: var(--color-persian-bg); }
 .class-computer { --subject-color: var(--color-computer); --subject-bg: var(--color-computer-bg); }

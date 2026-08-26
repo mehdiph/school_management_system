@@ -1,107 +1,224 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from datetime import date
+
 from school.models import AcademicYear, ClassSubject
 from teaching.models import SchoolSession
 from scheduling.models.class_schedule import ClassSchedule
-from scheduling.utils import get_current_week_type, get_today_schedule_day
-from django.db.models import Q
-from datetime import date
+
+from scheduling.utils import (
+    get_current_week_type,
+    get_today_schedule_day
+)
 
 
 @login_required
 def dashboard(request):
     """
-    Dashboard view for the teacher.
+    Dashboard view for teacher.
     """
-    # 2. Academic Year
-    current_year = AcademicYear.objects.filter(is_current=True).first()
-    academic_year_title = current_year.title if current_year else "تعریف نشده"
-    # 3. Class Subjects (Active only)
-    # Filter by user and current year (if exists)
-    class_subjects_query = ClassSubject.objects.filter(
-            teacher=request.user,
+
+    teacher_profile = request.user.staff_profile.teacher_profile
+
+    # -----------------------------
+    # Current academic year
+    # -----------------------------
+
+    current_year = (
+        AcademicYear.objects
+        .filter(is_current=True)
+        .first()
+    )
+
+
+    academic_year_title = (
+        current_year.title
+        if current_year
+        else "تعریف نشده"
+    )
+
+
+    # -----------------------------
+    # Teacher classes
+    # -----------------------------
+
+    print(request.branch)
+
+    class_subjects_query = (
+        ClassSubject.objects
+        .for_teacher(teacher_profile)
+        .filter(
             is_active=True,
             school_class__is_active=True,
             school_class__year=current_year,
-        )\
-        .select_related('school_class', 'school_class__grade', 'subject', 'teacher')\
-        .prefetch_related('schedules')\
-        .order_by('school_class__grade__level', 'subject__name', 'school_class__section')
+        )
+        .select_related(
+            'school_class',
+            'school_class__grade',
+            'subject',
+        )
+        .prefetch_related(
+            'schedules'
+        )
+        .order_by(
+            'school_class__grade__level',
+            'subject__name',
+            'school_class__section'
+        )
+    )
 
-    week_type = get_current_week_type(date.today())
-    today_day = get_today_schedule_day(date.today())
-   
+    print(class_subjects_query)
+    week_type = get_current_week_type(
+        date.today()
+    )
+
+    today_day = get_today_schedule_day(
+        date.today()
+    )
+
+
     if current_year:
-        class_subjects_query = class_subjects_query.filter(
-            school_class__year=current_year,
-            schedules__day_of_week=today_day
-        ).filter(
-            Q(  
-                schedules__week_type=week_type
-            ) |
-            Q(
-                schedules__week_type=ClassSchedule.WeekTypeChoices.BOTH
-            )
-        ).distinct()
 
-    # Process data for "Today's Teaching" cards AND "My Classes" list
-    # Since we don't have a daily schedule model, we show all active classes as potential teaching targets.
+        class_subjects_query = (
+            class_subjects_query
+            .filter(
+                schedules__day_of_week=today_day
+            )
+            .filter(
+                Q(
+                    schedules__week_type=week_type
+                )
+                |
+                Q(
+                    schedules__week_type=
+                    ClassSchedule.WeekTypeChoices.BOTH
+                )
+            )
+            .distinct()
+        )
+
+        # print(class_subjects_query)
+
     today_class_subjects = []
+
     class_subjects_summary = []
-    
+
+
     for cs in class_subjects_query:
 
-        # Common data
-        class_name = f"{cs.school_class.grade.name} - {cs.school_class.section}"
+
+        class_name = (
+            f"{cs.school_class.grade.name} - "
+            f"{cs.school_class.section} - "
+            f"{cs.school_class.branch}"
+        )
+
+
         subject_name = cs.subject.name
-        grade_name = cs.school_class.grade.name
 
-        # For Summary List
-        class_subjects_summary.append({
-            'class_name': class_name,
-            'subject_name': subject_name,
-            'grade_name': grade_name,
-            'id': cs.id
-        })
 
-        # For Cards (Fetch last session)
-        last_session = SchoolSession.objects.filter(class_subject=cs).order_by('-session_number').first()
+        class_subjects_summary.append(
+            {
+                "class_name": class_name,
+                "subject_name": subject_name,
+                "grade_name": cs.school_class.grade.name,
+                "id": cs.id,
+            }
+        )
+
+
+        last_session = (
+            SchoolSession.objects
+            .filter(
+                class_subject=cs
+            )
+            .order_by(
+                "-session_number"
+            )
+            .first()
+        )
+
+
         last_session_num = 0
         last_summary = ""
 
+
         if last_session:
-            last_session_num = last_session.session_number
-            # efficient way? Maybe prefetch related would be better but loop is fine for N < 20
-            try:
-                 if hasattr(last_session, 'session_contents'):
-                     last_summary = last_session.session_contents.content
-            except:
-                 pass
-        
-        today_class_subjects.append({
-            'id': cs.id,
-            'class_name': class_name,
-            'subject_name': subject_name,
-            'last_session_number': last_session_num,
-            'last_session_summary': last_summary
-        })
 
-    # 4. Recent Sessions
-    recent_sessions = SchoolSession.objects.filter(
-        class_subject__teacher=request.user
-    ).select_related('class_subject', 'class_subject__subject', 'class_subject__school_class').order_by('-date', '-created_at')[:5]
+            last_session_num = (
+                last_session.session_number
+            )
 
-    # 5. Stats
-    total_sessions = SchoolSession.objects.filter(class_subject__teacher=request.user).count()
+            content = (
+                getattr(
+                    last_session,
+                    "session_contents",
+                    None
+                )
+            )
+
+            if content:
+                last_summary = content.content
+
+
+
+        today_class_subjects.append(
+            {
+                "id": cs.id,
+                "class_name": class_name,
+                "subject_name": subject_name,
+                "last_session_number": last_session_num,
+                "last_session_summary": last_summary,
+            }
+        )
+
+
+
+    # -----------------------------
+    # Recent sessions
+    # -----------------------------
+
+    recent_sessions = (
+        SchoolSession.objects
+        .filter(class_subject__teacher_assignment__teacher=teacher_profile)
+        .select_related(
+            'class_subject',
+            'class_subject__subject',
+            'class_subject__school_class'
+        )
+        .order_by(
+            '-date',
+            '-created_at'
+        )[:5]
+    )
+
+
+    # -----------------------------
+    # Statistics
+    # -----------------------------
+
+    total_sessions = (
+        SchoolSession.objects
+        .filter(
+            class_subject__teacher_assignment__teacher=
+            teacher_profile
+        )
+        .count()
+    )
+
 
     context = {
-        'academic_year': academic_year_title,
-        'today_class_subjects': today_class_subjects[:6],
-        'class_subjects_summary': class_subjects_summary,
-        'recent_sessions': recent_sessions,
-        'total_sessions': total_sessions,
+        "academic_year": academic_year_title,
+        "today_class_subjects":today_class_subjects[:6],
+        "class_subjects_summary":class_subjects_summary,
+        "recent_sessions":recent_sessions,
+        "total_sessions":total_sessions,
     }
 
-    print(class_subjects_summary)
 
-    return render(request, 'core/dashboard.html', context)
+    return render(
+        request,
+        "core/dashboard.html",
+        context
+    )

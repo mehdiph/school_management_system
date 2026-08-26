@@ -92,7 +92,7 @@ def session_list(request, class_subject_id):
     ویو برای نمایش لیست جلسات درسی
     """
     class_subject = get_object_or_404(
-        ClassSubject.objects.select_related('school_class__grade', 'subject', 'teacher'),
+        ClassSubject.objects.select_related('school_class__grade', 'subject', 'teacher_assignment__teacher'),
         id=class_subject_id,
         is_active=True
     )
@@ -103,7 +103,7 @@ def session_list(request, class_subject_id):
     ).select_related(
         'class_subject__school_class__grade',
         'class_subject__subject',
-        'class_subject__teacher',
+        'class_subject__teacher_assignment__teacher',
         'session_contents'  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
     ).order_by('-date', '-session_number')
     

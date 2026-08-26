@@ -1,45 +1,29 @@
-from django.db import models
-from django_jalali.db import models as jmodels
 from django.conf import settings
-from school.models import SchoolClass
+from django.db import models
 
-# Create your models here.
 
 class StudentProfile(models.Model):
-    class Status(models.TextChoices):
-        ACTIVE = 'active', 'فعال'
-        GRADUATED = 'graduated', 'فارغ التحصیل'
-        TRANSFERRED = 'transferred', 'انتقالی'
-
     user = models.OneToOneField(
-                            settings.AUTH_USER_MODEL,
-                            on_delete=models.CASCADE,
-                            related_name='student_profile',
-                            limit_choices_to={'role': 'student'}
-                        )
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="student_profile",
+        limit_choices_to={"role": "student"},
+        verbose_name="کاربر",
+    )
+
     student_code = models.CharField(
-                            max_length=20,
-                            unique=True,
-                            verbose_name='کد دانش آموزی'
-                        )
-    school_class = models.ForeignKey(
-                            SchoolClass,
-                            on_delete=models.PROTECT,
-                            related_name='students',
-                            verbose_name='کلاس'
-                        )
-    enrollment_date = jmodels.jDateField(
-                            verbose_name='تاریخ ثبت نام'
-                        )
-    status = models.CharField(
-                            max_length=20,
-                            choices=Status.choices,
-                            verbose_name='وضعیت'
-                        )
-    
+        max_length=20,
+        unique=True,
+        verbose_name="کد دانش‌آموزی",
+    )
+
     class Meta:
-        verbose_name = 'پروفایل دانش آموز'
-        verbose_name_plural = 'پروفایل دانش آموزان'
+        verbose_name = "پروفایل دانش‌آموز"
+        verbose_name_plural = "پروفایل دانش‌آموزان"
+        ordering = [
+            "user__last_name",
+            "user__first_name",
+        ]
 
     def __str__(self):
-        return self.user.get_full_name()
+        return f"{self.student_code} - {self.user.get_full_name()}"

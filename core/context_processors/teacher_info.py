@@ -1,6 +1,6 @@
 import jdatetime
 
-def teacher_info(request):
+def teacher_info_context(request):
     if request.user.is_authenticated:
         teacher = {
             'name': request.user.get_full_name() or request.user.username

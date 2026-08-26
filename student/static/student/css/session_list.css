@@ -214,6 +214,10 @@
   gap: 10px;
 }
 
+.details-header-hidden {
+  display: none !important;
+}
+
 .details-title-wrapper i {
   color: var(--primary-orange);
   font-size: 20px;

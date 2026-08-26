@@ -140,15 +140,48 @@
 
         <!-- سطر اول: شنبه -->
         <div class="day-row-label is-today">شنبه</div>
-        {% for cs in weekly_schedule.0 %}
-        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
-          <div class="schedule-card-header">
-            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
-            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
-          </div>
-        </div>
-        {% empty %}
-        <div class="empty-slot">خالی</div>
+        {% for item in weekly_schedule.0 %}
+
+            {% if item.schedule %}
+
+                <div class="schedule-card class-{{ item.schedule.class_subject.subject.slug }}">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid {{ item.schedule.class_subject.icon }}"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>{{ item.schedule.class_subject.subject }}</h3>
+                            <p>{{ item.schedule.class_subject.teacher_assignment.teacher }}</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="schedule-card empty-card">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>خالی</h3>
+                            <p>هنوز ثبت نشده</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
         {% endfor %}
         <!-- <div class="schedule-card class-persian">
           <div class="schedule-card-header">
@@ -178,54 +211,186 @@
 
         <!-- سطر دوم: یکشنبه -->
         <div class="day-row-label">یکشنبه</div>
-        {% for cs in weekly_schedule.1 %}
-        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
-          <div class="schedule-card-header">
-            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
-            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
-          </div>
-        </div>
-        {% empty %}
-        <div class="empty-slot">خالی</div>
+        {% for item in weekly_schedule.1 %}
+
+            {% if item.schedule %}
+
+                <div class="schedule-card class-{{ item.schedule.class_subject.subject.slug }}">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid {{ item.schedule.class_subject.icon }}"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>{{ item.schedule.class_subject.subject }}</h3>
+                            <p>{{ item.schedule.class_subject.teacher_assignment.teacher }}</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="schedule-card empty-card">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>خالی</h3>
+                            <p>هنوز ثبت نشده</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
         {% endfor %}
 
         <!-- سطر سوم: دوشنبه (امروز - برجسته شده) -->
         <div class="day-row-label ">دوشنبه</div>
-        {% for cs in weekly_schedule.2 %}
-        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
-          <div class="schedule-card-header">
-            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
-            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
-          </div>
-        </div>
-        {% empty %}
-        <div class="empty-slot">خالی</div>
+        {% for item in weekly_schedule.2 %}
+
+            {% if item.schedule %}
+
+                <div class="schedule-card class-{{ item.schedule.class_subject.subject.slug }}">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid {{ item.schedule.class_subject.icon }}"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>{{ item.schedule.class_subject.subject }}</h3>
+                            <p>{{ item.schedule.class_subject.teacher_assignment.teacher }}</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="schedule-card empty-card">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>خالی</h3>
+                            <p>هنوز ثبت نشده</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
         {% endfor %}
 
         <!-- سطر چهارم: سه‌شنبه -->
         <div class="day-row-label">سه‌شنبه</div>
-        {% for cs in weekly_schedule.3 %}
-        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
-          <div class="schedule-card-header">
-            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
-            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
-          </div>
-        </div>
-        {% empty %}
-        <div class="empty-slot">خالی</div>
+        {% for item in weekly_schedule.3 %}
+
+            {% if item.schedule %}
+
+                <div class="schedule-card class-{{ item.schedule.class_subject.subject.slug }}">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid {{ item.schedule.class_subject.icon }}"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>{{ item.schedule.class_subject.subject }}</h3>
+                            <p>{{ item.schedule.class_subject.teacher_assignment.teacher }}</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="schedule-card empty-card">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>خالی</h3>
+                            <p>هنوز ثبت نشده</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
         {% endfor %}
 
         <!-- سطر پنجم: چهارشنبه -->
         <div class="day-row-label">چهارشنبه</div>
-        {% for cs in weekly_schedule.4 %}
-        <div class="schedule-card class-{{ cs.class_room.subject.slug }}">
-          <div class="schedule-card-header">
-            <div class="subject-icon-box"><i class="fa-solid {{ cs.class_room.icon }}"></i></div>
-            <div class="subject-details"><h3>{{ cs.class_room.subject }}</h3><p>{{ cs.class_room.teacher.get_full_name }}</p></div>
-          </div>
-        </div>
-        {% empty %}
-        <div class="empty-slot">خالی</div>
+        {% for item in weekly_schedule.4 %}
+
+            {% if item.schedule %}
+
+                <div class="schedule-card class-{{ item.schedule.class_subject.subject.slug }}">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid {{ item.schedule.class_subject.icon }}"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>{{ item.schedule.class_subject.subject }}</h3>
+                            <p>{{ item.schedule.class_subject.teacher_assignment.teacher }}</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="schedule-card empty-card">
+
+                    <div class="schedule-card-header">
+
+                        <div class="subject-icon-box">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                        </div>
+
+                        <div class="subject-details">
+                            <h3>خالی</h3>
+                            <p>هنوز ثبت نشده</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endif %}
+
         {% endfor %}
 
       </div>
