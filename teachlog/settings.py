@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'attendance',
     'django_erd_generator',
+    'supervisor',
 ]
 
 MIDDLEWARE = [
