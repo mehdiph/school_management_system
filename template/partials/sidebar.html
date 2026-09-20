@@ -1,0 +1,106 @@
+{% load report_tags %}
+<div class="mobile-topbar">
+  <button class="icon-btn" id="openSidebarBtn" aria-label="باز کردن منو" aria-expanded="false" aria-controls="appSidebar">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+  </button>
+  <span class="mobile-topbar__title">پنل کاربری</span>
+  <span class="mobile-topbar__badge" aria-hidden="true"></span>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+
+<aside class="app-sidebar" id="appSidebar" aria-label="منوی ناوبری">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <span class="sidebar-brand__mark">{{ teacher.name|first|default:"م" }}</span>
+      <div class="sidebar-brand__text">
+        <strong>سامانه مدیریت مدرسه</strong>
+        <span>مدرسه نسل قلم</span>
+      </div>
+    </div>
+    <button class="icon-btn sidebar-close" id="closeSidebarBtn" aria-label="بستن منو">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+    </button>
+  </div>
+
+  {% if request.user.role == "supervisor" %}
+  <div class="grade-indicator">
+    <span class="grade-indicator__label">پایه تحت نظارت</span>
+    <span class="grade-indicator__value">{{ request.supervisor.grade.name }}</span>
+  </div>
+  {% endif %}
+
+  <nav class="sidebar-nav" aria-label="ناوبری اصلی">
+
+    {% if request.user.role == "teacher" %}
+      <a href="{% url 'core:dashboard' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'core' and request.resolver_match.url_name == 'dashboard' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        <span>داشبورد</span>
+      </a>
+      <a href="{% url 'school:class_list' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'school' and request.resolver_match.url_name == 'class_list' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+        <span>کلاس‌ها</span>
+      </a>
+      <a href="{% url 'report:reports_page' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'report' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
+        <span>گزارش‌ها</span>
+      </a>
+
+    {% elif request.user.role == "student" %}
+      <a href="{% url 'student:dashboard' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'student' and request.resolver_match.url_name == 'dashboard' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        <span>خانه</span>
+      </a>
+      <a href="{% url 'student:sessions' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'student' and request.resolver_match.url_name == 'sessions' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 3.2"></path></svg>
+        <span>جلسات</span>
+      </a>
+      <a href="#" class="sidebar-nav__item">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11 13.5 15.5 9"></path><rect x="3" y="4" width="18" height="16" rx="2"></rect></svg>
+        <span>تکالیف</span>
+      </a>
+      <a href="{% url 'scheduling:weekly-schedule' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'scheduling' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9.5h18"></path><path d="M8 3v3M16 3v3"></path></svg>
+        <span>برنامه هفتگی</span>
+      </a>
+      <a href="#" class="sidebar-nav__item">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6.5V11c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6.5L12 3Z"></path></svg>
+        <span>دستاوردها</span>
+      </a>
+
+    {% elif request.user.role == "supervisor" %}
+      <a href="{% url 'supervisor:dashboard' %}" class="sidebar-nav__item{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'supervisor' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+        <span>داشبورد</span>
+      </a>
+      <a href="#" class="sidebar-nav__item">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"></path><circle cx="9.5" cy="8" r="3.5"></circle><path d="M19 20v-1.5a3.5 3.5 0 0 0-2.5-3.36"></path><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8"></path></svg>
+        <span>معلمان من</span>
+      </a>
+      <a href="#" class="sidebar-nav__item">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 3.2"></path></svg>
+        <span>جلسات آموزشی</span>
+      </a>
+      <a href="{% url 'supervisor:attendance' %}" class="sidebar-nav__item{% if request.resolver_match.url_name == 'attendance' and request.resolver_match.app_name == 'supervisor' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11 13.5 15.5 9"></path><path d="M12 3 4 6.5V11c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6.5L12 3Z"></path></svg>
+        <span>حضور و غیاب</span>
+      </a>
+      <a href="{% url 'supervisor:attention_list' %}" class="sidebar-nav__item sidebar-nav__item--alert{% if request.resolver_match.url_name == 'attention_list' and request.resolver_match.app_name == 'supervisor' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+        <span>نیازمند بررسی</span>
+        {% if attention_items %}<span class="badge badge--danger sidebar-nav__badge">{{ attention_items|length|to_persian }}</span>{% endif %}
+      </a>
+    {% endif %}
+
+  </nav>
+</aside>
+
+<button
+  type="button"
+  class="icon-btn sidebar-reopen"
+  id="desktopOpenSidebarBtn"
+  aria-label="باز کردن منو"
+  aria-controls="appSidebar"
+  aria-expanded="true"
+>
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+</button>

@@ -1,0 +1,481 @@
+/* ==========================================================================
+   SUPERVISOR — attendance page.
+
+   Loaded alongside supervisor/css/dashboard.css, which already supplies
+   the shared tokens plus .stat-card, .badge, .btn, .sessions-table /
+   .sessions-cards (reused here as .attendance-table / .attendance-cards)
+   and .empty-state building blocks. Only what's specific to this page
+   -- the class picker, toolbar, phone-reveal rule, skeleton and the
+   follow-up modal -- lives here.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------
+   Primary button variant (dashboard.css only ships --outline).
+   -------------------------------------------------------------------- */
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  background: var(--primary-dark, var(--primary));
+  border-color: var(--primary-dark, var(--primary));
+}
+
+.btn--primary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   CLASS PICKER
+   ========================================================================== */
+
+.class-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.class-picker__form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.class-picker__form label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.class-picker select,
+.attendance-filter select {
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: 38px;
+  max-width: 100%;
+}
+
+.class-picker select {
+  flex: 1;
+  min-width: 0;
+}
+
+.class-picker select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.class-picker__session-date {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   SUMMARY CARDS — 4-up variant
+   ========================================================================== */
+
+.summary-cards--attendance {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.stat-card__icon--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .summary-cards--attendance {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   TOOLBAR — search + status filter
+   ========================================================================== */
+
+.attendance-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.attendance-search {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 320px;
+  color: var(--muted);
+}
+
+.attendance-search svg {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.attendance-search input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+  min-height: 38px;
+}
+
+.attendance-search input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.status-pill {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-4);
+  min-height: 34px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.status-pill:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.status-pill.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.status-pill:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   ATTENDANCE LIST — table (desktop) + cards (mobile)
+
+   Layout/borders/hover come from .sessions-table / .sessions-cards /
+   .session-card in dashboard.css (applied as extra classes in the
+   template); only attendance-specific column/content rules live here.
+   ========================================================================== */
+
+.attendance-list-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.attendance-row__name {
+  font-weight: 600;
+}
+
+.muted-dash {
+  color: var(--muted);
+}
+
+.phone-hidden {
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.phone-value {
+  display: inline-block;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+a.phone-value:hover {
+  text-decoration: underline;
+}
+
+.attendance-row[data-status="present"] {
+  opacity: 0.85;
+}
+
+/* Hide a row/card when the toolbar filters exclude it. */
+.attendance-row.is-filtered-out,
+.attendance-card.is-filtered-out {
+  display: none;
+}
+
+.attendance-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.attendance-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.attendance-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.attendance-card__actions .btn {
+  flex: 1;
+}
+
+/* ==========================================================================
+   EMPTY STATES
+   ========================================================================== */
+
+.empty-state {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.empty-state--inline {
+  border-style: solid;
+  padding: var(--space-5);
+}
+
+/* ==========================================================================
+   LOADING SKELETON
+   ========================================================================== */
+
+.attendance-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* A plain `.attendance-skeleton { display: flex }` has the same
+   specificity as the browser's built-in `[hidden] { display: none }`
+   rule, so it silently wins and the `hidden` attribute (toggled by
+   attendance.js) would have no visible effect without this override. */
+.attendance-skeleton[hidden] {
+  display: none;
+}
+
+.skeleton-block {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    100deg,
+    var(--surface-muted) 30%,
+    var(--gray-bg) 45%,
+    var(--surface-muted) 60%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-block--card {
+  height: 84px;
+}
+
+.skeleton-block--row {
+  height: 52px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   FOLLOW-UP MODAL
+   ========================================================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 24, 45, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 1000;
+}
+
+/* Same specificity issue as .attendance-skeleton above: without this,
+   `overlay.hidden = true` in attendance.js doesn't actually hide the
+   modal, since .modal-overlay's own `display: flex` outranks the
+   browser's default `[hidden]` rule. */
+.modal-overlay[hidden] {
+  display: none;
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  max-height: calc(100vh - var(--space-8));
+  display: flex;
+  flex-direction: column;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal__header h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+
+.modal__close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.modal__body {
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.followup-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.followup-details__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 13.5px;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.followup-details__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.followup-details__row dt {
+  color: var(--text-secondary);
+}
+
+.followup-details__row dd {
+  font-weight: 600;
+  color: var(--text);
+  direction: ltr;
+}
+
+.modal__footer {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.modal__footer .btn {
+  flex: 1;
+}
+
+/* #followupCallBtn is the only .btn this page ever toggles `hidden`
+   on (when a row has no phone number) -- .btn's own `display` in
+   dashboard.css would otherwise outrank the browser's default
+   `[hidden]` rule, same issue as .modal-overlay/.attendance-skeleton
+   above. */
+#followupCallBtn[hidden] {
+  display: none;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .class-picker {
+    padding: var(--space-4);
+  }
+
+  .attendance-list-section {
+    padding: var(--space-4);
+  }
+
+  .attendance-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance-search {
+    max-width: none;
+  }
+}

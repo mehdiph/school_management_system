@@ -10,6 +10,14 @@ class SupervisorProfile(models.Model):
         verbose_name="کاربر",
     )
 
+    branch = models.ForeignKey(
+        "school.Branch",
+        on_delete=models.PROTECT,
+        related_name="supervisors",
+        verbose_name="شعبه",
+        null=True
+    )
+
     grade = models.ForeignKey(
         "school.Grade",
         on_delete=models.PROTECT,
@@ -22,4 +30,4 @@ class SupervisorProfile(models.Model):
         verbose_name_plural = "پروفایل‌های پشتیبان"
 
     def __str__(self):
-        return f"{self.user} - {self.grade}"
+        return f"{self.user} - {self.branch} - {self.grade}"

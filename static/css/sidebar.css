@@ -1,0 +1,522 @@
+/* ==========================================================================
+   GLOBAL APP SHELL — sidebar + topbar + mobile drawer
+   Shared by every dashboard (teacher / student / supervisor). Only the
+   page content below the topbar is dashboard-specific (see each app's
+   own dashboard.css). Colors here alias the project's global theme
+   (static/css/base.css) so every dashboard tracks the same palette.
+   ========================================================================== */
+
+:root {
+  /* layout tokens used by the shell (and reused by dashboard-specific
+     CSS for their own cards/sections) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(23, 24, 45, 0.05);
+  --shadow-md: 0 4px 16px rgba(23, 24, 45, 0.06);
+
+  --sidebar-width: 264px;
+  --navbar-height: 60px;
+
+  /* neutral/semantic aliases onto the global theme (static/css/base.css).
+     Only tokens with no global equivalent (or a semantic mismatch --
+     e.g. base.css's own --primary-light is a bright accent, not a pale
+     tint background) get a locally-defined value. */
+  --primary-light: var(--primary-lighter);
+  --primary-tint: var(--primary-lighter);
+
+  --background: #f4f5f9;
+  --surface: #ffffff;
+  --surface-muted: var(--gray-50);
+
+  --text: var(--gray-800);
+  --text-secondary: var(--gray-600);
+  --muted: var(--gray-500);
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  /* base.css's "-text" tokens give better contrast on the matching
+     "-bg" tokens than its plain --success/--warning/--danger (those
+     are brighter accents used elsewhere on the site). */
+  --success: var(--success-text);
+  --warning: var(--warning-text);
+  --danger: var(--danger-text);
+  --gray: var(--gray-500);
+  --gray-bg: var(--gray-100);
+}
+
+/* ==========================================================================
+   SHELL LAYOUT
+   ========================================================================== */
+
+.app-shell {
+  display: flex;
+  
+  align-items: flex-start;
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+.app-shell__main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+
+.app-sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-inline-start: 1px solid var(--border);
+  min-height: calc(100vh - var(--navbar-height));
+  position: sticky;
+  top: var(--navbar-height);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-4);
+  font-family: 'Vazirmatn', sans-serif;
+  overflow: hidden;
+  transition:
+    width 0.25s ease,
+    padding-inline 0.25s ease,
+    border-inline-start-width 0.25s ease,
+    opacity 0.2s ease;
+}
+
+/* Desktop "closed" state: the sidebar leaves the flex row entirely (by
+   collapsing to zero width/padding/border, not visibility:hidden) so
+   .app-shell__main's flex:1 reclaims the freed space in the same
+   transition -- see .sidebar-reopen below for the button that brings
+   it back. Mobile has its own, separate off-canvas state further down
+   (.app-sidebar.is-open inside the max-width:768px block); the two
+   are intentionally independent classes, not a shared toggle. */
+.app-sidebar.is-collapsed {
+  width: 0;
+  padding-inline: 0;
+  border-inline-start-width: 0;
+  opacity: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sidebar-brand__mark {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sidebar-brand__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-brand__text strong {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sidebar-brand__text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sidebar-close {
+  display: flex;
+}
+
+.grade-indicator {
+  background: var(--primary-light);
+  border: 1px solid var(--primary-tint);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-6);
+}
+
+.grade-indicator__label {
+  font-size: 11.5px;
+  color: var(--primary);
+  opacity: 0.75;
+}
+
+.grade-indicator__value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-nav__icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.sidebar-nav__item:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.sidebar-nav__item:hover .sidebar-nav__icon {
+  color: var(--text);
+}
+
+.sidebar-nav__item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.sidebar-nav__item.is-active {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-nav__item.is-active .sidebar-nav__icon {
+  color: #fff;
+}
+
+.sidebar-nav__item--alert {
+  color: var(--text-secondary);
+}
+
+.sidebar-nav__badge {
+  margin-inline-start: auto;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sidebar-user__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gray-bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sidebar-user__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.sidebar-user__text strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.sidebar-user__text span {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.logout-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.logout-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   GLOBAL TOPBAR (every dashboard: user info, logout, date, time --
+   no primary navigation here, navigation lives in the sidebar)
+   ========================================================================== */
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-family: 'Vazirmatn', sans-serif;
+}
+
+.app-topbar__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.app-topbar__pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.app-topbar__pill svg {
+  color: var(--primary);
+}
+
+/* ==========================================================================
+   MOBILE TOPBAR + DRAWER OVERLAY (hidden on desktop)
+   ========================================================================== */
+
+.mobile-topbar {
+  display: none;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.icon-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--surface-muted);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   DESKTOP REOPEN BUTTON (shown only once the sidebar is collapsed on
+   desktop -- see .app-sidebar.is-collapsed above). Reuses .icon-btn's
+   look; positioned out of the flex flow so it never fights the main
+   content for layout space, floating near where the sidebar used to
+   start so it stays discoverable without sitting on top of page
+   content.
+   ========================================================================== */
+
+.sidebar-reopen {
+  display: none;
+  position: fixed;
+  top: calc(var(--navbar-height) + var(--space-4));
+  inset-inline-start: var(--space-4);
+  z-index: 60;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-sidebar.is-collapsed ~ .sidebar-reopen {
+  display: flex;
+}
+
+/* ==========================================================================
+   RESPONSIVE — MOBILE DRAWER SIDEBAR (up to 768px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-3) var(--space-4);
+    position: sticky;
+    top: var(--navbar-height);
+    z-index: 40;
+    width: 100%;
+  }
+
+  .mobile-topbar__title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .mobile-topbar__badge {
+    margin-inline-start: auto;
+  }
+
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .achievement-card {
+    display: none;
+  }
+
+  .grid-2-col {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .classes-grid {
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 5px !important;
+  }
+
+  .class-card > * {
+    margin: 0px;
+  }
+
+  .class-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .app-topbar__pill {
+    display: none;
+  }
+
+  /* Off-canvas drawer sliding in from the right: inset-inline-start
+     is the *right* edge under this project's dir="rtl" (logical
+     "start" = right in RTL), which also matches where the sidebar
+     sits in the desktop layout (first flex child in an RTL row), so
+     the drawer opens from the same side it lives on at desktop width.
+     (This was previously inset-inline-end, which anchored it to the
+     left instead -- translateX(100%) on a left-anchored box only
+     pushes it partway off-screen, leaving a visible sliver; anchoring
+     the same side as the push direction is what fully clears it.) */
+  .app-sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    top: 0;
+    height: 100%;
+    width: min(82vw, 320px);
+    z-index: 100;
+    box-shadow: var(--shadow-md);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    padding: var(--space-4);
+  }
+
+  .app-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 16, 33, 0.42);
+    z-index: 90;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sidebar-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .app-topbar {
+    gap: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .sidebar-overlay {
+    transition: none;
+  }
+}

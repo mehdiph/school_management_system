@@ -1,12 +1,4 @@
-/* Dashboard Helpers to override or supplement base variables if needed */
-:root {
-    /* Extending base vars where dashboard needs specific colors */
-    --primary-dark: #115e59;
-    --secondary-light: #64748b;
-    --accent: #f59e0b;
-    --bg-card: #ffffff;
-    --text-muted: #64748b;
-}
+/* Dashboard Helpers to override or supplement base variables if needed */ 
 
 .rainbow {
     position: absolute;
@@ -133,7 +125,7 @@
 }
 
 .class-badge {
-    background: var(--primary-light);
+    background: var(--primary);
     color: white;
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
@@ -187,9 +179,9 @@
 }
 
 .stat-card-simple {
-    background: var(--bg-card);
+    background: var(--card-bg);
     padding: 1rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     text-align: center;
     border: 1px solid var(--gray-200);
 }

@@ -9,10 +9,9 @@
 
 {% block title %}داشبورد دانش آموز{% endblock %}
 
-{% block navlinks %}
-    {% include 'student/include/student_dashboard_navbar_links.html' %}
-{% endblock navlinks %}
-
+{% block sidebar %}
+    {% include "partials/sidebar.html" %}
+{% endblock %}
 
 {% block content %}
     <div class="dashboard-wrapper">

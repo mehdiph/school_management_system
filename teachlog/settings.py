@@ -79,7 +79,8 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'student.context_processors.student_info',
                 'core.context_processors.branch.branch_context',
-                'core.context_processors.teacher_info.teacher_info_context'
+                'core.context_processors.teacher_info.teacher_info_context',
+                'core.context_processors.topbar.topbar_context',
             ],
         },
     },

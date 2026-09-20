@@ -2,6 +2,7 @@ from django.core.exceptions import PermissionDenied
 
 from school.models import Branch
 from staff.models import BranchAccess
+from supervisor.models.supervisor_profile import SupervisorProfile
 
 
 class BranchService:
@@ -17,22 +18,40 @@ class BranchService:
         Returns all branches that the user can access.
         """
 
-
         if not user.is_authenticated:
             return Branch.objects.none()
 
-        # Superuser => all branches
+        # -------------------------
+        # Superuser
+        # -------------------------
+
         if user.is_superuser:
             return Branch.objects.filter(
                 is_active=True
             )
 
-        # Staff users
+        # -------------------------
+        # Supervisor
+        # -------------------------
+
+        supervisor_branch = cls.get_supervisor_branch(user)
+
+        if supervisor_branch:
+            return Branch.objects.filter(
+                pk=supervisor_branch.pk,
+                is_active=True,
+            )
+
+        # -------------------------
+        # Staff
+        # -------------------------
+
         try:
             staff = user.staff_profile
-            # print(Branch.objects.filter(staff_accesses__staff=staff))
+
             return (
-                Branch.objects.filter(
+                Branch.objects
+                .filter(
                     staff_accesses__staff=staff,
                     is_active=True,
                 )
@@ -42,12 +61,16 @@ class BranchService:
         except Exception:
             pass
 
-        # Student users
+        # -------------------------
+        # Student
+        # -------------------------
+
         try:
             student = user.student_profile
 
             return (
-                Branch.objects.filter(
+                Branch.objects
+                .filter(
                     school_classes__enrollments__student=student,
                     school_classes__enrollments__status="active",
                     is_active=True,
@@ -59,6 +82,20 @@ class BranchService:
             pass
 
         return Branch.objects.none()
+    
+    @classmethod
+    def get_supervisor_branch(cls, user):
+        try:
+            supervisor = SupervisorProfile.objects.select_related(
+                "branch"
+            ).get(user=user)
+        except SupervisorProfile.DoesNotExist:
+            return None
+
+        if supervisor.branch and supervisor.branch.is_active:
+            return supervisor.branch
+
+        return None
 
 
     @classmethod
@@ -69,7 +106,6 @@ class BranchService:
 
         if not user.is_authenticated:
             return None
-
 
         # -------------------------
         # Superuser
@@ -83,6 +119,14 @@ class BranchService:
                 .first()
             )
 
+        # -------------------------
+        # Supervisor
+        # -------------------------
+
+        supervisor_branch = cls.get_supervisor_branch(user)
+
+        if supervisor_branch:
+            return supervisor_branch
 
         # -------------------------
         # Staff
@@ -105,7 +149,6 @@ class BranchService:
             if access:
                 return access.branch
 
-
             access = (
                 BranchAccess.objects
                 .select_related("branch")
@@ -121,8 +164,6 @@ class BranchService:
 
         except Exception:
             pass
-
-
 
         # -------------------------
         # Student
@@ -147,7 +188,6 @@ class BranchService:
 
         except Exception:
             pass
-
 
         return None
 

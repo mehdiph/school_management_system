@@ -1,0 +1,36 @@
+/* ==========================================================================
+   SUPERVISOR — "needs attention" full list page.
+
+   Shares its card/badge/section styles with supervisor/css/dashboard.css
+   (loaded alongside this file); only the filter bar is specific to this
+   page.
+   ========================================================================== */
+
+.attention-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.attention-filter label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.attention-filter select {
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: 38px;
+}
+
+.attention-filter select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

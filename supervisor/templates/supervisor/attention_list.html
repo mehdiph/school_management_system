@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static report_tags %}
+
+{% block title %}نیازمند بررسی | سامانه مدیریت مدرسه{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/attention_list.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+  {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>نیازمند بررسی</h1>
+    <p>جلساتی که امروز باید ثبت می‌شدند اما هنوز ثبت نشده‌اند</p>
+  </div>
+</header>
+
+<section class="needs-attention" aria-labelledby="attentionListTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="attentionListTitle">موارد امروز</h2>
+      <p>{{ attention_items|length|to_persian }} مورد نیازمند پیگیری</p>
+    </div>
+  </div>
+
+  <form method="get" class="attention-filter">
+    <label for="classFilter">فیلتر بر اساس کلاس</label>
+    <select id="classFilter" name="class" onchange="this.form.submit()">
+      <option value="">همه کلاس‌ها</option>
+      {% for class in classes %}
+      <option value="{{ class.id }}" {% if selected_class_id == class.id|stringformat:"s" %}selected{% endif %}>{{ class }}</option>
+      {% endfor %}
+    </select>
+    {% if selected_class_id %}
+    <a href="{% url 'supervisor:attention_list' %}" class="link-action">حذف فیلتر</a>
+    {% endif %}
+  </form>
+
+  <div class="attention-list">
+    {% for item in attention_items %}
+    <article class="attention-card attention-card--urgent">
+      <span class="attention-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+      </span>
+      <div class="attention-card__body">
+        <div class="attention-card__top">
+          <h3>{{ item.title }}</h3>
+          <span class="badge badge--danger">فوری</span>
+        </div>
+        <p class="attention-card__meta">{{ item.subject }} — کلاس {{ item.school_class.section }} &nbsp;·&nbsp; معلم: {{ item.teacher }}</p>
+        <p class="attention-card__time">امروز — پایان زنگ ساعت {{ item.scheduled_end_time|time:"H:i"|to_persian }}</p>
+      </div>
+    </article>
+    {% empty %}
+    <p class="attention-card__meta">
+      {% if selected_class_id %}موردی برای این کلاس یافت نشد.{% else %}در حال حاضر موردی نیازمند بررسی نیست.{% endif %}
+    </p>
+    {% endfor %}
+  </div>
+</section>
+
+</div>
+{% endblock %}

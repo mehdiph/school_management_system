@@ -33,6 +33,11 @@ class SupervisorClass(models.Model):
             raise ValidationError(
                 "پشتیبان فقط می‌تواند کلاس‌های مربوط به پایه خودش را تحت نظارت داشته باشد."
             )
+        
+        if self.school_class.branch_id != self.supervisor.branch_id:
+            raise ValidationError(
+                "پشتیبان فقط میتواند به کلاس های مربوط به شعبه خودش دسترسی داشته باشد."
+            )
 
     def __str__(self):
         return f"{self.supervisor} → {self.school_class}"

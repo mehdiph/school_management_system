@@ -10,57 +10,68 @@
     <!-- Base Styles -->
     <link rel="stylesheet" href="{% static '/css/base.css' %}">
     <link rel="stylesheet" href="{% static '/assets/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static '/css/sidebar.css' %}">
     {% block styles %}{% endblock %}
 </head>
 <!-- Dashboard Header - Custom styled to break out of generic container if needed (handled by CSS negative margins) -->
 <header class="main-header">
     <a href="{% url 'website:website' %}" class="logo">مدرسه نسل قلم</a>
-    {% block navlinks %}{% endblock navlinks %}
+    {% block navlinks %}
+        {% include "partials/topbar.html" %}
+    {% endblock navlinks %}
 </header>
 
 
 <body>
-    <div class="container">
-        <!-- Messages -->
-        {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                <i
-                    class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% block content %}{% endblock %}
-    </div>
-
-    <!-- ===== FOOTER ===== -->
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">مدرسه نسل قلم</div>
-                <div class="footer-links">
-                    <a href="#">اینستاگرام</a>
-                    <a href="#">تلگرام</a>
-                    <a href="#">آپارات</a>
-                    <a href="#">درباره ما</a>
-                    <a href="#">سوالات متداول</a>
-                    <a href="#">تماس با ما</a>
+    <div class="app-shell">
+        {% block sidebar %}{% endblock %}
+    
+        <div class="app-shell__main">
+            {% block topbar %}{% endblock %}
+            <div class="container">
+                <!-- Messages -->
+                {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        <i
+                            class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                    {% endfor %}
                 </div>
+                {% endif %}
+    
+                {% block content %}{% endblock %}
+                <footer>
+                    <div class="container">
+                        <div class="footer-content">
+                            <div class="footer-logo">مدرسه نسل قلم</div>
+                            <div class="footer-links">
+                                <a href="#">اینستاگرام</a>
+                                <a href="#">تلگرام</a>
+                                <a href="#">آپارات</a>
+                                <a href="#">درباره ما</a>
+                                <a href="#">سوالات متداول</a>
+                                <a href="#">تماس با ما</a>
+                            </div>
+                        </div>
+                        <div class="copyright">
+                            تمامی حقوق برای مدرسه نسل قلم محفوظ است. <br>
+                            Made with &#128151 in Urmia
+                        </div>
+                    </div>
+                </footer>
             </div>
-            <div class="copyright">
-                تمامی حقوق برای مدرسه نسل قلم محفوظ است. <br>
-                Made with &#128151 in Urmia
-            </div>
+    
+            <!-- ===== FOOTER ===== -->
         </div>
-    </footer>
+    </div>
 
     <!-- Scripts -->
     <script src="{% static '/js/jquery/jquery-3.7.1.js' %}"></script>
     <script src="{% static '/js/base.js' %}"></script>
+    <script src="{% static '/js/sidebar.js' %}"></script>
     {% block scripts %}{% endblock scripts %}
 </body>
 

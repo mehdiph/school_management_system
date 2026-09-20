@@ -289,7 +289,7 @@ body {
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-light);
+    background-color: var(--primary-darker);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }

@@ -24,6 +24,7 @@ class AcademicYearAdmin(admin.ModelAdmin):
 @admin.register(Branch)
 class BranchAdmin(admin.ModelAdmin):
     list_display = ['name', 'address', 'phone_number']
+    search_fields = ['name', 'code']
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):

@@ -17,3 +17,8 @@ class StudentProfileAdmin(admin.ModelAdmin):
 @admin.register(StudentEnrollment)
 class StudentEnrollmentAdmin(admin.ModelAdmin):
     list_display = ['student', 'school_class', 'status', 'enrollment_date', 'academic_year']
+    search_fields = [
+        'student__user__first_name',
+        'student__user__last_name',
+        'student__student_code',
+    ]

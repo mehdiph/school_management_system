@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from datetime import date
 
 from school.models import AcademicYear, ClassSubject
@@ -59,7 +59,10 @@ def dashboard(request):
             'subject',
         )
         .prefetch_related(
-            'schedules'
+            Prefetch(
+                'schedules',
+                queryset=ClassSchedule.objects.select_related('bell'),
+            )
         )
         .order_by(
             'school_class__grade__level',
@@ -117,6 +120,16 @@ def dashboard(request):
 
         subject_name = cs.subject.name
 
+        today_bell_order = None
+
+        for schedule in cs.schedules.all():
+            if schedule.day_of_week == today_day and schedule.week_type in (
+                week_type,
+                ClassSchedule.WeekTypeChoices.BOTH,
+            ):
+                today_bell_order = schedule.bell.order
+                break
+
 
         class_subjects_summary.append(
             {
@@ -170,8 +183,16 @@ def dashboard(request):
                 "subject_name": subject_name,
                 "last_session_number": last_session_num,
                 "last_session_summary": last_summary,
+                "bell_order": today_bell_order,
             }
         )
+
+    today_class_subjects.sort(
+        key=lambda item: (
+            item["bell_order"] is None,
+            item["bell_order"],
+        )
+    )
 
 
 

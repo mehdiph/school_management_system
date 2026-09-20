@@ -1,0 +1,30 @@
+{% load report_tags %}
+<div class="app-topbar">
+  <div class="sidebar-user">
+    <div class="sidebar-user__text">
+      <strong>{{ teacher.name }}</strong>
+      {% if request.user.role == "supervisor" %}
+        <span>پشتیبان {{ request.supervisor.grade.name }}</span>
+      {% elif request.user.role == "student" %}
+        <span>دانش‌آموز {{ school_class }}</span>
+      {% elif request.user.role == "teacher" %}
+        <span>معلم</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="app-topbar__meta">
+    <span class="app-topbar__pill">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9.5h18"></path><path d="M8 3v3M16 3v3"></path></svg>
+      <span>{{ topbar_weekday }} {{ topbar_day|to_persian }} {{ topbar_month }} {{ topbar_year|to_persian }}</span>
+    </span>
+    <span class="app-topbar__pill">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 3.2"></path></svg>
+      <span>{{ current_time|time:"H:i"|to_persian }}</span>
+    </span>
+    <a class="logout-btn" href="{% url 'accounts:logout' %}">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+      <span>خروج از حساب</span>
+    </a>
+  </div>
+</div>
