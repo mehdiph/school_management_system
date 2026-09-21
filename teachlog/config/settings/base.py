@@ -59,9 +59,7 @@ INSTALLED_APPS = [
     'scheduling',
     'staff',
     'student',
-    'django_extensions',
     'attendance',
-    'django_erd_generator',
     'supervisor',
 ]
 

@@ -1,0 +1,6 @@
+-r requirements.txt
+
+django-erd-generator==0.1.7
+django-extensions==4.1
+pydot==4.0.1
+pyparsing==3.3.1
