@@ -44,6 +44,7 @@ def _unique(prefix):
     return f"{prefix}{_counter}"
 
 
+
 def make_user(role):
     username = _unique("user")
     return User.objects.create_user(
