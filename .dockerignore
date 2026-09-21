@@ -1,0 +1,30 @@
+# Version control
+.git
+.gitignore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+**/__pycache__/
+
+# Local database (production uses PostgreSQL, not this file)
+*.sqlite3
+
+# Secrets — passed at runtime via environment variables, never baked into the image
+.env
+.env.*
+!.env.example
+
+# Generated at runtime / build time inside the container, not needed from host
+staticfiles/
+media/
+
+# Editor / tooling
+.vscode/
+.continue/
+docs/
+
+# Misc
+README.md
