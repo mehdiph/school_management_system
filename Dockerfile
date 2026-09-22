@@ -35,11 +35,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy only the requirements file first. Docker caches layers, so if
-# requirements.txt hasn't changed, this layer (and the slow `pip install`)
-# is reused instead of re-run on every code change.
+# Package index. Defaults to PyPI; override at build time where PyPI is
+# unreliable (PIP_INDEX_URL in .env, passed through by docker-compose.yml).
+# Keeping it an ARG means this Dockerfile still works unchanged anywhere
+# PyPI is directly reachable.
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout 60 --retries 10 -r requirements.txt
 
 # Now copy the rest of the project.
 COPY . .
