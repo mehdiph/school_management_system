@@ -48,6 +48,15 @@ RUN pip install --no-cache-dir --timeout 60 --retries 10 -r requirements.txt
 # Now copy the rest of the project.
 COPY . .
 
+# media/ and staticfiles/ are excluded from the build context (.dockerignore),
+# so they don't exist in the image. docker-compose.yml mounts named volumes
+# over both paths: if the directories are missing, Docker creates the mount
+# points as root, and the container — which runs as appuser — then can't write
+# uploads or run collectstatic. Creating them here, BEFORE the chown below,
+# means chown -R covers them and Docker seeds the empty volumes from an
+# appuser-owned directory.
+RUN mkdir -p /app/media /app/staticfiles
+
 # Run as a non-root user inside the container (defense in depth: if the app
 # is ever compromised, it isn't running as root).
 RUN useradd --create-home --uid 1000 appuser && \

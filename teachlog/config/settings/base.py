@@ -172,6 +172,11 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Let Django itself serve MEDIA_URL even when DEBUG is False. Intended for
+# local/container testing only, before Nginx exists to serve the media volume
+# directly. Kept opt-in via env var so it stays off in real production.
+SERVE_MEDIA = os.environ.get('SERVE_MEDIA', 'False') == 'True'
+
 
 # Logging
 # Simple, container-friendly logging: everything goes to the console so it

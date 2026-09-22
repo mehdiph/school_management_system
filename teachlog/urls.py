@@ -14,10 +14,12 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import re
+
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
-from django.conf.urls.static import static
+from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -33,8 +35,19 @@ urlpatterns = [
     path('supervisor/', include('supervisor.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(
-        settings.MEDIA_URL,
-        document_root=settings.MEDIA_ROOT
-    )
+# Serve user uploads (MEDIA_URL) from MEDIA_ROOT through Django.
+#
+# django.conf.urls.static.static() can't be used here: it returns an empty
+# list whenever DEBUG is False, which is exactly the case we need to cover.
+#
+# FOR LOCAL / CONTAINER TESTING ONLY. Serving media through Django is slow
+# and not hardened for untrusted files. In real production Nginx serves
+# MEDIA_URL directly from the media volume and SERVE_MEDIA must stay False.
+if settings.DEBUG or settings.SERVE_MEDIA:
+    urlpatterns += [
+        re_path(
+            r'^%s(?P<path>.*)$' % re.escape(settings.MEDIA_URL.lstrip('/')),
+            serve,
+            {'document_root': settings.MEDIA_ROOT},
+        ),
+    ]

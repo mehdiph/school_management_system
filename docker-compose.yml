@@ -33,8 +33,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
     ports:
       - "8000:8000"
 
 volumes:
   postgres_data:
+  media_data:
+  static_data:
