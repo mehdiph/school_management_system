@@ -80,7 +80,6 @@ ENV DJANGO_SETTINGS_MODULE=teachlog.config.settings.production
 # but this keeps the app usable on its own.
 CMD ["gunicorn", "teachlog.wsgi:application", \
      "--bind", "0.0.0.0:8000", \
-     "--workers", "3", \
      "--worker-class", "gthread", \
      "--threads", "4", \
      "--timeout", "60", \
