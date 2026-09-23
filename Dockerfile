@@ -73,4 +73,16 @@ ENV DJANGO_SETTINGS_MODULE=teachlog.config.settings.production
 # separate commands you run yourself (docker compose exec web ...), per the
 # plan for this phase. We'll automate that later, once it's proven to work
 # manually.
-CMD ["gunicorn", "teachlog.wsgi:application", "--bind", "0.0.0.0:8000"]
+# sync workers block on idle/slow connections, and with a single worker that
+# stalls every other request until the 30s timeout fires. gthread keeps a
+# thread pool per worker, so an idle keep-alive connection no longer blocks
+# the whole process. Nginx will also buffer slow clients once it's in front,
+# but this keeps the app usable on its own.
+CMD ["gunicorn", "teachlog.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "3", \
+     "--worker-class", "gthread", \
+     "--threads", "4", \
+     "--timeout", "60", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
