@@ -19,6 +19,8 @@ services:
     # the internet. Matches the plan's rule: never expose the DB port.
 
   web:
+    ports:
+      - "127.0.0.1:8000:8000"
     build:
       context: .
       args:
@@ -36,8 +38,6 @@ services:
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
-    ports:
-      - "8000:8000"
 
 volumes:
   postgres_data:
