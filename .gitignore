@@ -11,3 +11,4 @@
 .continue/
 staticfiles/
 media/
+certbot/www/.well-known/

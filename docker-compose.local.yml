@@ -1,0 +1,7 @@
+# Laptop-only override, enabled via COMPOSE_FILE in the laptop's .env.
+# Swaps in the HTTP-only Nginx config, since the Let's Encrypt certs the
+# production config points to only exist on the server.
+services:
+  nginx:
+    volumes:
+      - ./nginx/local:/etc/nginx/conf.d:ro
