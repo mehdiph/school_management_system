@@ -85,3 +85,10 @@ SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
 
 # Safe to enable unconditionally, independent of SSL status.
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# Nginx terminates TLS and passes the original scheme in X-Forwarded-Proto.
+# Trusting this header is only safe because the app has no published port:
+# nothing but Nginx can reach it. Needed before SECURE_SSL_REDIRECT is turned
+# on, otherwise Django never sees a request as secure and redirects forever.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

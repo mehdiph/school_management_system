@@ -17,10 +17,21 @@ services:
     # No "ports:" here on purpose — PostgreSQL is reachable only from other
     # containers on this compose network (as "db"), never from the host or
     # the internet. Matches the plan's rule: never expose the DB port.
-
-  web:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
     ports:
-      - "127.0.0.1:8000:8000"
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_data:/app/staticfiles:ro
+      - media_data:/app/media:ro
+      
+  web:
+    expose:
+      - "8000"
     build:
       context: .
       args:
