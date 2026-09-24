@@ -109,10 +109,7 @@ ul {
     align-items: center;
     justify-content: space-between;
     padding: 15px 0;
-    /* Added subtle border and backdrop blur */
     border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(5px);
     box-shadow: 3px 1px 1px 1px rgba(37, 99, 235, 0.1);
     border-radius: 0 0 15px 15px;
     padding: 15px 20px;
@@ -121,10 +118,32 @@ ul {
     z-index: 100;
 }
 
+/* The blur lives on a pseudo-element: backdrop-filter on the header
+   itself would trap position:fixed children (the public nav drawer)
+   inside the header box. */
+.main-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
+}
+
 .logo {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-size: 1.4rem;
     font-weight: 800;
     color: #d86f3b;
+}
+
+.logo__img {
+    display: block;
+    width: auto;
+    max-height: 48px;
 }
 
 .nav-links {
@@ -215,8 +234,6 @@ ul {
 body {
     font-family: 'Vazirmatn', sans-serif;
     color: #333;
-    /* Beautiful Gradient Background */
-    background: linear-gradient(180deg, #f9d55e3d 0%, #fa996541 40%, #65ccff3b 100%);
     background-image: url('/static/icons/background-pattern.svg');
     background-repeat: repeat;
     background-size: 350px 350px;
@@ -393,7 +410,7 @@ textarea.form-control {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    width: 400px;
+    width: min(400px, 100vw - 40px);
     pointer-events: none; /* so clicks pass through container */
     color: white;
   }
@@ -629,6 +646,12 @@ footer {
 }
 
 .footer-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 44px;
+    min-height: 44px;
     font-size: 1.1rem;
     color: #777;
     transition: color 0.3s;
@@ -646,6 +669,13 @@ footer {
     padding-top: 15px;
     width: 100%;
     text-align: center;
+}
+
+/* Lighter, denser decorative pattern on phones. */
+@media (max-width: 575.98px) {
+    body {
+        background-size: 220px 220px;
+    }
 }
 
 /* ===== RESPONSIVE DESIGN (TABLET & DESKTOP) ===== */

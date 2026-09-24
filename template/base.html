@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}سیستم مدیریت معلمان{% endblock %}</title>
+    {% block meta %}{% endblock %}
 
     <!-- Base Styles -->
     <link rel="stylesheet" href="{% static '/css/base.css' %}">
@@ -13,16 +14,21 @@
     <link rel="stylesheet" href="{% static '/css/sidebar.css' %}">
     {% block styles %}{% endblock %}
 </head>
-<!-- Dashboard Header - Custom styled to break out of generic container if needed (handled by CSS negative margins) -->
-<header class="main-header">
-    <a href="{% url 'website:website' %}" class="logo">مدرسه نسل قلم</a>
-    {% block navlinks %}
-        {% include "partials/topbar.html" %}
-    {% endblock navlinks %}
-</header>
 
+<body class="{% block body_class %}{% endblock %}">
+    <header class="main-header">
+        <a href="{% url 'website:website' %}" class="logo">
+            {% if site_settings.logo %}
+                <img src="{{ site_settings.logo_url }}" alt="{{ site_settings.site_name }}" class="logo__img" height="48">
+            {% else %}
+                {{ site_settings.site_name }}
+            {% endif %}
+        </a>
+        {% block navlinks %}
+            {% include "partials/topbar.html" %}
+        {% endblock navlinks %}
+    </header>
 
-<body>
     <div class="app-shell">
         {% block sidebar %}{% endblock %}
     
@@ -46,25 +52,25 @@
                 <footer>
                     <div class="container">
                         <div class="footer-content">
-                            <div class="footer-logo">مدرسه نسل قلم</div>
-                            <div class="footer-links">
-                                <a href="#">اینستاگرام</a>
-                                <a href="#">تلگرام</a>
-                                <a href="#">آپارات</a>
-                                <a href="#">درباره ما</a>
-                                <a href="#">سوالات متداول</a>
-                                <a href="#">تماس با ما</a>
-                            </div>
+                            <div class="footer-logo">{{ site_settings.site_name }}</div>
+                            {% if footer_links %}
+                            <nav class="footer-links" aria-label="لینک‌های فوتر">
+                                {% for link in footer_links %}
+                                <a href="{{ link.url }}"{% if link.opens_externally %} target="_blank" rel="noopener noreferrer"{% endif %}>
+                                    {% if link.icon %}<i class="{{ link.icon }}" aria-hidden="true"></i>{% endif %}
+                                    {{ link.title }}
+                                </a>
+                                {% endfor %}
+                            </nav>
+                            {% endif %}
                         </div>
                         <div class="copyright">
-                            تمامی حقوق برای مدرسه نسل قلم محفوظ است. <br>
-                            Made with &#128151 in Urmia
+                            {{ site_settings.copyright_text }}
+                            {% if site_settings.footer_note %}<br>{{ site_settings.footer_note }}{% endif %}
                         </div>
                     </div>
                 </footer>
             </div>
-    
-            <!-- ===== FOOTER ===== -->
         </div>
     </div>
 

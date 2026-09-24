@@ -2,283 +2,195 @@
 
 {% load static %}
 
-<!-- page title -->
-{% block title %}مدرسه نسل قلم{% endblock title %}
+{% block title %}{{ site_settings.meta_title|default:site_settings.site_name }}{% endblock title %}
 
+{% block meta %}
+{% if site_settings.meta_description %}<meta name="description" content="{{ site_settings.meta_description }}">{% endif %}
+{% endblock meta %}
 
-<!-- navbar links for landing page -->
+{% block body_class %}public-page landing{% endblock %}
+
 {% block navlinks %}
-<nav class="nav-links">
-    <ul>
-        <li><a href="#" class="active">تماس با ما</a></li>
-        <li><a href="#">کلاس ها</a></li>
-        <li><a href="#">معلمان</a></li>
-        <li><a href="#">درباره ما</a></li>
-        <li><a href="#">وبلاگ</a></li>
-        <li><a href="#">مقاله</a></li>
-    </ul>
-</nav>
-{% if request.path != '/auth/login' %}
-<a href="{% url 'accounts:login' %}" class="cta-btn">ورود</a>
-{% endif %}
+{% include "website/partials/public_navbar.html" %}
 {% endblock navlinks %}
 
-
-<!-- link to css -->
 {% block styles %}
-<link rel="stylesheet" href="{% static '/website/css/index.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/nav.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/index.css' %}">
 {% endblock styles %}
 
 
-<!-- main content for landing page -->
 {% block content %}
 
-<!-- ===== MAIN FULL-IMAGE BACKGROUND SLIDER SECTION ===== -->
-<section class="main-slider">
-    <div class="slider-wrapper">
-        
-        <!-- Slide 1: Robotics Background -->
-        <div class="main-slide active" style="background-image: linear-gradient(to left, rgba(220, 132, 87, 0.85) 15%, rgba(249, 214, 94, 0.35) 100%), url('{% static 'website/images/robatic-slider.jpeg' %}');">
+{% if slides %}
+<!-- ===== HERO SLIDER ===== -->
+<section class="main-slider" aria-roledescription="carousel" aria-label="اسلایدر معرفی مدرسه">
+    <div class="slider-wrapper" data-hero-slider>
+        {% for slide in slides %}
+        <div class="main-slide main-slide--{{ slide.overlay_color }}{% if forloop.first %} active{% endif %}"
+             role="group" aria-roledescription="slide" aria-label="اسلاید {{ forloop.counter }} از {{ slides|length }}"
+             {% if not forloop.first %}inert{% endif %}>
+            {% if slide.image_url %}
+            <img class="main-slide__img" src="{{ slide.image_url }}" alt="{{ slide.alt_text }}" width="1600" height="600"
+                 {% if forloop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async">
+            {% endif %}
             <div class="slide-content">
-                <span class="slide-badge">توسعه خلاقیت و مهارت 🤖</span>
-                <h2>کلاس‌های رباتیک و کدنویسی نسل قلم</h2>
-                <p>محیطی تعاملی و عملی برای آشنایی دانش‌آموزان با دنیای برنامه‌نویسی خلاق، ساخت کیت‌های رباتیک و اینترنت اشیاء.</p>
-                <a href="#" class="slide-btn">مشاهده شرایط و ثبت‌نام</a>
+                {% if slide.badge_text or slide.badge_emoji %}
+                <span class="slide-badge">{{ slide.badge_text }} {{ slide.badge_emoji }}</span>
+                {% endif %}
+                <h2>{{ slide.title }}</h2>
+                {% if slide.description %}<p>{{ slide.description|linebreaksbr }}</p>{% endif %}
+                {% if slide.button_text %}
+                <a href="{{ slide.button_url|default:'#' }}" class="slide-btn">{{ slide.button_text }}</a>
+                {% endif %}
             </div>
         </div>
+        {% endfor %}
 
-        <!-- Slide 2: Art and Craft Background -->
-        <div class="main-slide" style="background-image: linear-gradient(to left, rgba(110, 162, 246, 0.684) 15%, rgba(99, 102, 241, 0.35) 100%), url('{% static 'website/images/painting.jpeg' %}');">
-            <div class="slide-content">
-                <span class="slide-badge">کارگاه هنر و رنگ 🎨</span>
-                <h2>پرورش خلاقیت در زنگ هنر و نقاشی</h2>
-                <p>کشف استعدادهای هنری کودکان با استفاده از تکنیک‌های نوین تصویرسازی، کاردستی‌های خلاقانه و بازی با رنگ‌ها.</p>
-                <a href="#" class="slide-btn">گالری آثار دانش‌آموزان</a>
-            </div>
-        </div>
-
-        <!-- Slide 3: Sports and Health Background -->
-        <div class="main-slide" style="background-image: linear-gradient(to left, rgba(118, 192, 167, 0.623) 15%, rgba(20, 184, 166, 0.35) 100%), url('{% static 'website/images/exercise.jpeg' %}');">
-            <div class="slide-content">
-                <span class="slide-badge">پویایی و تندرستی 🏃‍♂️</span>
-                <h2>تربیت بدنی و بازی‌های گروهی پویا</h2>
-                <p>تقویت روحیه تیمی و مهارت‌های حرکتی پایه در سالن‌های ورزشی سرپوشیده و مدرن مدرسه نسل قلم.</p>
-                <a href="#" class="slide-btn">مشاهده امکانات ورزشی</a>
-            </div>
-        </div>
-
-        <!-- دکمه‌های ناوبری اسلایدر -->
-        <button class="slider-arrow prev" id="mainSlidePrev" aria-label="اسلاید قبلی">
-            <i class="fas fa-chevron-right"></i>
+        {% if slides|length > 1 %}
+        <button type="button" class="slider-arrow prev" data-hero-prev aria-label="اسلاید قبلی">
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
         </button>
-        <button class="slider-arrow next" id="mainSlideNext" aria-label="اسلاید بعدی">
-            <i class="fas fa-chevron-left"></i>
+        <button type="button" class="slider-arrow next" data-hero-next aria-label="اسلاید بعدی">
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
         </button>
 
-        <!-- نقاط موقعیت‌نما (Dots) -->
-        <div class="slide-dots" id="mainSlideDots"></div>
+        <div class="slide-dots">
+            {% for slide in slides %}
+            <button type="button" class="slide-dot{% if forloop.first %} active{% endif %}" data-hero-dot="{{ forloop.counter0 }}"
+                    aria-label="نمایش اسلاید {{ forloop.counter }}"{% if forloop.first %} aria-current="true"{% endif %}></button>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 </section>
+{% endif %}
 
-<!-- ===== HERO SECTION ===== -->
+{% if page.show_intro %}
+<!-- ===== INTRO ===== -->
 <section class="hero">
     <div class="hero-image">
-        <div class="badge-icon"><i class="fas fa-graduation-cap"></i></div>
-        <img src="{% static '/website/images/happy_young_boy.png'%}" alt="دانش آموزان مدرسه" style="background-color: #e5c3ae;">
+        <div class="badge-icon" aria-hidden="true"><i class="fas fa-graduation-cap"></i></div>
+        <img src="{{ page.intro_image_url }}" alt="{{ page.intro_image_alt|default:page.intro_title }}"
+             width="700" height="700"{% if slides %} loading="lazy"{% endif %} decoding="async">
     </div>
-    
+
     <div class="hero-content">
-        <h1>آینده‌ای درخشان برای <br> فرزند شما در مدرسه نسل قلم</h1>
-        <p>ما با ایجاد محیطی شاد، خلاق و امن، اشتیاق به یادگیری را در کودکان پرورش می‌دهیم تا با اعتماد به نفس برای چالش‌های فردا آماده شوند.</p>
+        <h1>{{ page.intro_title|linebreaksbr }}</h1>
+        {% if page.intro_text %}<p>{{ page.intro_text|linebreaksbr }}</p>{% endif %}
+        {% if page.intro_primary_text or page.intro_secondary_text %}
         <div class="hero-buttons">
-            <a href="#" class="btn-primary">ثبت نام کنید</a>
-            <a href="#" class="btn-outline">بازدید از مدرسه</a>
+            {% if page.intro_primary_text %}
+            <a href="{{ page.intro_primary_url|default:'#' }}" class="intro-btn intro-btn--primary">{{ page.intro_primary_text }}</a>
+            {% endif %}
+            {% if page.intro_secondary_text %}
+            <a href="{{ page.intro_secondary_url|default:'#' }}" class="intro-btn intro-btn--outline">{{ page.intro_secondary_text }}</a>
+            {% endif %}
         </div>
+        {% endif %}
     </div>
 </section>
+{% endif %}
 
-<!-- ===== FEATURES SECTION ===== -->
+{% if features %}
+<!-- ===== WHY US ===== -->
 <section class="features">
-    <h2>چرا مدرسه نسل قلم؟</h2>
-    <p class="features-subtitle">ما با بهره‌گیری از جدیدترین متدهای آموزشی و محیطی پویا، استعدادهای نهفته کودکان را کشف و شکوفا می‌کنیم.</p>
+    <h2>{{ page.features_title }}</h2>
+    {% if page.features_subtitle %}<p class="features-subtitle">{{ page.features_subtitle|linebreaksbr }}</p>{% endif %}
 
     <div class="features-grid">
-        <!-- Card 1 -->
-        <div class="feature-card">
-            <div class="feature-icon icon-yellow">
-                <img src="{% static '/website/images/robotic.jpg'%}" alt="">
+        {% for card in features %}
+        <article class="feature-card">
+            <div class="feature-icon {% cycle 'icon-yellow' 'icon-orange' 'icon-blue' %}">
+                {% if card.image_url %}
+                <img src="{{ card.image_url }}" alt="{{ card.alt_text }}" width="400" height="400" loading="lazy" decoding="async">
+                {% endif %}
             </div>
-            <h4>رباتیک و برنامه نویسی</h4>
-            <p>آموزش جذاب و کاربردی علوم کامپیوتر از سنین پایین برای تقویت تفکر منطقی و حل مسئله در دانش‌آموزان</p>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="feature-card">
-            <div class="feature-icon icon-orange">
-                <img src="{% static '/website/images/hooshmand.jpg'%}" alt="">
-            </div>
-            <h4>کلاس‌های هوشمند</h4>
-            <p>تجهیزات مدرن و تکنولوژی‌های آموزشی روز برای یادگیری تعاملی و جذاب دروس مختلف</p>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="feature-card">
-            <div class="feature-icon icon-blue">
-                <img src="{% static '/website/images/teacher.jpg'%}" alt="">
-            </div>
-            <h4>معلمان مجرب</h4>
-            <p>کادر آموزشی متخصص و با سابقه که با عشق و حوصله، مسیر یادگیری را برای کودکان هموار می‌کنند</p>
-        </div>
+            <h3>{{ card.title }}</h3>
+            {% if card.description %}<p>{{ card.description|linebreaksbr }}</p>{% endif %}
+        </article>
+        {% endfor %}
     </div>
 </section>
+{% endif %}
 
-<!-- ===== NEW "LEARNING" SECTION (STUDENT IMAGE) ===== -->
+{% if learning_points %}
+<!-- ===== ACTIVE LEARNING ===== -->
 <section class="learning-section">
-    <div class="container">
-        <div class="learning-wrapper">
-            <!-- Left Side: Image Blob -->
-            <div class="learning-left">
-                <div class="image-blob">
-                    <img src="{% static '/website/images/giraffe.png'%}" alt="دانش آموز شاد">
-                </div>
+    <div class="learning-wrapper">
+        <div class="learning-left">
+            <div class="image-blob">
+                <img src="{{ page.learning_image_url }}" alt="{{ page.learning_image_alt|default:page.learning_title }}"
+                     width="700" height="640" loading="lazy" decoding="async">
             </div>
+        </div>
 
-            <!-- Right Side: Content -->
-            <div class="learning-right">
-                <h2 class="learning-title">یادگیری فعال، ارتباط با اعتماد به نفس</h2>
-                <p class="learning-desc">ما به کودکان کمک می‌کنیم تا با روش‌های خلاقانه و تعاملی، مهارت‌های لازم برای آینده را کسب کنند.</p>
-                
-                <div class="learning-items">
-                    <div class="learning-item">
-                        <div class="item-icon icon-yellow-item"><i class="fas fa-crown"></i></div>
-                        <div>
-                            <h5>برنامه های خلاقانه</h5>
-                            <p>بازی های آموزشی و سرگرم کننده</p>
-                        </div>
-                    </div>
-                    <div class="learning-item">
-                        <!-- <div class="item-icon icon-blue-item"><i class="fas fa-book-open"></i></div> -->
-                        <div>
-                            <h5>یادگیری آسان</h5>
-                            <p>روش های نوین و جذاب تدریس</p>
-                        </div>
-                    </div>
-                    <div class="learning-item">
-                        <!-- <div class="item-icon icon-blue-item"><i class="fas fa-book-open"></i></div> -->
-                        <div>
-                            <h5>یادگیری آسان</h5>
-                            <p>روش های نوین و جذاب تدریس</p>
-                        </div>
-                    </div>
-                    <div class="learning-item">
-                        <!-- <div class="item-icon icon-blue-item"><i class="fas fa-book-open"></i></div> -->
-                        <div>
-                            <h5>یادگیری آسان</h5>
-                            <p>روش های نوین و جذاب تدریس</p>
-                        </div>
-                    </div>
-                </div>
-                
+        <div class="learning-right">
+            <h2 class="learning-title">{{ page.learning_title }}</h2>
+            {% if page.learning_subtitle %}<p class="learning-desc">{{ page.learning_subtitle|linebreaksbr }}</p>{% endif %}
 
-                
-            </div>
-
-            <!-- Cute Giraffe Illustration -->
-            <div class="giraffe-wrapper">
-                <!-- <img src="https://img.freepik.com/premium-photo/cartoon-giraffe-isolated-white-background_945705-43.jpg?w=200" alt="زرافه بامزه"> -->
-            </div>
+            <ul class="learning-items">
+                {% for point in learning_points %}
+                <li class="learning-item">
+                    {% if point.icon_url %}
+                    <span class="item-icon item-icon--image" aria-hidden="true">
+                        <img src="{{ point.icon_url }}" alt="" width="45" height="45" loading="lazy">
+                    </span>
+                    {% elif point.icon_emoji %}
+                    <span class="item-icon" aria-hidden="true">{{ point.icon_emoji }}</span>
+                    {% endif %}
+                    <div>
+                        <h3>{{ point.title }}</h3>
+                        {% if point.subtitle %}<p>{{ point.subtitle }}</p>{% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
 </section>
+{% endif %}
 
-    <!-- ===== EXPERT INSTRUCTORS SECTION (SLIDER) ===== -->
+{% if teachers %}
+<!-- ===== TEACHERS SLIDER ===== -->
 <section class="instructors-section">
-    <div class="container">
+    <div class="instructors-box">
         <div class="instructors-header">
-            <h2>اساتید مجرب ما</h2>
-            <p>با اساتید متخصص و متعهد مدرسه پیشرو آشنا شوید</p>
+            <h2>{{ page.teachers_title }}</h2>
+            {% if page.teachers_subtitle %}<p>{{ page.teachers_subtitle|linebreaksbr }}</p>{% endif %}
         </div>
 
-        <div class="slider-container">
-            <button class="slider-btn prev-btn" id="prevBtn" aria-label="معلم قبلی">
-                <i class="fas fa-chevron-right"></i>
+        <div class="slider-container" data-teacher-slider>
+            <button type="button" class="slider-btn" data-teacher-prev aria-label="استاد قبلی">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
             </button>
-            
-            <div class="instructors-grid-wrapper">
-                <div class="instructors-grid" id="instructorGrid">
-                    <!-- Instructor 1 -->
-                    <div class="instructor-card">
-                        <div class="instructor-img-wrapper bg-teal">
-                            <!-- <img src="https://img.freepik.com/free-photo/portrait-smiling-young-man_23-2147664899.jpg?size=626&ext=jpg" alt="علی رضایی"> -->
-                        </div>
-                        <h4>علی رضایی</h4>
-                        <span class="instructor-role">استاد ریاضی</span>
-                        <div class="social-icons">
-                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
-                            <a href="#"><i class="fab fa-twitter"></i></a>
-                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
-                        </div>
-                    </div>
 
-                    <!-- Instructor 2 -->
-                    <div class="instructor-card">
-                        <div class="instructor-img-wrapper bg-blue">
-                            <!-- <img src="https://img.freepik.com/free-photo/handsome-young-man-holding-books_23-2147664888.jpg?size=626&ext=jpg" alt="سعید محمدی"> -->
-                        </div>
-                        <h4>سعید محمدی</h4>
-                        <span class="instructor-role">استاد علوم</span>
-                        <div class="social-icons">
-                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
-                            <a href="#"><i class="fab fa-twitter"></i></a>
-                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
-                        </div>
+            <ul class="instructors-grid" data-teacher-track tabindex="0" aria-label="{{ page.teachers_title }}">
+                {% for card in teachers %}
+                <li class="instructor-card">
+                    <div class="instructor-img-wrapper {% cycle 'bg-teal' 'bg-blue' 'bg-pink' %}">
+                        {% if card.photo_url %}
+                        <img src="{{ card.photo_url }}" alt="{{ card.display_name }}" width="390" height="450" loading="lazy" decoding="async">
+                        {% endif %}
                     </div>
+                    <h3>{{ card.display_name }}</h3>
+                    {% if card.display_specialty %}<span class="instructor-role">{{ card.display_specialty }}</span>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
 
-                    <!-- Instructor 3 -->
-                    <div class="instructor-card">
-                        <div class="instructor-img-wrapper bg-pink">
-                            <!-- <img src="https://img.freepik.com/free-photo/portrait-young-beautiful-woman_23-2147664910.jpg?size=626&ext=jpg" alt="ماریا کریمی"> -->
-                        </div>
-                        <h4>ماریا کریمی</h4>
-                        <span class="instructor-role">استاد زبان</span>
-                        <div class="social-icons">
-                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
-                            <a href="#"><i class="fab fa-twitter"></i></a>
-                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
-                        </div>
-                    </div>
-                    
-                    <!-- Instructor 4 (Extra for demonstration) -->
-                    <div class="instructor-card">
-                        <div class="instructor-img-wrapper bg-teal">
-                            <!-- <img src="https://img.freepik.com/free-photo/happy-young-female-student-holding-notebooks-from-courses-smiling-camera-standing-spring-clothes-against-blue-background_1258-70161.jpg?size=626&ext=jpg" alt="ندا حسینی"> -->
-                        </div>
-                        <h4>ندا حسینی</h4>
-                        <span class="instructor-role">استاد هنر</span>
-                        <div class="social-icons">
-                            <!-- <a href="#"><i class="fab fa-instagram"></i></a>
-                            <a href="#"><i class="fab fa-twitter"></i></a>
-                            <a href="#"><i class="fab fa-linkedin-in"></i></a> -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <button class="slider-btn next-btn" id="nextBtn" aria-label="معلم بعدی">
-                <i class="fas fa-chevron-left"></i>
+            <button type="button" class="slider-btn" data-teacher-next aria-label="استاد بعدی">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i>
             </button>
         </div>
     </div>
 </section>
+{% endif %}
 
-
-</div>
 {% endblock content %}
 
 
-{% block scripts %} 
-<script src="{% static '/website/js/slider.js' %}" ></script>
-<script src="{% static '/website/js/index.js' %}" ></script>
+{% block scripts %}
+<script src="{% static 'website/js/nav.js' %}"></script>
+<script src="{% static 'website/js/slider.js' %}"></script>
 {% endblock scripts %}
-
-

@@ -1,0 +1,35 @@
+{% comment %}
+Public navbar (landing + login pages). Needs website/css/nav.css and
+website/js/nav.js; below 992px the menu becomes a drawer driven by nav.js.
+{% endcomment %}
+{% url "accounts:login" as default_login_url %}
+{% with login_url=site_settings.login_url|default:default_login_url view_name=request.resolver_match.view_name %}
+<div class="public-nav">
+    <nav class="public-nav__panel" id="public-nav-panel" aria-label="منوی اصلی">
+        <ul class="public-nav__list">
+            {% for item in nav_items %}
+            <li>
+                <a href="{{ item.url }}" class="public-nav__link{% if item.url == request.path %} is-active{% endif %}"
+                   {% if item.url == request.path %}aria-current="page"{% endif %}
+                   {% if item.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.title }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% if view_name != "accounts:login" %}
+        <a href="{{ login_url }}" class="cta-btn public-nav__login public-nav__login--drawer">{{ site_settings.login_text }}</a>
+        {% endif %}
+    </nav>
+
+    {% if view_name != "accounts:login" %}
+    <a href="{{ login_url }}" class="cta-btn public-nav__login public-nav__login--bar">{{ site_settings.login_text }}</a>
+    {% endif %}
+
+    <button type="button" class="nav-toggle" aria-label="باز کردن منو" aria-expanded="false" aria-controls="public-nav-panel"
+            data-label-open="باز کردن منو" data-label-close="بستن منو">
+        <span class="nav-toggle__bar" aria-hidden="true"></span>
+        <span class="nav-toggle__bar" aria-hidden="true"></span>
+        <span class="nav-toggle__bar" aria-hidden="true"></span>
+    </button>
+    <div class="nav-overlay" data-nav-overlay hidden></div>
+</div>
+{% endwith %}

@@ -1,0 +1,211 @@
+/* ==========================================================================
+   Public navbar (landing + login): inline menu from 992px, drawer below.
+   Markup: website/templates/website/partials/public_navbar.html
+   ========================================================================== */
+
+:root {
+    --nav-accent: #d86f3b;
+    --nav-text: #555;
+    --nav-drawer-width: min(80vw, 320px);
+    --nav-speed: 0.3s;
+    --touch-size: 44px;
+}
+
+/* base.css gives every header a fixed 100px height below 768px (for the
+   dashboards' topbar); the public header sizes to its content. */
+.public-page .main-header {
+    height: auto;
+    gap: 12px;
+    padding-block: clamp(10px, 1.5vw, 15px);
+    padding-inline: clamp(16px, 3vw, 20px);
+}
+
+/* Children join the header's flex row directly, so on desktop the logo,
+   menu and login button are spread exactly as before. */
+.public-nav {
+    display: contents;
+}
+
+.public-nav__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.public-nav__link {
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-size);
+    min-width: var(--touch-size);
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--nav-text);
+    transition: color 0.2s;
+}
+
+.public-nav__link:hover,
+.public-nav__link.is-active {
+    color: var(--nav-accent);
+}
+
+.public-nav__login {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-size);
+    white-space: nowrap;
+}
+
+.public-nav__login--bar {
+    margin-inline-start: auto;
+}
+
+.public-nav a:focus-visible,
+.nav-toggle:focus-visible {
+    outline: 3px solid var(--nav-accent);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+/* ----- Hamburger button ----- */
+.nav-toggle {
+    position: relative;
+    z-index: 3;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: var(--touch-size);
+    height: var(--touch-size);
+    flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--nav-accent);
+    cursor: pointer;
+}
+
+.nav-toggle__bar {
+    display: block;
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transition: transform var(--nav-speed), opacity var(--nav-speed);
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(2) {
+    opacity: 0;
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ----- Drawer (below 992px) ----- */
+@media (max-width: 991.98px) {
+    .public-nav__panel {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-start: 0; /* right edge in RTL */
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: var(--nav-drawer-width);
+        padding: 80px 24px 24px;
+        overflow-y: auto;
+        background: #fff;
+        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.12);
+        transform: translateX(100%);
+        visibility: hidden;
+        transition: transform var(--nav-speed) ease, visibility 0s linear var(--nav-speed);
+    }
+
+    .public-nav__panel.is-open {
+        transform: translateX(0);
+        visibility: visible;
+        transition: transform var(--nav-speed) ease;
+    }
+
+    .public-nav__list li + li {
+        border-top: 1px solid #f1e6de;
+    }
+
+    .nav-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        background: rgba(30, 20, 10, 0.45);
+        opacity: 0;
+        transition: opacity var(--nav-speed);
+    }
+
+    .nav-overlay.is-visible {
+        opacity: 1;
+    }
+
+    /* Login sits next to the hamburger when there is room... */
+    .public-nav__login--drawer {
+        display: none;
+    }
+}
+
+/* ...and moves into the drawer on the narrowest phones. */
+@media (max-width: 359.98px) {
+    .public-nav__login--bar {
+        display: none;
+    }
+
+    .public-nav__login--drawer {
+        display: inline-flex;
+    }
+
+    .nav-toggle {
+        margin-inline-start: auto;
+    }
+}
+
+/* Body scroll lock while the drawer is open. */
+html.nav-locked,
+html.nav-locked body {
+    overflow: hidden;
+}
+
+/* ----- Desktop ----- */
+@media (min-width: 992px) {
+    /* Centered between logo and login button, like the old
+       space-between row -- also when the login button is absent. */
+    .public-nav__panel {
+        margin-inline: auto;
+    }
+
+    .public-nav__list {
+        flex-direction: row;
+        gap: 25px;
+    }
+
+    .public-nav__login--bar {
+        margin-inline-start: 0;
+    }
+
+    .public-nav__login--drawer,
+    .nav-toggle,
+    .nav-overlay {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-nav__panel,
+    .public-nav__panel.is-open,
+    .nav-overlay,
+    .nav-toggle__bar {
+        transition: none;
+    }
+}

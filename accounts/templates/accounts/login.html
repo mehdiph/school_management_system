@@ -3,25 +3,14 @@
 {% load static %}
 
 {% block styles %}
+<link rel="stylesheet" href="{% static 'website/css/nav.css' %}">
 <link rel="stylesheet" href="{% static 'accounts/css/login.css' %}">
 {% endblock %}
 
+{% block body_class %}public-page{% endblock %}
+
 {% block navlinks %}
-<nav class="nav-links">
-    <ul>
-        <li><a href="#" class="active">تماس با ما</a></li>
-        <li><a href="#">کلاس ها</a></li>
-        <li><a href="#">معلمان</a></li>
-        <li><a href="#">درباره ما</a></li>
-        <li><a href="#">وبلاگ</a></li>
-        <li><a href="#">مقاله</a></li>
-    </ul>
-</nav>
-{% if request.path == '/auth/login/' %}
-<a href="#"></a>
-{% else %}
-<a href="{% url 'accounts:login' %}" class="cta-btn">ورود</a>
-{% endif %}
+{% include "website/partials/public_navbar.html" %}
 {% endblock navlinks %}
 
 {% block content %}
@@ -96,5 +85,6 @@
 {% endblock %}
 
 {% block scripts %}
+    <script src="{% static 'website/js/nav.js' %}"></script>
     <script src="{% static 'accounts/js/login.js' %}"></script>
 {% endblock scripts %}
