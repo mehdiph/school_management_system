@@ -1,4 +1,7 @@
 from django.contrib import admin
+
+from core.admin import BranchScopedAdminMixin
+
 from .models.student_profile import StudentProfile
 from .models.student_enrollment import StudentEnrollment
 
@@ -15,10 +18,29 @@ class StudentProfileAdmin(admin.ModelAdmin):
 
 
 @admin.register(StudentEnrollment)
-class StudentEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ['student', 'school_class', 'status', 'enrollment_date', 'academic_year']
+class StudentEnrollmentAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
+    branch_lookup = "school_class__branch"
+
+    related_branch_lookups = {
+        "school_class": "branch",
+    }
+
+    list_display = ['student', 'school_class', 'branch', 'status', 'enrollment_date', 'academic_year']
+    list_filter = ['status', 'school_class__branch', 'academic_year']
     search_fields = [
         'student__user__first_name',
         'student__user__last_name',
         'student__student_code',
     ]
+
+    list_select_related = [
+        'student',
+        'student__user',
+        'school_class',
+        'school_class__branch',
+        'academic_year',
+    ]
+
+    @admin.display(description='شعبه')
+    def branch(self, obj):
+        return obj.school_class.branch

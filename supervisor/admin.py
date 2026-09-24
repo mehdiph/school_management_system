@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib import admin
 
+from core.admin import BranchScopedAdminMixin
+
 from .models import SupervisorClass, SupervisorProfile
 
 
@@ -42,7 +44,13 @@ class SupervisorClassAdminForm(forms.ModelForm):
 
 
 @admin.register(SupervisorProfile)
-class SupervisorProfileAdmin(admin.ModelAdmin):
+class SupervisorProfileAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
+
+    branch_lookup = "branch"
+
+    related_branch_lookups = {
+        "branch": "",
+    }
 
     form = SupervisorProfileAdminForm
 
@@ -77,7 +85,14 @@ class SupervisorProfileAdmin(admin.ModelAdmin):
 
 
 @admin.register(SupervisorClass)
-class SupervisorClassAdmin(admin.ModelAdmin):
+class SupervisorClassAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
+
+    branch_lookup = "school_class__branch"
+
+    related_branch_lookups = {
+        "supervisor": "branch",
+        "school_class": "branch",
+    }
 
     form = SupervisorClassAdminForm
 

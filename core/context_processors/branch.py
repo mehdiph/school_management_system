@@ -22,7 +22,7 @@ def branch_context(request):
 
     context["available_branches"] = (
         BranchService
-        .get_available_branches(request.user)
+        .get_available_branches(request.user, request=request)
     )
 
     return context

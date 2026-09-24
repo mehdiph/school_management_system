@@ -2,11 +2,20 @@ from django.contrib import admin
 from django_jalali.admin.filters import JDateFieldListFilter
 import django_jalali.admin as jadmin
 
+from core.admin import BranchScopedAdminMixin
+
 from .models import Attendance
 
 
 @admin.register(Attendance)
-class AttendanceAdmin(admin.ModelAdmin):
+class AttendanceAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
+    branch_lookup = "session__class_subject__school_class__branch"
+
+    related_branch_lookups = {
+        "session": "class_subject__school_class__branch",
+        "student_enrollment": "school_class__branch",
+    }
+
     list_display = (
         "get_student_name",
         "session",

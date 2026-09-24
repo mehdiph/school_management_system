@@ -76,6 +76,20 @@ class TeacherAssignment(models.Model):
             )
         ]
 
+        indexes = [
+            # Supports the "which branches does this teacher currently
+            # teach in" lookup that ``core.services.access`` runs on
+            # every branch-scoped request.
+            models.Index(
+                fields=[
+                    "teacher",
+                    "academic_year",
+                    "status",
+                ],
+                name="teacher_assign_active_idx",
+            )
+        ]
+
     def __str__(self):
         return (
             f"{self.teacher.staff.user.get_full_name()} | "

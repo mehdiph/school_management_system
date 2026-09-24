@@ -1,10 +1,19 @@
 from django.contrib import admin
 from django_jalali.admin.filters import JDateFieldListFilter
+
+from core.admin import BranchScopedAdminMixin
+
 from .models import SchoolSession, SessionContent
 
 
 @admin.register(SchoolSession)
-class SchoolSessionAdmin(admin.ModelAdmin):
+class SchoolSessionAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
+    branch_lookup = "class_subject__school_class__branch"
+
+    related_branch_lookups = {
+        "class_subject": "school_class__branch",
+    }
+
     list_display = ('get_session_name', 'class_subject', 'date', 'session_number', 'status', 'created_at')
     list_filter = (
         ('date', JDateFieldListFilter),
@@ -15,9 +24,8 @@ class SchoolSessionAdmin(admin.ModelAdmin):
     search_fields = (
         'class_subject__subject__name',
         'class_subject__school_class__section',
-        'class_subject__teacher__username',
-        'class_subject__teacher__first_name',
-        'class_subject__teacher__last_name',
+        'class_subject__teacher_assignment__teacher__staff__user__first_name',
+        'class_subject__teacher_assignment__teacher__staff__user__last_name',
         'session_number'
     )
     list_editable = ('status',)
@@ -39,7 +47,13 @@ class SchoolSessionAdmin(admin.ModelAdmin):
 
 
 @admin.register(SessionContent)
-class SessionContentAdmin(admin.ModelAdmin):
+class SessionContentAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
+    branch_lookup = "session__class_subject__school_class__branch"
+
+    related_branch_lookups = {
+        "session": "class_subject__school_class__branch",
+    }
+
     list_display = ('get_content_title', 'session', 'title', 'created_at')
     list_filter = (
         ('created_at', JDateFieldListFilter),

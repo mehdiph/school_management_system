@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django_jalali.db import models as jmodels
 from core.managers.school import ClassSubjectManager
@@ -43,6 +44,42 @@ class ClassSubject(models.Model):
         default=True,
         verbose_name="فعال",
     )
+
+    def clean(self):
+        """
+        A teacher may only be given a class/subject through an
+        assignment that actually belongs to that class's branch *and*
+        academic year.
+
+        Without this, an admin can pick any assignment in the dropdown
+        and silently produce a row where the teacher teaches in a branch
+        (or a year) they were never assigned to -- which then leaks into
+        every branch-scoped query built on ``ClassSubject``.
+        """
+
+        super().clean()
+
+        if not self.teacher_assignment_id or not self.school_class_id:
+            return
+
+        messages = []
+
+        if self.teacher_assignment.branch_id != self.school_class.branch_id:
+            messages.append(
+                "شعبه‌ی انتساب معلم با شعبه‌ی کلاس یکسان نیست "
+                f"(انتساب: {self.teacher_assignment.branch}، "
+                f"کلاس: {self.school_class.branch})."
+            )
+
+        if self.teacher_assignment.academic_year_id != self.school_class.year_id:
+            messages.append(
+                "سال تحصیلی انتساب معلم با سال تحصیلی کلاس یکسان نیست "
+                f"(انتساب: {self.teacher_assignment.academic_year}، "
+                f"کلاس: {self.school_class.year})."
+            )
+
+        if messages:
+            raise ValidationError({"teacher_assignment": messages})
 
     @property
     def icon(self):
