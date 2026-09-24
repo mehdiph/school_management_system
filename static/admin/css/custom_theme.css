@@ -1,0 +1,270 @@
+/*
+ * مدرسه نسل قلم — Django admin theme
+ * ---------------------------------------------------------------------------
+ * Loaded from template/admin/base_site.html via {% block extrastyle %}, i.e.
+ * after admin/css/base.css and admin/css/dark_mode.css.
+ *
+ * This file redefines Django's OWN CSS custom properties rather than
+ * overriding its selectors, so every admin screen (list, form, delete
+ * confirmation, login, popups, date/time widgets) picks the palette up for
+ * free and future Django upgrades keep working.
+ *
+ * Palette source: static/css/base.css (the site's :root). Where a site colour
+ * did not reach 4.5:1 against its foreground, the next darker token from the
+ * same palette is used instead — see the comments on --header-bg and --primary.
+ *
+ * Specificity note: Django's base.css declares its (blue) palette on
+ * `html[data-theme="light"], :root`. `html[data-theme="light"]` is (0,1,1), so
+ * the light block below must use that same selector too — a bare `:root`
+ * (0,1,0) loses whenever the theme toggle has set data-theme="light".
+ *
+ * Because this file loads AFTER dark_mode.css, a plain `:root { ... }` block
+ * here would beat Django's dark values and break the theme switch. The dark blocks below therefore use `:root:not([data-theme="light"])`
+ * (0,2,0) and `html[data-theme="dark"]` (0,1,1), both of which outrank the
+ * plain `:root` (0,1,0) above them.
+ */
+
+/* ===========================================================================
+   FONT — the site's own Vazirmatn, served from this project's static files.
+   Path is relative to this stylesheet (static/admin/css/ -> static/fonts/),
+   so it resolves under any STATIC_URL and after collectstatic.
+   =========================================================================== */
+
+@font-face {
+    font-family: "Vazirmatn";
+    src: url("../../fonts/Vazirmatn-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ===========================================================================
+   LIGHT THEME
+   =========================================================================== */
+
+html[data-theme="light"],
+:root {
+    /* --- brand ---------------------------------------------------------- */
+    /* The site's --primary (#d96a30) reaches only 3.47:1 against white, so
+       anything that carries white text uses --primary-darker (#A8552A,
+       5.26:1) and --secondary goes one step darker still (6.79:1). */
+    --primary: #A8552A;
+    --secondary: #8F4722;
+    --accent: #f8ede7;          /* site --primary-lighter; 4.57:1 on the header */
+    --primary-fg: #fff;
+
+    /* --- body ----------------------------------------------------------- */
+    --body-fg: #333;            /* site body colour */
+    --body-bg: #fff;
+    --body-quiet-color: #6b7280;    /* site --gray-500 */
+    --body-medium-color: #4b5563;   /* site --gray-600 */
+    --body-loud-color: #1f2937;     /* site --gray-800 */
+
+    /* --- header --------------------------------------------------------- */
+    --header-color: #FCF3EC;        /* 4.80:1 on the header */
+    --header-branding-color: var(--accent);
+    --header-bg: #A8552A;
+    --header-link-color: var(--primary-fg);
+
+    /* --- breadcrumbs ---------------------------------------------------- */
+    --breadcrumbs-fg: #F0DACB;      /* 5.04:1 on --breadcrumbs-bg */
+    --breadcrumbs-link-fg: #fff;    /* 6.79:1 */
+    --breadcrumbs-bg: #8F4722;
+
+    /* --- links ---------------------------------------------------------- */
+    --link-fg: #A8552A;             /* 5.26:1 on white */
+    --link-hover-color: #7A3C1D;    /* 8.43:1 */
+    --link-selected-fg: #8F4722;    /* 6.79:1 */
+
+    /* --- lines and surfaces --------------------------------------------- */
+    --hairline-color: #F3E7DC;
+    --border-color: #D9C0AC;
+    --darkened-bg: #FFF8F3;         /* site --card-bg */
+    --selected-bg: #F3E4DA;
+    --selected-row: #f8ede7;        /* site --primary-lighter */
+
+    /* --- state ---------------------------------------------------------- */
+    --error-fg: #C0392B;            /* site --danger-text; 5.44:1 on white */
+    --message-success-bg: #E7F4E8;  /* site --success-bg */
+    --message-warning-bg: #FFF3E2;  /* site --warning-bg */
+    --message-error-bg: #FBEAEA;    /* site --danger-bg */
+    --message-info-bg: #E8F1F8;
+
+    /* --- buttons -------------------------------------------------------- */
+    --button-fg: #fff;
+    --button-bg: #A8552A;
+    --button-hover-bg: #8F4722;
+    --default-button-bg: #8F4722;
+    --default-button-hover-bg: #A8552A;
+    --close-button-bg: #6b7280;     /* site --gray-500 */
+    --close-button-hover-bg: #374151;
+    --delete-button-bg: #C0392B;
+    --delete-button-hover-bg: #A32E22;
+
+    /* --- object tools (the "افزودن" button) ------------------------------ */
+    --object-tools-fg: var(--button-fg);
+    --object-tools-bg: #A8552A;
+    --object-tools-hover-bg: #8F4722;
+
+    /* --- type ----------------------------------------------------------- */
+    --font-family-primary:
+        "Vazirmatn",
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        Tahoma,
+        sans-serif;
+
+    color-scheme: light;
+}
+
+/* ===========================================================================
+   DARK THEME
+   Warm near-black instead of Django's neutral #121212, so the brand hue
+   carries over. Both selectors below outrank the plain :root above.
+   =========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary: #4A2616;
+        --secondary: #A8552A;
+        --accent: #FFD3AE;          /* 9.61:1 on the dark header, 9.14:1 under #333 */
+        --primary-fg: #F7F1EC;
+
+        --body-fg: #F2EAE4;         /* 15.2:1 on --body-bg */
+        --body-bg: #1A1512;
+        --body-quiet-color: #C9BDB4;
+        --body-medium-color: #DCD2CA;
+        --body-loud-color: #FFFFFF;
+
+        --header-color: #FFD3AE;
+        --header-bg: #4A2616;
+        --header-link-color: var(--primary-fg);
+
+        --breadcrumbs-fg: #E3CDBC;
+        --breadcrumbs-link-fg: #F2EAE4;
+        --breadcrumbs-bg: #2E1A10;
+
+        --link-fg: #F0A06A;         /* 8.57:1 on --body-bg */
+        --link-hover-color: #F7BE95;
+        --link-selected-fg: #F0A06A;
+
+        --hairline-color: #2A211C;
+        --border-color: #4A3B32;
+
+        --darkened-bg: #221B17;
+        --selected-bg: #241C17;
+        --selected-row: #3A2418;
+
+        --error-fg: #F08A80;
+        --message-success-bg: #14361B;
+        --message-warning-bg: #45300F;
+        --message-error-bg: #4A1A17;
+        --message-info-bg: #14304A;
+
+        --button-bg: #8F4722;
+        --button-hover-bg: #A8552A;
+        --default-button-bg: #A8552A;
+        --default-button-hover-bg: #8F4722;
+        --close-button-bg: #3B332E;
+        --close-button-hover-bg: #574C44;
+        --delete-button-bg: #A32E22;
+        --delete-button-hover-bg: #C0392B;
+
+        --object-tools-bg: #A8552A;
+        --object-tools-hover-bg: #8F4722;
+
+        color-scheme: dark;
+    }
+}
+
+html[data-theme="dark"] {
+    --primary: #4A2616;
+    --secondary: #A8552A;
+    --accent: #FFD3AE;
+    --primary-fg: #F7F1EC;
+
+    --body-fg: #F2EAE4;
+    --body-bg: #1A1512;
+    --body-quiet-color: #C9BDB4;
+    --body-medium-color: #DCD2CA;
+    --body-loud-color: #FFFFFF;
+
+    --header-color: #FFD3AE;
+    --header-bg: #4A2616;
+    --header-link-color: var(--primary-fg);
+
+    --breadcrumbs-fg: #E3CDBC;
+    --breadcrumbs-link-fg: #F2EAE4;
+    --breadcrumbs-bg: #2E1A10;
+
+    --link-fg: #F0A06A;
+    --link-hover-color: #F7BE95;
+    --link-selected-fg: #F0A06A;
+
+    --hairline-color: #2A211C;
+    --border-color: #4A3B32;
+
+    --darkened-bg: #221B17;
+    --selected-bg: #241C17;
+    --selected-row: #3A2418;
+
+    --error-fg: #F08A80;
+    --message-success-bg: #14361B;
+    --message-warning-bg: #45300F;
+    --message-error-bg: #4A1A17;
+    --message-info-bg: #14304A;
+
+    --button-bg: #8F4722;
+    --button-hover-bg: #A8552A;
+    --default-button-bg: #A8552A;
+    --default-button-hover-bg: #8F4722;
+    --close-button-bg: #3B332E;
+    --close-button-hover-bg: #574C44;
+    --delete-button-bg: #A32E22;
+    --delete-button-hover-bg: #C0392B;
+
+    --object-tools-bg: #A8552A;
+    --object-tools-hover-bg: #8F4722;
+
+    color-scheme: dark;
+}
+
+/* ===========================================================================
+   A few rules that no variable covers.
+   Kept deliberately small — everything above is variables only.
+   =========================================================================== */
+
+/* Django hardcodes its font stack on these two, so the variable alone
+   doesn't reach them. */
+body,
+input, select, textarea, button,
+.button, input[type=submit], input[type=button] {
+    font-family: var(--font-family-primary);
+}
+
+/* The site's branding is a solid weight; the admin's default 300 looks thin
+   in Vazirmatn. */
+#branding h1,
+#branding h1 a:link,
+#branding h1 a:visited {
+    font-weight: 600;
+}
+
+/* RTL: Django's .module h2 / caption force `text-align: left` in base.css and
+   rtl.css only flips a subset of them, leaving section headings adrift on the
+   wrong edge in Persian. */
+[dir="rtl"] .module h2,
+[dir="rtl"] .module caption,
+[dir="rtl"] .inline-group h2 {
+    text-align: right;
+}
+
+/* Persian reads better without the uppercase/letter-spacing treatment Django
+   applies to inline and fieldset captions (it has no effect on Arabic-script
+   glyphs beyond loosening them). */
+[dir="rtl"] .module caption,
+[dir="rtl"] .inline-group h2 {
+    text-transform: none;
+    letter-spacing: normal;
+}

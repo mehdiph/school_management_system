@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{#
+  Admin branding + theme.
+
+  Lives in template/ (singular) because that is what settings.TEMPLATES["DIRS"]
+  registers for this project. Nothing inside the installed Django package is
+  touched: this template overrides admin/base_site.html purely by shadowing it,
+  and the colours come from a stylesheet that only redefines Django's own CSS
+  custom properties.
+#}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/custom_theme.css' %}?v=2">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

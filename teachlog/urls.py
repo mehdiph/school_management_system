@@ -21,6 +21,13 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.views.static import serve
 
+# Admin branding. Set here (rather than with a custom AdminSite) because the
+# project uses the default admin.site everywhere; these three feed the header,
+# the browser tab title and the login page.
+admin.site.site_header = "مدیریت سامانه مدرسه نسل قلم"
+admin.site.site_title = "مدیریت سامانه مدرسه نسل قلم"
+admin.site.index_title = "داشبورد مدیریت"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('website.urls')),
