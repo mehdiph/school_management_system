@@ -2,6 +2,9 @@
 # Swaps in the HTTP-only Nginx config, since the Let's Encrypt certs the
 # production config points to only exist on the server.
 services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
   nginx:
     volumes:
       - ./nginx/local:/etc/nginx/conf.d:ro
