@@ -1,0 +1,894 @@
+/* ==========================================================================
+   Attendance (ثبت حضور و غیاب)
+   Mobile-first: written for a 320-360px phone, then widened for tablet and
+   desktop. Scoped to .at / body.attendance-page; the shared tokens (--tp-*),
+   the page background and the message toasts come from teaching_shell.css.
+   ========================================================================== */
+
+body.attendance-page {
+    /* status colors: text on the tint is AA (>= 4.5:1), the line on white
+       is >= 3:1 (non-text contrast), so every state is readable and the
+       icon + label carry the meaning, not the color alone */
+    --at-present: #065f46;
+    --at-present-line: #059669;
+    --at-present-bg: #ecfdf5;
+    --at-absent: #991b1b;
+    --at-absent-line: #dc2626;
+    --at-absent-bg: #fef2f2;
+    --at-late: #92400e;
+    --at-late-line: #d97706;
+    --at-late-bg: #fffbeb;
+    --at-unset: #4b5563;
+    --at-unset-line: #9ca3af;
+}
+
+/* Anchor jumps and focus() never end up under the sticky header (top) or
+   the sticky summary bar (bottom). */
+html:has(body.attendance-page) {
+    scroll-padding-top: calc(var(--navbar-height, 60px) + 72px);
+    scroll-padding-bottom: 150px;
+}
+
+.at {
+    max-width: 960px;
+    margin: 0 auto;
+    color: var(--tp-text);
+    line-height: 1.7;
+}
+
+.at-card {
+    background: #fff;
+    overflow: clip; /* rounded corners; unlike hidden, keeps position:sticky working */
+}
+
+/* --------------------------------------------------------------------------
+   Header: compact orange bar on phones (same look as the session form)
+   -------------------------------------------------------------------------- */
+
+.at-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--tp-accent);
+    color: #fff;
+}
+
+.at-header__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 1.1rem;
+}
+
+.at-header__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.at-header h1 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.5;
+    color: #fff;
+}
+
+.at-header p {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.at-header__link {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.at-header__link:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
+
+.at-header__link:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+/* icon-only on narrow phones; the text stays for screen readers */
+@media (max-width: 479.98px) {
+    .at-header__link span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+
+.at-body {
+    padding: 12px 12px 0;
+}
+
+/* --------------------------------------------------------------------------
+   Session info: 2 x 2 on phones, one row from tablet up
+   -------------------------------------------------------------------------- */
+
+.at-info {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0 0 14px;
+    overflow: hidden;
+    border: 1px solid var(--tp-line);
+    border-radius: var(--tp-radius);
+    background: var(--tp-line); /* the 1px gaps become the dividers */
+}
+
+.at-info__item {
+    min-width: 0;
+    padding: 8px 12px;
+    background: var(--tp-tint);
+}
+
+.at-info dt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--tp-muted);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+}
+
+.at-info dt i {
+    color: var(--tp-accent);
+}
+
+.at-info dd {
+    margin: 0;
+    color: var(--tp-text);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Toolbar: search + "mark all present"
+   -------------------------------------------------------------------------- */
+
+.at-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.at-search {
+    position: relative;
+    flex: 1 1 140px;
+    min-width: 0;
+}
+
+.at-search__icon {
+    position: absolute;
+    inset-inline-start: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--tp-muted);
+    pointer-events: none;
+}
+
+/* >= 16px text: iOS does not zoom on focus */
+.at-search__input {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 8px 14px;
+    padding-inline-start: 40px;
+    border: 1.5px solid var(--tp-input-line);
+    border-radius: var(--tp-radius);
+    background: #fff;
+    color: var(--tp-text);
+    font-family: inherit;
+    font-size: max(16px, 1rem);
+}
+
+.at-search__input::placeholder {
+    color: #6b7280;
+    opacity: 1;
+}
+
+.at-search__input:focus {
+    border-color: var(--tp-accent);
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 1px;
+}
+
+.at-all {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1.5px solid var(--at-present-line);
+    border-radius: var(--tp-radius);
+    background: var(--at-present-bg);
+    color: var(--at-present);
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.at-all:hover {
+    background: #d1fae5;
+}
+
+.at-all:focus-visible {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 2px;
+}
+
+.at-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 12px;
+    color: var(--tp-muted);
+    font-size: 0.875rem;
+    line-height: 1.7;
+}
+
+.at-hint i {
+    margin-top: 5px;
+    color: var(--tp-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Student rows
+   -------------------------------------------------------------------------- */
+
+.at-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.at-student {
+    min-width: 0;
+    padding: 10px 12px 12px;
+    border: 1px solid var(--tp-line);
+    border-inline-start: 5px solid var(--at-present-line);
+    border-radius: var(--tp-radius);
+    background: #fff;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.at-student[data-status="absent"] {
+    border-inline-start-color: var(--at-absent-line);
+    background: #fffafa;
+}
+
+.at-student[data-status="late"] {
+    border-inline-start-color: var(--at-late-line);
+    background: #fffdf7;
+}
+
+.at-student[data-status="unset"] {
+    border-inline-start-color: var(--at-unset-line);
+}
+
+/* search: hidden rows (the counters still include them) */
+.at-student[hidden] {
+    display: none;
+}
+
+.at-student__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    margin-bottom: 8px;
+}
+
+.at-student__num {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: var(--tp-text-soft);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.at-student__name {
+    flex: 1;
+    min-width: 0;
+    color: var(--tp-text);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.at-note-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid var(--tp-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--tp-text-soft);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.at-note-btn:hover {
+    border-color: var(--tp-input-line);
+    background: #f9fafb;
+}
+
+.at-note-btn:focus-visible {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 2px;
+}
+
+.at-note-btn[aria-expanded="true"],
+.at-note-btn.has-note {
+    border-color: var(--tp-accent);
+    background: var(--tp-tint);
+    color: var(--tp-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Status: a segmented control of real radio buttons. The whole segment is
+   the <label>, so the tap target is the full 48px-tall button.
+   -------------------------------------------------------------------------- */
+
+.at-seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0; /* fieldsets default to min-content: would overflow */
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.at-seg__opt {
+    position: relative;
+    display: block;
+    min-width: 0;
+    margin: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* invisible but still focusable and still posted */
+.at-seg__input {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.at-seg__face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 48px;
+    padding: 4px 6px;
+    border: 1.5px solid var(--tp-input-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--tp-text-soft);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    user-select: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.at-seg__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #4b5563;
+    font-size: 0.7rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.at-seg__opt:hover .at-seg__face {
+    border-color: var(--tp-text-soft);
+}
+
+.at-seg__input:focus-visible + .at-seg__face {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 2px;
+}
+
+/* selected: tinted fill, doubled border, bold label, solid icon */
+.at-seg__input:checked + .at-seg__face {
+    font-weight: 800;
+}
+
+.at-seg__opt--present .at-seg__input:checked + .at-seg__face {
+    border-color: var(--at-present-line);
+    background: var(--at-present-bg);
+    box-shadow: inset 0 0 0 1px var(--at-present-line);
+    color: var(--at-present);
+}
+
+.at-seg__opt--present .at-seg__input:checked + .at-seg__face .at-seg__icon {
+    background: var(--at-present-line);
+    color: #fff;
+}
+
+.at-seg__opt--absent .at-seg__input:checked + .at-seg__face {
+    border-color: var(--at-absent-line);
+    background: var(--at-absent-bg);
+    box-shadow: inset 0 0 0 1px var(--at-absent-line);
+    color: var(--at-absent);
+}
+
+.at-seg__opt--absent .at-seg__input:checked + .at-seg__face .at-seg__icon {
+    background: var(--at-absent-line);
+    color: #fff;
+}
+
+.at-seg__opt--late .at-seg__input:checked + .at-seg__face {
+    border-color: var(--at-late-line);
+    background: var(--at-late-bg);
+    box-shadow: inset 0 0 0 1px var(--at-late-line);
+    color: var(--at-late);
+}
+
+.at-seg__opt--late .at-seg__input:checked + .at-seg__face .at-seg__icon {
+    background: var(--at-late);
+    color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   Per-student description
+   -------------------------------------------------------------------------- */
+
+.at-note {
+    margin-top: 10px;
+}
+
+.at-note[hidden] {
+    display: none;
+}
+
+.at-note__label {
+    display: block;
+    margin: 0 0 4px;
+    color: var(--tp-text-soft);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.at-optional {
+    color: var(--tp-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.at-note__input {
+    display: block;
+    width: 100%;
+    min-height: 72px;
+    margin: 0;
+    padding: 8px 12px;
+    border: 1.5px solid var(--tp-input-line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--tp-text);
+    font-family: inherit;
+    font-size: max(16px, 1rem);
+    line-height: 1.7;
+    resize: vertical;
+}
+
+.at-note__input::placeholder {
+    color: #6b7280;
+    opacity: 1;
+}
+
+.at-note__input:focus {
+    border-color: var(--tp-accent);
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 1px;
+}
+
+.at-no-results {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+    padding: 24px 12px;
+    border: 1.5px dashed #c7cbd1;
+    border-radius: var(--tp-radius);
+    color: var(--tp-muted);
+    font-size: 0.95rem;
+}
+
+.at-no-results[hidden] {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Sticky summary + submit bar
+   -------------------------------------------------------------------------- */
+
+.at-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20; /* under the header (100), the mobile menu bar (40) and the drawer (90+) */
+    margin: 14px -12px 0;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--tp-line);
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -6px 16px rgba(17, 24, 39, 0.07);
+}
+
+/* thin present-ratio line along the top edge of the bar */
+.at-progress {
+    position: absolute;
+    top: -1px;
+    inset-inline: 0;
+    height: 4px;
+    background: #e5e7eb;
+}
+
+.at-progress[hidden] {
+    display: none;
+}
+
+.at-progress__fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--at-present-line);
+    transition: width 0.2s ease;
+}
+
+.at-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.at-summary[hidden] {
+    display: none;
+}
+
+.at-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.8;
+    white-space: nowrap;
+}
+
+.at-count[hidden] {
+    display: none;
+}
+
+.at-count b {
+    font-weight: 800;
+}
+
+.at-count i {
+    font-size: 0.75rem;
+}
+
+.at-count--present {
+    border-color: #a7f3d0;
+    background: var(--at-present-bg);
+    color: var(--at-present);
+}
+
+.at-count--absent {
+    border-color: #fecaca;
+    background: var(--at-absent-bg);
+    color: var(--at-absent);
+}
+
+.at-count--late {
+    border-color: #fde68a;
+    background: var(--at-late-bg);
+    color: var(--at-late);
+}
+
+.at-count--unset {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+    color: var(--at-unset);
+}
+
+.at-count--total {
+    margin-inline-start: auto;
+    color: var(--tp-text-soft);
+}
+
+.at-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: var(--tp-radius);
+    background: var(--tp-accent);
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.at-submit:hover {
+    background: var(--tp-accent-hover);
+}
+
+.at-submit:focus-visible {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 3px;
+}
+
+.at-submit:disabled {
+    cursor: progress;
+    opacity: 0.85;
+}
+
+.at-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: at-spin 0.7s linear infinite;
+}
+
+@keyframes at-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Narrowest phones: the counters stay on one line; the labels already
+   say what each number is, so the icons can go. */
+@media (max-width: 359.98px) {
+    .at-summary {
+        gap: 4px;
+    }
+
+    .at-count {
+        padding: 2px 6px;
+    }
+
+    .at-count i {
+        display: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   No students
+   -------------------------------------------------------------------------- */
+
+.at-empty {
+    padding: 28px 12px 36px;
+    text-align: center;
+}
+
+.at-empty__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 10px;
+    border-radius: 50%;
+    background: var(--tp-tint);
+    color: var(--tp-accent);
+    font-size: 1.4rem;
+}
+
+.at-empty h2 {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.at-empty p {
+    margin: 0 0 16px;
+    color: var(--tp-muted);
+    font-size: 0.95rem;
+}
+
+.at-empty__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 18px;
+    border: 1.5px solid var(--tp-accent);
+    border-radius: var(--tp-radius);
+    color: var(--tp-accent);
+    font-weight: 700;
+}
+
+.at-empty__link:focus-visible {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Tablet and up: rounded card, info in one row, each student on one line
+   (name at the start, status buttons at the end) -- a table look without
+   a table, so nothing ever scrolls sideways.
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 600px) {
+    .at-card {
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .at-header {
+        gap: 16px;
+        padding: 20px 28px;
+    }
+
+    .at-header__icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.3rem;
+    }
+
+    .at-header h1 {
+        font-size: 1.4rem;
+    }
+
+    .at-body {
+        padding: 20px 24px 0;
+    }
+
+    .at-info {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .at-toolbar .at-search {
+        flex-basis: 260px;
+        max-width: 420px;
+    }
+
+    .at-student {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+        column-gap: 16px;
+        align-items: center;
+        padding: 8px 14px;
+    }
+
+    .at-student__head {
+        margin-bottom: 0;
+    }
+
+    .at-note {
+        grid-column: 1 / -1;
+        margin-bottom: 4px;
+    }
+
+    .at-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+        margin-inline: -24px;
+        padding-inline: 24px;
+    }
+
+    .at-summary {
+        flex: 1 1 auto;
+        margin-bottom: 0;
+    }
+
+    .at-count--total {
+        margin-inline-start: 0;
+    }
+
+    .at-submit {
+        width: auto;
+        min-width: 220px;
+    }
+}
+
+/* Desktop: the sidebar is in the page (not a drawer), so there is no
+   mobile menu bar to clear at the top. */
+@media (min-width: 769px) {
+    html:has(body.attendance-page) {
+        scroll-padding-top: calc(var(--navbar-height, 60px) + 16px);
+        scroll-padding-bottom: 110px;
+    }
+
+    .at {
+        margin-top: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .at *,
+    .at *::before,
+    .at *::after {
+        transition: none !important;
+    }
+
+    /* a still ring still says "busy" */
+    .at-spinner {
+        animation: none;
+        border-top-color: rgba(255, 255, 255, 0.4);
+        border-right-color: #fff;
+    }
+}
