@@ -7,6 +7,22 @@
   var closeBtn = document.getElementById("closeSidebarBtn");
   var desktopOpenBtn = document.getElementById("desktopOpenSidebarBtn");
 
+  // --navbar-height (sidebar.css) is the offset the sticky sidebar, the
+  // mobile topbar and the reopen button sit below. The header's real
+  // height changes with the breakpoint and with how its content wraps,
+  // so it is measured rather than hard-coded; 60px stays as the no-JS
+  // fallback.
+  var header = document.querySelector("body > .main-header");
+
+  if (header && "ResizeObserver" in window) {
+    new ResizeObserver(function () {
+      document.documentElement.style.setProperty(
+        "--navbar-height",
+        header.offsetHeight + "px"
+      );
+    }).observe(header);
+  }
+
   if (!sidebar || !overlay || !mobileOpenBtn || !closeBtn || !desktopOpenBtn) return;
 
   // Desktop and mobile behave differently on purpose (see sidebar.css):

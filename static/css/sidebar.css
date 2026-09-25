@@ -514,6 +514,52 @@
   }
 }
 
+/* Small phones: keep the dashboard header to one row. Without this the
+   logo wraps onto two lines and the user/logout block stacks under it,
+   so the sticky header ate ~135px of a 360px-wide screen. The logout
+   label stays in the accessibility tree, only the icon is shown. */
+@media (max-width: 575.98px) {
+  .main-header:has(> .app-topbar) {
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .main-header:has(> .app-topbar) .logo {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  .app-topbar {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .app-topbar .sidebar-user {
+    min-width: 0;
+  }
+
+  .app-topbar .sidebar-user__text strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-topbar .logout-btn {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .app-topbar .logout-btn span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-sidebar,
   .sidebar-overlay {

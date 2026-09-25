@@ -11,10 +11,7 @@
     --touch-size: 44px;
 }
 
-/* base.css gives every header a fixed 100px height below 768px (for the
-   dashboards' topbar); the public header sizes to its content. */
 .public-page .main-header {
-    height: auto;
     gap: 12px;
     padding-block: clamp(10px, 1.5vw, 15px);
     padding-inline: clamp(16px, 3vw, 20px);
