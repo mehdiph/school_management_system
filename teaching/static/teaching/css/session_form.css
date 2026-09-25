@@ -1,0 +1,576 @@
+/* ==========================================================================
+   Session form (ثبت / ویرایش جلسه درسی)
+   Mobile-first: written for a 360px phone, then widened for tablet and
+   desktop. Scoped to .sf / body.session-form-page; the shared tokens
+   (--tp-*) come from teaching_shell.css.
+   ========================================================================== */
+
+/* Anchor jumps, focus() and the caret inside a growing textarea should
+   never end up under the sticky header (top) or the sticky submit bar
+   (bottom). */
+html:has(body.session-form-page) {
+    scroll-padding-top: calc(var(--navbar-height, 60px) + 72px);
+    scroll-padding-bottom: 96px;
+}
+
+.sf {
+    max-width: 760px;
+    margin: 0 auto;
+    color: var(--tp-text);
+    line-height: 1.7;
+}
+
+.sf-card {
+    background: #fff;
+    overflow: clip; /* rounded corners; unlike hidden, keeps position:sticky working */
+}
+
+/* --------------------------------------------------------------------------
+   Header: compact orange bar on phones
+   -------------------------------------------------------------------------- */
+
+.sf-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--tp-accent);
+    color: #fff;
+}
+
+.sf-header__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 1.1rem;
+}
+
+.sf-header__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.sf-header h1 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.5;
+    color: #fff;
+}
+
+.sf-header p {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sf-header__link {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.sf-header__link:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
+
+.sf-header__link:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
+/* icon-only on narrow phones; the text stays for screen readers */
+@media (max-width: 479.98px) {
+    .sf-header__link span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Body, notice, error summary
+   -------------------------------------------------------------------------- */
+
+.sf-body {
+    padding: 16px 16px 0;
+}
+
+.sf-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 20px;
+    padding: 10px 12px;
+    border-inline-start: 4px solid var(--tp-accent);
+    border-radius: 8px;
+    background: var(--tp-tint);
+    color: var(--tp-text-soft);
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+
+.sf-note > i {
+    margin-top: 5px;
+    color: var(--tp-accent);
+}
+
+.sf-summary {
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border: 2px solid var(--tp-danger);
+    border-radius: var(--tp-radius);
+    background: var(--tp-danger-bg);
+    color: #991b1b;
+}
+
+.sf-summary:focus {
+    outline: 3px solid var(--tp-danger-line);
+    outline-offset: 2px;
+}
+
+.sf-summary h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #991b1b;
+}
+
+.sf-summary ul {
+    margin: 0;
+    padding-inline-start: 20px;
+    list-style: disc;
+    font-size: 0.9375rem;
+}
+
+.sf-summary li + li {
+    margin-top: 4px;
+}
+
+.sf-summary a {
+    color: #991b1b;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.sf-summary a:focus-visible {
+    outline: 3px solid var(--tp-danger-line);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Sections and fields
+   -------------------------------------------------------------------------- */
+
+.sf-section {
+    min-width: 0; /* fieldsets default to min-content: would overflow */
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+}
+
+.sf-section__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 0 0 8px;
+    border-bottom: 2px solid var(--tp-line);
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--tp-text);
+}
+
+.sf-section__title i {
+    color: var(--tp-accent);
+}
+
+.sf-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 16px;
+}
+
+.sf-field {
+    min-width: 0;
+    margin-bottom: 18px;
+}
+
+.sf-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--tp-text-soft);
+}
+
+.sf-label > i {
+    width: 1.1em;
+    color: var(--tp-accent);
+    text-align: center;
+}
+
+.sf-required {
+    color: #c0392b;
+    font-weight: 800;
+}
+
+.sf-optional {
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.8;
+}
+
+/* All controls: >= 16px text (iOS does not zoom on focus), >= 48px tall. */
+.sf .form-control {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1.5px solid var(--tp-input-line);
+    border-radius: var(--tp-radius);
+    background-color: #fff;
+    color: var(--tp-text);
+    font-family: inherit;
+    font-size: max(16px, 1rem);
+    line-height: 1.6;
+    box-shadow: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sf .form-control::placeholder {
+    color: #8a8f98;
+    opacity: 1;
+}
+
+.sf .form-control:hover {
+    border-color: var(--tp-text-soft);
+}
+
+.sf .form-control:focus {
+    border-color: var(--tp-accent);
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 1px;
+}
+
+/* Native select with our own chevron (on the left: RTL). */
+.sf select.form-control {
+    appearance: none;
+    padding-left: 44px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 14px center;
+    background-size: 18px;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+/* Date: calendar icon; the picker opens on tap. */
+.sf input[name="date"] {
+    padding-left: 44px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b35220' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 9.5h18M8 3v3M16 3v3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 14px center;
+    background-size: 20px;
+    cursor: pointer;
+}
+
+/* read-only on touch devices (no keyboard over the calendar): keep it
+   looking like a normal, tappable field */
+.sf input[name="date"][readonly] {
+    background-color: #fff;
+}
+
+.sf textarea.form-control {
+    min-height: 88px;
+    resize: vertical;
+}
+
+/* session_form.js grows textareas with their content */
+.sf textarea.form-control.is-autogrow {
+    overflow-y: hidden;
+    resize: none;
+}
+
+.sf #id_content {
+    min-height: 120px;
+}
+
+.sf-readonly {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1.5px dashed #c7cbd1;
+    border-radius: var(--tp-radius);
+    background: #f9fafb;
+    color: var(--tp-text);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+/* Short, muted, single-spaced help lines. */
+.sf-help {
+    margin: 4px 0 0;
+    color: var(--tp-muted);
+    font-size: 0.84rem;
+    line-height: 1.6;
+}
+
+/* --------------------------------------------------------------------------
+   Errors
+   -------------------------------------------------------------------------- */
+
+.sf .has-error .form-control,
+.sf .form-control[aria-invalid="true"] {
+    border-color: var(--tp-danger-line);
+    border-width: 2px;
+    background-color: var(--tp-danger-bg);
+}
+
+.sf .has-error .form-control:focus,
+.sf .form-control[aria-invalid="true"]:focus {
+    outline-color: var(--tp-danger-line);
+}
+
+.sf .has-error .sf-label {
+    color: #991b1b;
+}
+
+.sf-error {
+    margin-top: 6px;
+    color: var(--tp-danger);
+    font-size: 0.9rem; /* 14.4px */
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.sf-error p {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0;
+}
+
+.sf-error p + p {
+    margin-top: 2px;
+}
+
+.sf-error i {
+    margin-top: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   Submit: sticky, full-width bar at the bottom of the screen on phones
+   -------------------------------------------------------------------------- */
+
+.sf-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20; /* under the header (100), the mobile menu bar (40) and the drawer (90+) */
+    margin: 0 -16px;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--tp-line);
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -6px 16px rgba(17, 24, 39, 0.07);
+}
+
+.sf-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: var(--tp-radius);
+    background: var(--tp-accent);
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.sf-submit:hover {
+    background: var(--tp-accent-hover);
+}
+
+.sf-submit:focus-visible {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 3px;
+}
+
+.sf-submit:disabled {
+    cursor: progress;
+    opacity: 0.85;
+}
+
+.sf-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: sf-spin 0.7s linear infinite;
+}
+
+@keyframes sf-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Persian date picker: keep its popup inside the screen
+   -------------------------------------------------------------------------- */
+
+body.session-form-page .datepicker-container:not(.pwt-mobile-view) {
+    max-width: calc(100vw - 16px);
+}
+
+/* brand colors instead of the picker's default blue */
+body.session-form-page .datepicker-plot-area .datepicker-day-view .table-days td.selected span,
+body.session-form-page .datepicker-plot-area .datepicker-year-view .year-item.selected,
+body.session-form-page .datepicker-plot-area .datepicker-month-view .month-item.selected {
+    background-color: var(--tp-accent);
+    text-shadow: none;
+}
+
+body.session-form-page .datepicker-plot-area .datepicker-day-view .table-days td span:hover,
+body.session-form-page .datepicker-plot-area .datepicker-year-view .year-item:hover,
+body.session-form-page .datepicker-plot-area .datepicker-month-view .month-item:hover {
+    background-color: var(--tp-accent-hover);
+}
+
+/* the mobile picker's "تایید" / "امروز" buttons */
+body.session-form-page .datepicker-container.pwt-mobile-view .toolbox [class*="pwt-btn"] {
+    min-width: 88px;
+    font-size: 16px;
+    color: var(--tp-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Tablet and up
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 600px) {
+    .sf-card {
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .sf-header {
+        gap: 16px;
+        padding: 20px 28px;
+    }
+
+    .sf-header__icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.3rem;
+    }
+
+    .sf-header h1 {
+        font-size: 1.4rem;
+    }
+
+    .sf-body {
+        padding: 24px 28px 0;
+    }
+
+    .sf-actions {
+        margin: 0 -28px;
+        padding-inline: 28px;
+    }
+
+    .sf-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sf-field--wide {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Desktop (the sidebar is in the page, not a drawer): the submit button
+   goes back into the flow, at the end of the form. */
+@media (min-width: 769px) {
+    html:has(body.session-form-page) {
+        scroll-padding-top: calc(var(--navbar-height, 60px) + 16px);
+        scroll-padding-bottom: 16px;
+    }
+
+    .sf {
+        margin-top: 8px;
+    }
+
+    .sf-actions {
+        position: static;
+        display: flex;
+        justify-content: flex-end;
+        margin: 8px 0 0;
+        padding: 20px 0 28px;
+        background: none;
+        box-shadow: none;
+    }
+
+    .sf-submit {
+        width: auto;
+        min-width: 220px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf *,
+    .sf *::before,
+    .sf *::after {
+        transition: none !important;
+    }
+
+    /* a still ring still says "busy" */
+    .sf-spinner {
+        animation: none;
+        border-top-color: rgba(255, 255, 255, 0.4);
+        border-right-color: #fff;
+    }
+}

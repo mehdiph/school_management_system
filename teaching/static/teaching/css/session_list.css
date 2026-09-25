@@ -1,131 +1,443 @@
-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px 0;
-    /* Added subtle border and backdrop blur */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(5px);
-    box-shadow: 3px 1px 1px 1px rgba(37, 99, 235, 0.1);
-    border-radius: 0 0 15px 15px;
-    padding: 15px 20px;
+/* ==========================================================================
+   Session list (جلسات ثبت‌شده)
+   Mobile-first cards; a grid of the same cards once there is room.
+   Scoped to .sl; shared tokens (--tp-*) come from teaching_shell.css.
+   ========================================================================== */
+
+.sl {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 12px;
+    color: var(--tp-text);
+    line-height: 1.8;
 }
 
-/* Tables */
-.table-container {
-    overflow-x: auto;
-    background-color: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-}
+/* --------------------------------------------------------------------------
+   Buttons (>= 48px tall)
+   -------------------------------------------------------------------------- */
 
-.table-container table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 800px;
-}
-
-.table-container th {
-    background-color: var(--gray-50);
-    padding: 16px;
-    text-align: right;
-    font-weight: 600;
-    color: var(--gray-600);
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.table-container td {
-    padding: 16px;
-    border-bottom: 1px solid var(--gray-100);
-    vertical-align: middle;
-}
-
-.table-container tr:last-child td {
-    border-bottom: none;
-}
-
-.table-container tr:hover td {
-    background-color: var(--gray-50);
-    padding: 15px;
-}
-
-/* Stats Card */
-.stats-card {
-    background-color: white;
-    border-radius: var(--radius-lg);
-    padding: 24px;
-    box-shadow: var(--shadow);
-    margin-bottom: 32px;
-    border-right: 4px solid var(--primary);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.stats-icon {
-    font-size: 2rem;
-    color: var(--primary);
-    background-color: var(--primary-lighter);
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-}
-
-.stats-info h3 {
-    font-size: 0.9rem;
-    color: var(--gray-600);
-    margin-bottom: 4px;
-}
-
-.stats-info .value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--gray-800);
-}
-
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: var(--gray-600);
-}
-
-.empty-state i {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    color: var(--gray-300);
-}
-
-/* Status Badges */
-.status-badge {
+.sl-btn {
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 18px;
+    border: 1.5px solid transparent;
+    border-radius: var(--tp-radius);
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.status-held {
-    background-color: #d1fae5;
+.sl-btn:focus-visible,
+.sl-more:focus-visible {
+    outline: 3px solid var(--tp-focus);
+    outline-offset: 2px;
+}
+
+.sl-btn--primary {
+    background: var(--tp-accent);
+    color: #fff;
+}
+
+.sl-btn--primary:hover {
+    background: var(--tp-accent-hover);
+}
+
+.sl-btn--outline {
+    border-color: var(--tp-accent);
+    background: #fff;
+    color: var(--tp-accent);
+}
+
+.sl-btn--outline:hover {
+    background: var(--tp-tint);
+}
+
+.sl-btn--soft {
+    background: #f3f4f6;
+    color: var(--tp-text-soft);
+}
+
+.sl-btn--soft:hover {
+    background: #e5e7eb;
+}
+
+.sl-btn.is-disabled {
+    border-color: var(--tp-line);
+    color: #6b7280;
+    background: #f9fafb;
+    cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Header
+   -------------------------------------------------------------------------- */
+
+.sl-header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 16px;
+    border: 1px solid var(--tp-line);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.sl-header .sl-btn {
+    width: 100%;
+}
+
+.sl-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.5;
+    color: var(--tp-text);
+}
+
+.sl-title i {
+    color: var(--tp-accent);
+}
+
+.sl-subtitle {
+    margin: 2px 0 0;
+    color: var(--tp-text-soft);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.sl-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: var(--tp-tint);
+    color: #7c2d12;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+
+.sl-grid {
+    display: grid;
+    /* as many >= 330px columns as fit, never wider than the screen */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sl-card {
+    min-width: 0;
+}
+
+.sl-card article {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+    border: 1px solid var(--tp-line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+
+.sl-card__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sl-number {
+    color: var(--tp-accent);
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+/* Status badges: text/background pairs are all >= 6:1. */
+.sl-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 12px;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.8;
+}
+
+.sl-status--hd {
+    background: #d1fae5;
     color: #065f46;
 }
 
-.status-canceled {
-    background-color: #fee2e2;
+.sl-status--cd {
+    background: #fee2e2;
     color: #991b1b;
 }
 
-.status-makeup {
-    background-color: #fef3c7;
+.sl-status--jb {
+    background: #fef3c7;
     color: #92400e;
 }
 
-.status-pending {
-    background-color: #e0f2fe;
-    color: #075985;
+.sl-date {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 0;
+    color: var(--tp-text);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.sl-date i {
+    color: var(--tp-accent);
+}
+
+.sl-class {
+    margin: 0;
+    color: var(--tp-muted);
+    font-size: 0.875rem;
+}
+
+.sl-card__title {
+    margin: 10px 0 6px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.6;
+    color: var(--tp-text);
+    overflow-wrap: anywhere;
+}
+
+.sl-details {
+    min-width: 0;
+}
+
+.sl-block {
+    margin-top: 8px;
+}
+
+.sl-block__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: var(--tp-muted);
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.sl-block__text {
+    margin: 0;
+    color: var(--tp-text-soft);
+    font-size: 0.95rem;
+    line-height: 1.9;
+    overflow-wrap: anywhere;
+}
+
+.sl-block--homework {
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #f9fafb;
+}
+
+/* Collapsed (set by session_list.js, so without JS everything shows). */
+.sl-card.is-collapsed .sl-clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.sl-card.is-collapsed .sl-clamp--3 {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+.sl-card.is-collapsed .sl-clamp--2 {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.sl-card.is-collapsed .sl-extra {
+    display: none;
+}
+
+.sl-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    min-height: 44px;
+    margin-top: 4px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--tp-accent);
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sl-more[hidden] {
+    display: none;
+}
+
+.sl-more i {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.sl-more[aria-expanded="true"] i {
+    transform: rotate(180deg);
+}
+
+.sl-missing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 0;
+    color: #92400e;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Actions sit at the bottom of the card, so cards in a row line up. */
+.sl-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 14px;
+}
+
+.sl-actions .sl-btn {
+    flex: 1;
+    min-width: 0;
+    gap: 6px;
+    padding: 0 8px;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Pagination
+   -------------------------------------------------------------------------- */
+
+.sl-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.sl-pagination .sl-btn {
+    flex: 1 1 0;
+    max-width: 160px;
+    white-space: nowrap;
+}
+
+.sl-pagination__status {
+    color: var(--tp-text-soft);
+    font-size: 0.95rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+
+.sl-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px 20px;
+    border: 1px solid var(--tp-line);
+    border-radius: 14px;
+    background: #fff;
+    text-align: center;
+}
+
+.sl-empty__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--tp-tint);
+    color: var(--tp-accent);
+    font-size: 1.8rem;
+}
+
+.sl-empty h2 {
+    margin: 8px 0 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.sl-empty p {
+    max-width: 360px;
+    margin: 0 0 8px;
+    color: var(--tp-muted);
+    font-size: 0.95rem;
+}
+
+/* --------------------------------------------------------------------------
+   Tablet and up
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 600px) {
+    .sl {
+        padding: 16px 0;
+    }
+
+    .sl-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+    }
+
+    .sl-header .sl-btn {
+        width: auto;
+        flex-shrink: 0;
+    }
+
+    .sl-title {
+        font-size: 1.4rem;
+    }
+
+    .sl-grid {
+        gap: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sl *,
+    .sl *::before,
+    .sl *::after {
+        transition: none !important;
+    }
 }

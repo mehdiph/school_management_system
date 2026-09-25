@@ -1,10 +1,17 @@
-{% extends 'base.html' %} 
-{% load static %}
-{% load persian_filters %}
+{% extends 'base.html' %}
+{% load static report_tags session_tags %}
 
-{% block title %} لیست جلسات درسی{% endblock %}
+{% block title %}جلسات ثبت‌شده - {{ class_subject.subject.name }}{% endblock %}
+
+{% comment %}
+Scoped under body.session-list-page / .sl (see teaching/css/session_list.css).
+One card layout for every width: a single column on phones, a grid of
+cards once there is room -- never a table that scrolls sideways.
+{% endcomment %}
+{% block body_class %}teaching-page session-list-page{% endblock %}
 
 {% block styles %}
+<link rel="stylesheet" href="{% static 'teaching/css/teaching_shell.css' %}">
 <link rel="stylesheet" href="{% static 'teaching/css/session_list.css' %}">
 {% endblock %}
 
@@ -13,98 +20,161 @@
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<header class="page-header">
-    <h1 class="page-title">
-        <i class="fas fa-list-check"></i>
-        لیست جلسات کلاسی {{ class_subject }}
-    </h1>
-    <a href="{% url 'teaching:session_form' class_subject_id %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i>
-        ثبت جلسه جدید
-    </a>
-</header>
+{% with school_class=class_subject.school_class %}
+<div class="sl">
+    <!-- Header -->
+    <header class="sl-header">
+        <div class="sl-header__text">
+            <h1 class="sl-title">
+                <i class="fas fa-list-check" aria-hidden="true"></i>
+                جلسات ثبت‌شده
+            </h1>
+            <p class="sl-subtitle">{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
+            <p class="sl-count">
+                <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+                تعداد کل: {{ page_obj.paginator.count|to_persian }} جلسه
+            </p>
+        </div>
+        <a href="{% url 'teaching:session_form' class_subject_id %}" class="sl-btn sl-btn--primary">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+            ثبت جلسه جدید
+        </a>
+    </header>
 
-<!-- Stats -->
-<div class="stats-card">
-    <div class="stats-icon">
-        <i class="fas fa-clipboard-list"></i>
-    </div>
-    <div class="stats-info">
-        <h3>تعداد کل جلسات ثبت شده</h3>
-        <div class="value">{{ sessions.count }} جلسه</div>
-    </div>
-</div>
-
-<!-- Table -->
-<div class="table-container">
     {% if sessions %}
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 80px;">شماره</th>
-                <th>کلاس / درس</th>
-                <th style="width: 120px;">تاریخ</th>
-                <th>موضوع درس</th>
-                <th style="width: 120px;">وضعیت</th>
-                <th style="width: 100px;">عملیات</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for session in sessions %}
-            <tr>
-                <td>
-                    <span style="font-weight: 700; color: var(--primary);">{{ session.session_number }}</span>
-                </td>
-                <td>
-                    <div style="font-weight: 600;">{{ session.class_subject }}</div>
-                    <div style="font-size: 0.85rem; color: var(--gray-400);">{{ session.class_subject.school_class.year }}</div>
-                </td>
-                <td>{{ session.date|persian_date }}</td>
-                <td class="topic-cell" title="{{ session.sessioncontent.title }}">
-                    {% if session.session_contents %}
-                    {{ session.session_contents.title }}
-                    {% else %}
-                    <span style="color: var(--warning); font-size: 0.9rem;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        بدون محتوا
-                    </span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if session.status == 'HD' %}
-                    <span class="status-badge status-held">
-                        <i class="fas fa-check"></i> برگزار شد
-                    </span>
-                    {% elif session.status == 'CD' %}
-                    <span class="status-badge status-canceled">
-                        <i class="fas fa-times"></i> لغو شد
-                    </span>
-                    {% elif session.status == 'JB' %}
-                    <span class="status-badge status-makeup">
-                        <i class="fas fa-redo"></i> جبرانی
-                    </span>
-                    {% else %}
-                    <span class="status-badge status-pending">
+    <ul class="sl-grid">
+        {% for session in sessions %}
+        {% with content=session.session_contents %}
+        <li class="sl-card" data-collapsible>
+            <article aria-labelledby="session-{{ session.id }}-title">
+                <div class="sl-card__top">
+                    <span class="sl-number">جلسه {{ session.session_number|to_persian }}</span>
+                    <span class="sl-status sl-status--{{ session.status|lower }}">
+                        {% if session.status == 'HD' %}<i class="fas fa-check" aria-hidden="true"></i>
+                        {% elif session.status == 'CD' %}<i class="fas fa-times" aria-hidden="true"></i>
+                        {% elif session.status == 'JB' %}<i class="fas fa-redo" aria-hidden="true"></i>{% endif %}
                         {{ session.get_status_display }}
                     </span>
+                </div>
+
+                <p class="sl-date">
+                    <i class="far fa-calendar" aria-hidden="true"></i>
+                    {{ session.date|jalali_long_date }}
+                </p>
+                <p class="sl-class">{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
+
+                <h2 class="sl-card__title" id="session-{{ session.id }}-title">
+                    {% if content %}{{ content.title }}{% else %}جلسه {{ session.session_number|to_persian }}{% endif %}
+                </h2>
+
+                {% if content %}
+                <div class="sl-details" id="session-{{ session.id }}-details">
+                    <div class="sl-block">
+                        <h3 class="sl-block__label">مطالب تدریس شده</h3>
+                        <p class="sl-block__text sl-clamp sl-clamp--3">{{ content.content|linebreaksbr }}</p>
+                    </div>
+
+                    {% if content.homework %}
+                    <div class="sl-block sl-block--homework">
+                        <h3 class="sl-block__label"><i class="fas fa-home" aria-hidden="true"></i> تکالیف منزل</h3>
+                        <p class="sl-block__text sl-clamp sl-clamp--2">{{ content.homework|linebreaksbr }}</p>
+                    </div>
                     {% endif %}
-                </td>
-                <td>
-                    <a href="{% url 'teaching:update_session' session.id %}" class="btn-icon" title="ویرایش">
-                        <i class="fas fa-edit">ویرایش</i>
+
+                    {% if content.activity or content.notes %}
+                    <div class="sl-extra">
+                        {% if content.activity %}
+                        <div class="sl-block">
+                            <h3 class="sl-block__label">فعالیت‌های کلاسی</h3>
+                            <p class="sl-block__text">{{ content.activity|linebreaksbr }}</p>
+                        </div>
+                        {% endif %}
+                        {% if content.notes %}
+                        <div class="sl-block">
+                            <h3 class="sl-block__label">نکات و عملکرد دانش‌آموزان</h3>
+                            <p class="sl-block__text">{{ content.notes|linebreaksbr }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- shown by session_list.js only when something is cut off -->
+                <button type="button" class="sl-more" aria-expanded="false"
+                    aria-controls="session-{{ session.id }}-details" hidden>
+                    <span>بیشتر</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                {% else %}
+                <p class="sl-missing">
+                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                    محتوای این جلسه ثبت نشده است.
+                </p>
+                {% endif %}
+
+                <div class="sl-actions">
+                    <a class="sl-btn sl-btn--outline" href="{% url 'teaching:update_session' session.id %}">
+                        <i class="fas fa-pen" aria-hidden="true"></i>
+                        ویرایش
                     </a>
-                </td>  
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    <a class="sl-btn sl-btn--soft" href="{% url 'attendance:attendance_form' session.id %}">
+                        <i class="fas fa-user-check" aria-hidden="true"></i>
+                        حضور و غیاب
+                    </a>
+                </div>
+            </article>
+        </li>
+        {% endwith %}
+        {% endfor %}
+    </ul>
+
+    {% if page_obj.has_other_pages %}
+    <nav class="sl-pagination" aria-label="صفحه‌بندی جلسات">
+        {% if page_obj.has_previous %}
+        <a class="sl-btn sl-btn--outline" href="?page={{ page_obj.previous_page_number }}" rel="prev" aria-label="صفحه قبل">
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            قبلی
+        </a>
+        {% else %}
+        <span class="sl-btn sl-btn--outline is-disabled" aria-disabled="true">
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            قبلی
+        </span>
+        {% endif %}
+
+        <span class="sl-pagination__status">
+            صفحه {{ page_obj.number|to_persian }} از {{ page_obj.paginator.num_pages|to_persian }}
+        </span>
+
+        {% if page_obj.has_next %}
+        <a class="sl-btn sl-btn--outline" href="?page={{ page_obj.next_page_number }}" rel="next" aria-label="صفحه بعد">
+            بعدی
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+        </a>
+        {% else %}
+        <span class="sl-btn sl-btn--outline is-disabled" aria-disabled="true">
+            بعدی
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+        </span>
+        {% endif %}
+    </nav>
+    {% endif %}
+
     {% else %}
-    <div class="empty-state">
-        <i class="fas fa-folder-open"></i>
-        <h3>هیچ جلسه‌ای یافت نشد</h3>
-        <p>هنوز جلسه‌ای برای کلاس‌های فعال ثبت نشده است.</p>
+    <div class="sl-empty">
+        <span class="sl-empty__icon" aria-hidden="true"><i class="fas fa-folder-open"></i></span>
+        <h2>هنوز جلسه‌ای ثبت نشده است</h2>
+        <p>اولین جلسه‌ی این درس را ثبت کنید؛ جلسه‌های ثبت‌شده اینجا نمایش داده می‌شوند.</p>
+        <a href="{% url 'teaching:session_form' class_subject_id %}" class="sl-btn sl-btn--primary">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+            ثبت جلسه جدید
+        </a>
     </div>
     {% endif %}
 </div>
+{% endwith %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'teaching/js/session_list.js' %}"></script>
 {% endblock %}

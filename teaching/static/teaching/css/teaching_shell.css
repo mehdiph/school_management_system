@@ -1,0 +1,110 @@
+/* ==========================================================================
+   Shared by the teaching pages (session form + session list).
+   Everything is scoped under body.teaching-page (set through base.html's
+   body_class block), so no other page is affected.
+   ========================================================================== */
+
+body.teaching-page {
+    --tp-accent: #b35220;          /* brand orange, darkened for white text (5.07:1) */
+    --tp-accent-hover: #9f4a1d;
+    --tp-focus: #d96a30;           /* brand orange: 3.47:1 against white, enough for a focus ring */
+    --tp-tint: #f8ede7;
+    --tp-page-bg: #f7f3ef;
+    --tp-text: #1f2937;
+    --tp-text-soft: #374151;
+    --tp-muted: #6b7280;           /* 4.83:1 on white */
+    --tp-line: #e5e7eb;
+    --tp-input-line: #858b94;      /* 3.43:1 on white: input borders stay visible */
+    --tp-danger: #b91c1c;
+    --tp-danger-line: #dc2626;
+    --tp-danger-bg: #fef2f2;
+    --tp-success: #047857;
+    --tp-radius: 12px;
+}
+
+/* Phones: drop the decorative pattern -- plain, calm background. */
+@media (max-width: 767.98px) {
+    body.teaching-page {
+        background-image: none;
+        background-color: var(--tp-page-bg);
+    }
+
+    /* the cards go edge to edge; the page itself has no side gutter */
+    body.teaching-page .app-shell__main > .container {
+        margin-top: 0;
+        padding-inline: 0;
+    }
+}
+
+/* Desktop, sidebar collapsed: keep content clear of the floating
+   "reopen menu" button (sidebar.css positions it at the inline start). */
+body.teaching-page .app-sidebar.is-collapsed ~ .app-shell__main {
+    padding-inline-start: 56px;
+}
+
+/* --------------------------------------------------------------------------
+   Django messages (the toasts rendered by base.html): readable size and
+   solid green / red with AA contrast for white text.
+   -------------------------------------------------------------------------- */
+
+body.teaching-page .messages {
+    top: calc(var(--navbar-height, 60px) + 12px);
+}
+
+body.teaching-page .messages .alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 1rem;
+    line-height: 1.7;
+    font-weight: 600;
+    padding: 14px 44px 14px 16px;
+    border: 0;
+    border-radius: var(--tp-radius);
+    color: #fff;
+}
+
+body.teaching-page .messages .alert > i {
+    margin-top: 4px;
+}
+
+body.teaching-page .messages .alert-success {
+    background: var(--tp-success);
+}
+
+body.teaching-page .messages .alert-error {
+    background: var(--tp-danger);
+}
+
+body.teaching-page .messages .msg-close {
+    top: 12px;
+    transform: none;
+    width: 28px;
+    height: 28px;
+}
+
+@media (max-width: 767.98px) {
+    body.teaching-page .messages {
+        /* under the header and the mobile menu bar */
+        top: calc(var(--navbar-height, 60px) + 72px);
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+}
+
+/* Screen-reader-only text. */
+body.teaching-page .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.teaching-page .messages .alert {
+        animation: none;
+    }
+}

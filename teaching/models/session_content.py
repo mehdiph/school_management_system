@@ -7,9 +7,10 @@ class SessionContent(models.Model):
     session = models.OneToOneField('teaching.SchoolSession', on_delete=models.DO_NOTHING, verbose_name='جلسه', related_name='session_contents')
     title = models.CharField(max_length=255, verbose_name='عنوان')
     content = models.TextField(verbose_name='محتوا')
-    activity = models.TextField(verbose_name='فعالیت')
+    # Optional: teachers fill these in only when there is something to note.
+    activity = models.TextField(blank=True, verbose_name='فعالیت')
     homework = models.TextField(verbose_name='تکلیف')
-    notes = models.TextField(verbose_name='یادداشت‌ها')
+    notes = models.TextField(blank=True, verbose_name='یادداشت‌ها')
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
 
     class Meta:

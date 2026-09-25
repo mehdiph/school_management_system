@@ -59,7 +59,9 @@ class SchoolSession(models.Model):
     def clean(self):
         super().clean()
 
-        if self.class_subject:
+        # Both may be missing when a form failed to validate them; that is
+        # reported on the fields themselves, there is nothing to compare.
+        if self.class_subject_id and self.date:
             if self.date < self.class_subject.start_date:
                 raise ValidationError({
                     "date": "تاریخ جلسه قبل از تاریخ شروع درس است."
