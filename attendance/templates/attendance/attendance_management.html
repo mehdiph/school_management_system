@@ -1,171 +1,198 @@
 {% extends 'base.html' %}
+{% load static report_tags session_tags %}
 
-{% load static %}
+{% block title %}ثبت حضور و غیاب - {{ class_subject.subject.name }}{% endblock %}
+
+{% comment %}
+Same shell as the session form and session list (header, topbar, sidebar
+and the shared tokens in teaching_shell.css). Everything page-specific is
+scoped under body.attendance-page / .at (see attendance/css/attendance.css).
+
+The POST data is unchanged: one radio group per student named
+"status-<enrollment id>" with the values present / absent / late. The
+optional "description-<enrollment id>" textarea is saved by the view too.
+{% endcomment %}
+{% block body_class %}teaching-page attendance-page{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{% static "/attendance/css/style.css" %}">
+<link rel="stylesheet" href="{% static 'teaching/css/teaching_shell.css' %}">
+<link rel="stylesheet" href="{% static 'attendance/css/attendance.css' %}">
 {% endblock %}
 
-{% block title %} حضور غیاب {% endblock %}
-
-{% block navlinks %}
-  {% include 'core/include/nav-links.html' %}
+{% block sidebar %}
+    {% include "partials/sidebar.html" %}
 {% endblock %}
 
 {% block content %}
-<div class="page-wrapper">
+{% with school_class=class_subject.school_class %}
+<div class="at">
+    <div class="at-card">
+        <!-- Header -->
+        <header class="at-header">
+            <span class="at-header__icon" aria-hidden="true"><i class="fas fa-user-check"></i></span>
+            <div class="at-header__text">
+                <h1>ثبت حضور و غیاب</h1>
+                <p>{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
+            </div>
+            <a class="at-header__link" href="{% url 'teaching:session_list' class_subject.id %}">
+                <i class="fas fa-list" aria-hidden="true"></i>
+                <span>جلسات ثبت‌شده</span>
+            </a>
+        </header>
 
-  <!-- ============ 1. PAGE HEADER ============ -->
-  <header class="attendance-header">
-    <div class="header-decoration" aria-hidden="true"></div>
-    <div class="header-main">
-      <span class="title-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8 11l2 2 4-4"/><path d="M8 16h8"/></svg>
-      </span>
-      <div class="header-text">
-        <h1>ثبت حضور و غیاب</h1>
-        <p class="header-subtitle"> {{ class_subject }}· جلسه آموزشی امروز</p>
-      </div>
-    </div>
+        <div class="at-body">
+            <!-- Session info -->
+            <dl class="at-info" aria-label="اطلاعات جلسه">
+                <div class="at-info__item">
+                    <dt><i class="fas fa-users" aria-hidden="true"></i> کلاس</dt>
+                    <dd>{{ school_class.grade.name }} {{ school_class.section }}</dd>
+                </div>
+                <div class="at-info__item">
+                    <dt><i class="fas fa-book" aria-hidden="true"></i> درس</dt>
+                    <dd>{{ class_subject.subject.name }}</dd>
+                </div>
+                <div class="at-info__item">
+                    <dt><i class="far fa-calendar" aria-hidden="true"></i> تاریخ</dt>
+                    <dd>{{ session.date|jalali_long_date }}</dd>
+                </div>
+                <div class="at-info__item">
+                    <dt><i class="fas fa-hashtag" aria-hidden="true"></i> جلسه</dt>
+                    <dd>جلسه {{ session.session_number|to_persian }}</dd>
+                </div>
+            </dl>
 
-    <div class="session-info-card" aria-label="اطلاعات جلسه">
-      <div class="session-item">
-        <span class="session-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        </span>
-        <span>
-          <span class="session-label">کلاس</span>
-          <span class="session-value">{{ class_subject }}</span>
-        </span>
-      </div>
-      <div class="session-item">
-        <span class="session-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-        </span>
-        <span>
-          <span class="session-label">معلم</span>
-          <span class="session-value">{{ class_subject.teacher_assignment.teacher }}</span>
-        </span>
-      </div>
-      <div class="session-item">
-        <span class="session-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
-        </span>
-        <span>
-          <span class="session-label">تاریخ</span>
-          <span class="session-value">{{ session.date }}</span>
-        </span>
-      </div>
-      <div class="session-item">
-        <span class="session-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-        </span>
-        <span>
-          <span class="session-label">شماره جلسه</span>
-          <span class="session-value">جلسه {{ session.session_number }}</span>
-        </span>
-      </div>
-    </div>
-  </header>
+            {% if students %}
+            <form id="attendanceForm" class="at-form" method="post" novalidate>
+                {% csrf_token %}
 
-  <!-- ============ 2. PROGRESS SECTION ============ -->
+                <!-- Toolbar: search (client-side only, no name: never posted) + mark all present -->
+                <div class="at-toolbar">
+                    <div class="at-search">
+                        <label for="studentSearch" class="visually-hidden">جستجوی دانش‌آموز</label>
+                        <i class="fas fa-search at-search__icon" aria-hidden="true"></i>
+                        <input type="search" id="studentSearch" class="at-search__input"
+                            placeholder="جستجوی نام دانش‌آموز" autocomplete="off" enterkeyhint="search"
+                            aria-controls="attendanceList">
+                    </div>
+                    <button type="button" class="at-all" id="markAllPresent" hidden>
+                        <i class="fas fa-check-double" aria-hidden="true"></i>
+                        <span>همه حاضر</span>
+                    </button>
+                </div>
 
-  <form class="attendance-form" method="post" action="#">
+                <p class="at-hint">
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    وضعیت پیش‌فرض «حاضر» است؛ فقط غایب‌ها و تاخیری‌ها را تغییر دهید.
+                </p>
 
-    <!-- ============ 3 & 4. ATTENDANCE CARD + TABLE ============ -->
-    <section class="card attendance-card" aria-labelledby="attendance-heading">
-      <div class="card-header">
-        <h2 id="attendance-heading">لیست دانش‌آموزان</h2>
-        <div class="card-toolbar">
-          <div class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <label for="student-search" class="sr-only">جستجوی دانش‌آموز</label>
-            <input type="search" id="student-search" placeholder="جستجوی نام دانش‌آموز...">
-          </div>
-          <div class="summary-badges">
-            <span class="badge badge--present"><span class="badge-dot"></span>حاضر: ۱۲</span>
-            <span class="badge badge--absent"><span class="badge-dot"></span>غایب: ۰</span>
-            <span class="badge badge--late"><span class="badge-dot"></span>تاخیر: ۰</span>
-          </div>
+                <!-- Student list -->
+                <ol class="at-list" id="attendanceList" aria-label="لیست دانش‌آموزان">
+                    {% for student in students %}
+                    {% with name=student.student.user.get_full_name %}
+                    <li class="at-student" data-student data-name="{{ name }}" data-status="{{ student.current_status }}">
+                        <div class="at-student__head">
+                            <span class="at-student__num" aria-hidden="true">{{ forloop.counter|to_persian }}</span>
+                            <span class="at-student__name">{{ name }}</span>
+                            <!-- shown by attendance.js, which folds empty descriptions away -->
+                            <button type="button" class="at-note-btn" aria-expanded="true"
+                                aria-controls="student-{{ student.id }}-note" hidden>
+                                <i class="fas fa-comment-dots" aria-hidden="true"></i>
+                                <span>توضیح</span>
+                            </button>
+                        </div>
+
+                        <fieldset class="at-seg">
+                            <legend class="visually-hidden">وضعیت حضور {{ name }}</legend>
+                            <label class="at-seg__opt at-seg__opt--present">
+                                <input type="radio" class="at-seg__input" name="status-{{ student.id }}" value="present"
+                                    {% if student.current_status == 'present' %}checked{% endif %}>
+                                <span class="at-seg__face">
+                                    <span class="at-seg__icon" aria-hidden="true"><i class="fas fa-check"></i></span>
+                                    <span>حاضر</span>
+                                </span>
+                            </label>
+                            <label class="at-seg__opt at-seg__opt--absent">
+                                <input type="radio" class="at-seg__input" name="status-{{ student.id }}" value="absent"
+                                    {% if student.current_status == 'absent' %}checked{% endif %}>
+                                <span class="at-seg__face">
+                                    <span class="at-seg__icon" aria-hidden="true"><i class="fas fa-times"></i></span>
+                                    <span>غایب</span>
+                                </span>
+                            </label>
+                            <label class="at-seg__opt at-seg__opt--late">
+                                <input type="radio" class="at-seg__input" name="status-{{ student.id }}" value="late"
+                                    {% if student.current_status == 'late' %}checked{% endif %}>
+                                <span class="at-seg__face">
+                                    <span class="at-seg__icon" aria-hidden="true"><i class="fas fa-clock"></i></span>
+                                    <span>تاخیر</span>
+                                </span>
+                            </label>
+                        </fieldset>
+
+                        <div class="at-note" id="student-{{ student.id }}-note">
+                            <label class="at-note__label" for="description-{{ student.id }}">
+                                توضیح <span class="visually-hidden">برای {{ name }}</span>
+                                <span class="at-optional">(اختیاری)</span>
+                            </label>
+                            <textarea class="at-note__input" id="description-{{ student.id }}" name="description-{{ student.id }}"
+                                rows="2" placeholder="مثلاً علت غیبت یا مدت تاخیر">{{ student.current_description }}</textarea>
+                        </div>
+                    </li>
+                    {% endwith %}
+                    {% endfor %}
+                </ol>
+
+                <p class="at-no-results" id="noResults" hidden>
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    دانش‌آموزی با این نام پیدا نشد.
+                </p>
+
+                <!-- Sticky summary + submit -->
+                <div class="at-bar">
+                    <div class="at-progress" aria-hidden="true" hidden><span class="at-progress__fill" id="presentRatio"></span></div>
+
+                    <!-- filled (and shown) by attendance.js; read out whenever a count changes -->
+                    <div class="at-summary" id="attendanceSummary" aria-live="polite" aria-atomic="true" hidden>
+                        <span class="at-count at-count--present">
+                            <i class="fas fa-check" aria-hidden="true"></i> حاضر <b data-count="present"></b>
+                        </span>
+                        <span class="at-count at-count--absent">
+                            <i class="fas fa-times" aria-hidden="true"></i> غایب <b data-count="absent"></b>
+                        </span>
+                        <span class="at-count at-count--late">
+                            <i class="fas fa-clock" aria-hidden="true"></i> تاخیر <b data-count="late"></b>
+                        </span>
+                        <span class="at-count at-count--unset" data-count-wrap="unset" hidden>
+                            <i class="fas fa-question" aria-hidden="true"></i> ثبت نشده <b data-count="unset"></b>
+                        </span>
+                        <span class="at-count at-count--total">
+                            کل <b data-count="total"></b>
+                        </span>
+                    </div>
+
+                    <button type="submit" class="at-submit" data-loading-text="در حال ثبت...">
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                        <span>ثبت حضور و غیاب</span>
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <div class="at-empty">
+                <span class="at-empty__icon" aria-hidden="true"><i class="fas fa-user-slash"></i></span>
+                <h2>دانش‌آموزی در این کلاس ثبت‌نام نشده است</h2>
+                <p>پس از ثبت‌نام دانش‌آموزان در این کلاس، می‌توانید حضور و غیاب را ثبت کنید.</p>
+                <a class="at-empty__link" href="{% url 'teaching:session_list' class_subject.id %}">
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                    بازگشت به جلسات
+                </a>
+            </div>
+            {% endif %}
         </div>
-      </div>
-
-      <div class="table-scroll">
-        <table class="attendance-table">
-          <thead>
-            <tr>
-              <th scope="col">دانش‌آموز</th>
-              <th scope="col">وضعیت حضور</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for student in students %}
-              {% csrf_token %}
-              <tr class="student-row">
-                <td>
-                  <div class="student-cell">
-                    <span class="avatar" aria-hidden="true">ع.ا</span>
-                    <span class="student-name">{{ student.student.user.get_full_name }}</span>
-                  </div>
-                </td>
-                <td class="status-cell">
-                  <fieldset class="status-group">
-                    <legend class="sr-only"> وضعیت حضور {{ student.student.user.get_full_name }}</legend>
-                    <label class="status-chip status-chip--present">
-                      <input type="radio" name="status-{{ student.id }}" value="present"
-                      {% if student.current_status == 'present' %}checked{% endif %}>
-                      <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
-                      <span class="chip-text">حاضر</span>
-                    </label>
-                    <label class="status-chip status-chip--absent">
-                      <input type="radio" name="status-{{ student.id }}" value="absent"
-                      {% if student.current_status == 'absent' %}checked{% endif %}>
-                      <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
-                      <span class="chip-text">غایب</span>
-                    </label>
-                    <label class="status-chip status-chip--late">
-                      <input type="radio" name="status-{{ student.id }}" value="late"
-                      {% if student.current_status == 'late' %}checked{% endif %}>
-                      <span class="chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
-                      <span class="chip-text">تاخیر</span>
-                    </label>
-                  </fieldset>
-                </td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="2">دانش‌آموزی در این کلاس یافت نشد.</td>
-              </tr>
-            {% endfor %}
-            
-
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ============ 5. TEACHER NOTES ============ -->
-    <section class="card notes-card">
-      <label for="notes" class="notes-label">توضیحات حضور و غیاب</label>
-      <textarea id="notes" name="notes" rows="4" placeholder="در صورت نیاز توضیحات مربوط به غیبت یا تاخیر دانش‌آموزان را وارد کنید..."></textarea>
-      <p class="notes-hint">این بخش اختیاری است و فقط برای معلم و مدیر مدرسه قابل مشاهده خواهد بود.</p>
-    </section>
-
-    <!-- ============ 6. ACTION BUTTONS ============ -->
-    <div class="action-bar">
-      <button type="submit" class="btn btn-primary">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-        ثبت حضور و غیاب
-      </button>
-      <button type="button" class="btn btn-secondary">بازگشت</button>
     </div>
-
-  </form>
-
 </div>
+{% endwith %}
 {% endblock %}
 
-
 {% block scripts %}
-
+<script src="{% static 'attendance/js/attendance.js' %}" defer></script>
 {% endblock %}

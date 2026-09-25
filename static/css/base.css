@@ -164,12 +164,6 @@ ul {
     font-weight: 600;
 }
 
-.nav-info {
-    display: flex;
-    gap: 25px;
-    align-items: center;
-}
-
 .cta-btn {
     background-color: #ef7e41;
     color: #fff;
