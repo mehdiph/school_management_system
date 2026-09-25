@@ -1,7 +1,4 @@
-@font-face {
-    font-family: 'Vazirmatn';
-    src: url('/static/fonts/Vazirmatn-Regular.ttf');
-}
+/* Grade sessions report. The Vazirmatn @font-face lives in static/css/base.css. */
 
 /* Grade Report Specific Variables Replaced for PDF Compatibility */
 /*
@@ -13,27 +10,34 @@
 */
 
 .grade-report-container {
-    padding: 2rem;
+    container: grade-report / inline-size;
+    padding: 1rem;
     background: white;
+    border-radius: 8px;
     max-width: 210mm;
     margin: 0 auto;
     font-family: 'Vazirmatn', sans-serif;
 }
 
-/* Header */
-.main-header {
+/* Header. Deliberately not ".main-header": that is the site navbar's
+   class in base.html, and this sheet is loaded on the reports page. */
+.grade-report-header {
     text-align: center;
     border-bottom: 3px solid #1e293b;
     padding-bottom: 1.5rem;
     margin-bottom: 2rem;
 }
 
-.main-header h1 {
-    font-size: 1.8rem;
+.grade-report-header h1 {
+    font-size: 1.35rem;
     margin-bottom: 0.5rem;
 }
 
-.main-header .meta {
+.grade-report-header .meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
     color: #64748b;
     font-size: 0.95rem;
 }
@@ -55,7 +59,7 @@
     padding: 0.75rem 1rem;
     font-size: 1.4rem;
     font-weight: 800;
-    border-right: 5px solid #1e40af;
+    border-inline-start: 5px solid #1e40af;
     margin-bottom: 1.5rem;
     border-radius: 4px;
 }
@@ -70,7 +74,7 @@
     font-size: 1.2rem;
     font-weight: 700;
     margin-bottom: 0.75rem;
-    padding-right: 0.5rem;
+    padding-inline-start: 0.5rem;
     color: #1e293b;
 }
 
@@ -86,7 +90,11 @@
 .session-table td {
     border: 1px solid #000000;
     padding: 0.6rem;
-    text-align: right;
+    text-align: start;
+}
+
+.session-table .cell-nowrap {
+    white-space: nowrap;
 }
 
 .session-table th {
@@ -120,6 +128,27 @@
     justify-content: space-between;
 }
 
+/* The "|" only separates the two meta items while they share a line. */
+@container (max-width: 599.98px) {
+    .grade-report-header .separator {
+        display: none;
+    }
+
+    .grade-report-header .meta {
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 768px) {
+    .grade-report-container {
+        padding: 2rem;
+    }
+
+    .grade-report-header h1 {
+        font-size: 1.8rem;
+    }
+}
+
 /* Print Overrides */
 @media print {
     body {
@@ -145,7 +174,7 @@
         print-color-adjust: exact;
     }
 
-    .main-header {
+    .grade-report-header {
         border-bottom-color: black;
     }
 

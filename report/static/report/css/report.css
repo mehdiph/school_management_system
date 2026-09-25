@@ -1,10 +1,7 @@
-@font-face {
-    font-family: 'Vazirmatn';
-    src: url('/static/fonts/Vazirmatn-Regular.ttf');
-}
+/* Class sessions report. The Vazirmatn @font-face lives in static/css/base.css. */
 
 /* Report Specific Variables Replaced for PDF Compatibility */
-/* 
+/*
     --report-primary: #3b82f6;
     --report-border: #e2e8f0;
     --report-bg-header: #f8fafc;
@@ -14,13 +11,14 @@
 
 /* Page Layout */
 .report-container {
+    container: report / inline-size;
     background: white;
-    padding: 2rem;
+    padding: 1rem;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     max-width: 210mm;
     /* A4 width approx */
-    margin: 2rem auto;
+    margin: 0 auto 2rem;
     font-family: 'Vazirmatn', sans-serif;
     /* Applied font */
 }
@@ -28,11 +26,13 @@
 /* Header Section */
 .report-header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 0.75rem 1rem;
     border-bottom: 2px solid #3b82f6;
     padding-bottom: 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .report-header .logo-section {
@@ -46,15 +46,26 @@
     width: auto;
 }
 
+.report-logo-placeholder {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee;
+    border-radius: 50%;
+}
+
 .report-header .report-title h1 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #1e293b;
     margin: 0;
 }
 
 .report-header .report-meta {
-    text-align: left;
+    text-align: end;
     font-size: 0.9rem;
     color: #64748b;
 }
@@ -62,12 +73,12 @@
 /* Metadata Grid */
 .meta-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
     gap: 1rem;
     background-color: #f8fafc;
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 6px;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     border: 1px solid #e2e8f0;
 }
 
@@ -75,6 +86,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    min-width: 0;
 }
 
 .meta-item .label {
@@ -90,15 +102,15 @@
 /* Summary Section */
 .summary-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
     margin-bottom: 2rem;
 }
 
 .summary-card {
     background: white;
     border: 1px solid #e2e8f0;
-    padding: 1rem;
+    padding: 1rem 0.5rem;
     border-radius: 6px;
     text-align: center;
 }
@@ -108,6 +120,10 @@
     font-size: 1.5rem;
     font-weight: 700;
     color: #3b82f6;
+}
+
+.summary-card .summary-card__status {
+    color: #047857;
 }
 
 .summary-card .text {
@@ -126,8 +142,8 @@
     font-weight: 700;
     margin-bottom: 1rem;
     color: #1e293b;
-    border-right: 4px solid #3b82f6;
-    padding-right: 0.75rem;
+    border-inline-start: 4px solid #3b82f6;
+    padding-inline-start: 0.75rem;
 }
 
 .report-table {
@@ -140,7 +156,7 @@
 .report-table td {
     padding: 0.75rem;
     border: 1px solid #e2e8f0;
-    text-align: right;
+    text-align: start;
 }
 
 .report-table th {
@@ -153,11 +169,26 @@
     background-color: #fafafa;
 }
 
+/* Dates and counts never wrap mid-value (e.g. 1405-07-12). Dates inside
+   Persian text are wrapped in dir="ltr" so the bidi algorithm does not
+   print them back to front (02-07-1405). */
+.report-table .cell-nowrap,
+.report-container [dir="ltr"],
+.grade-report-container [dir="ltr"] {
+    white-space: nowrap;
+}
+
 /* Subject Specific Styles */
+.subject-wrapper {
+    margin-bottom: 2rem;
+}
+
 .subject-detail-header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 0.25rem 1rem;
     background-color: #f1f5f9;
     padding: 0.75rem;
     border-radius: 6px 6px 0 0;
@@ -168,12 +199,12 @@
 
 .subject-name {
     font-weight: 700;
-    color: #3b82f6;
+    color: #2563eb;
 }
 
 .teacher-name {
     font-size: 0.9rem;
-    color: #64748b;
+    color: #475569;
 }
 
 /* Footer */
@@ -182,7 +213,9 @@
     padding-top: 1rem;
     border-top: 1px solid #e2e8f0;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
+    gap: 0.5rem 1rem;
     font-size: 0.8rem;
     color: #64748b;
 }
@@ -195,6 +228,114 @@
     border-radius: 6px;
     color: #64748b;
     font-style: italic;
+}
+
+.empty-state--attached {
+    border: 1px solid #e2e8f0;
+    border-top: none;
+}
+
+@media (min-width: 768px) {
+    .report-container {
+        padding: 2rem;
+    }
+
+    .report-header {
+        margin-bottom: 2rem;
+    }
+
+    .report-header .report-title h1 {
+        font-size: 1.5rem;
+    }
+
+    .meta-grid {
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-cards {
+        gap: 1rem;
+    }
+}
+
+/* Narrow report (phones, or a tablet with the sidebar open): each table
+   row becomes a card, and every cell is labelled from its data-label.
+   These tables list records (a session, a subject) that are read one by
+   one rather than compared across columns, and their longest column is
+   free text -- horizontal scrolling would hide exactly that text.
+   A container query, not a media query, because the space left for the
+   report depends on whether the sidebar is showing. */
+@container (max-width: 599.98px) {
+    table.report-table--stack thead {
+        display: block;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    table.report-table--stack,
+    table.report-table--stack tbody,
+    table.report-table--stack tr {
+        display: block;
+        width: 100%;
+    }
+
+    table.report-table--stack tr {
+        margin-bottom: 0.75rem;
+        padding: 0.25rem 0.875rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background-color: white;
+    }
+
+    table.report-table--stack td {
+        display: grid;
+        grid-template-columns: 6.5rem minmax(0, 1fr);
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border: 0;
+        text-align: start;
+    }
+
+    table.report-table--stack td + td {
+        border-top: 1px dashed #e2e8f0;
+    }
+
+    table.report-table--stack td::before {
+        content: attr(data-label);
+        color: #475569;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    table.report-table--stack .cell-title {
+        font-weight: 700;
+    }
+
+    table.report-table--stack .cell-text {
+        overflow-wrap: anywhere;
+    }
+
+    .summary-cards {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .summary-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        text-align: start;
+    }
+
+    .summary-card .number {
+        order: 2;
+        font-size: 1.25rem;
+    }
 }
 
 /* Print Specifics */

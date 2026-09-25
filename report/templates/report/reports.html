@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load persian_tools %}
 
 {% block title %}گزارش‌های سیستم{% endblock %}
 
@@ -15,79 +14,115 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="reports-page">
     <!-- Page Header -->
     <div class="reports-page-header">
-        <h1>{% if is_pdf %}{{ "گزارش‌های آموزشی"|reshape }}{% else %}گزارش‌های آموزشی{% endif %}</h1>
-        <p class="desc text-muted">جهت مشاهده گزارش، فیلترهای زیر را تنظیم کنید.</p>
+        <h1>گزارش‌های آموزشی</h1>
+        <p class="desc">جهت مشاهده گزارش، فیلترهای زیر را تنظیم کنید.</p>
     </div>
 
+    {% if scope_message %}
+    <div class="report-notice report-notice--warning" role="status">
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+        <span>{{ scope_message }}</span>
+    </div>
+    {% else %}
+
+    {% if scope_notice %}
+    <div class="report-notice" role="status">
+        <i class="fas fa-info-circle" aria-hidden="true"></i>
+        <span>{{ scope_notice }}</span>
+    </div>
+    {% endif %}
+
     <!-- Filter Form -->
-    <div class="reports-filter-section">
-        <form method="get" action="">
-            <div class="filter-grid">
-                <!-- Report Type -->
-                <div class="form-group">
-                    <label>نوع گزارش:</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="report_type" value="class" {% if report_type == 'class' %}checked{% endif %}>
-                            <span>بر اساس کلاس</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="report_type" value="grade" {% if report_type == 'grade' %}checked{% endif %}>
-                            <span>بر اساس پایه</span>
-                        </label>
+    <section class="reports-filter-section" data-filter
+        data-start-collapsed="{% if has_report %}true{% else %}false{% endif %}">
+        <button type="button" class="filter-toggle" data-filter-toggle
+            aria-expanded="true" aria-controls="report-filter-panel">
+            <span class="filter-toggle__title">
+                <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                فیلتر گزارش
+            </span>
+            {% if has_report %}
+            <span class="filter-toggle__summary">
+                {% if report_type == 'class' %}{{ grade }} - {{ class_name }}{% else %}{{ academic_year }}{% endif %}
+            </span>
+            {% endif %}
+            <i class="fas fa-chevron-down filter-toggle__icon" aria-hidden="true"></i>
+        </button>
+
+        <div class="filter-panel" id="report-filter-panel">
+            <form method="get" action="" data-options-url="{% url 'report:report_options' %}">
+                {% for error in form.non_field_errors %}
+                <p class="field-error">{{ error }}</p>
+                {% endfor %}
+
+                <div class="filter-grid">
+                    <!-- Report Type -->
+                    <fieldset class="form-group">
+                        <legend>{{ form.report_type.label }}:</legend>
+                        <div class="radio-group">
+                            {% for radio in form.report_type %}
+                            <label class="radio-label" for="{{ radio.id_for_label }}">
+                                {{ radio.tag }}
+                                <span>{{ radio.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+
+                    <!-- Year -->
+                    <div class="form-group">
+                        <label for="{{ form.year.id_for_label }}">{{ form.year.label }}:</label>
+                        {{ form.year }}
+                        {% for error in form.year.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <!-- Grade -->
+                    <div class="form-group" id="grade-filter-container">
+                        <label for="{{ form.grade.id_for_label }}">{{ form.grade.label }}:</label>
+                        {{ form.grade }}
+                        {% for error in form.grade.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+
+                    <!-- Class -->
+                    <div class="form-group" id="class-filter-container">
+                        <label for="{{ form.class_id.id_for_label }}">{{ form.class_id.label }}:</label>
+                        <select name="{{ form.class_id.html_name }}" id="{{ form.class_id.id_for_label }}"
+                            class="form-control"{% if form.class_id.errors %} aria-invalid="true" aria-describedby="class-id-errors"{% endif %}>
+                            <option value="">{{ form.fields.class_id.empty_label }}</option>
+                            {% for school_class, selected in form.class_options %}
+                            <option value="{{ school_class.pk }}" data-grade="{{ school_class.grade_id }}"{% if selected %} selected{% endif %}>{{ school_class.grade.name }} - {{ school_class.section }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.class_id.errors %}
+                        <div id="class-id-errors">
+                            {% for error in form.class_id.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
-                <!-- Year -->
-                <div class="form-group">
-                    <label for="year">سال تحصیلی:</label>
-                    <select name="year" id="year" class="form-control">
-                        {% for y in years %}
-                        <option value="{{ y.id }}" {% if selected_year_id == y.id %}selected{% endif %}>{{ y.title }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                        مشاهده گزارش
+                    </button>
+                    <a href="{% url 'report:reports_page' %}" class="btn-reset">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                        پاک کردن فیلترها
+                    </a>
                 </div>
-
-                <!-- Grade -->
-                <div class="form-group" id="grade-filter-container">
-                    <label for="grade">پایه تحصیلی (اختیاری):</label>
-                    <select name="grade" id="grade" class="form-control">
-                        <option value="">همه پایه‌ها</option>
-                        {% for g in grades_list %}
-                        <option value="{{ g.id }}" {% if selected_grade_id == g.id %}selected{% endif %}>{{ g.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Class -->
-                <div class="form-group" id="class-filter-container">
-                    <label for="class_id">کلاس:</label>
-                    <select name="class_id" id="class_id" class="form-control">
-                        <option value="">انتخاب کنید...</option>
-                        {% for c in classes_list %}
-                        <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.grade.name}} - {{ c.section }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Submit -->
-                <div class="form-group" style="padding-bottom: 2px;">
-                    <button type="submit" class="btn-submit">مشاهده گزارش</button>
-                </div>
-            </div>
-        </form>
-    </div>
+            </form>
+        </div>
+    </section>
 
     <!-- Report Output -->
     {% if has_report %}
-    <div class="report-actions no-print" style="margin-bottom: 1rem; text-align: left;">
-        <a href="{{ request.get_full_path }}&format=pdf" class="btn-pdf" target="_blank">
-            <i class="fas fa-file-pdf"></i> دانلود PDF
+    <div class="report-actions no-print">
+        <a href="{{ request.get_full_path }}&format=pdf" class="btn-pdf" target="_blank" rel="noopener">
+            <i class="fas fa-file-pdf" aria-hidden="true"></i> دانلود PDF
         </a>
     </div>
 
@@ -96,10 +131,9 @@
     {% elif report_type == 'grade' %}
     {% include 'report/grade_sessions_report_content_include.html' %}
     {% endif %}
-    {% elif request.GET.report_type %}
-    <div class="alert alert-info">داده‌ای برای نمایش یافت نشد.</div>
     {% endif %}
 
+    {% endif %}
 </div>
 {% endblock %}
 

@@ -1,6 +1,8 @@
-from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render
+from django.urls import reverse_lazy
 from django.views import View
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import get_template
 from django.conf import settings
 from jdatetime import datetime
@@ -10,8 +12,14 @@ import os
 from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 
-from school.models import SchoolClass, ClassSubject, AcademicYear, Grade
-from teaching.models import SchoolSession
+from .forms import REPORT_TYPE_CLASS, ReportFilterForm, class_label
+from .selectors import (
+    NO_ASSIGNMENT_MESSAGE,
+    NO_CURRENT_YEAR_NOTICE,
+    ReportScope,
+    build_class_report,
+    build_grade_report,
+)
 
 class BaseReportView(View):
     """
@@ -25,7 +33,7 @@ class BaseReportView(View):
     def get(self, request, *args, **kwargs):
         context = self.get_report_context(request, *args, **kwargs)
         
-        if request.GET.get('format') == 'pdf':
+        if request.GET.get('format') == 'pdf' and context.get('has_report'):
             return self.render_to_pdf(request, context)
         
         return render(request, self.template_name, context)
@@ -76,184 +84,79 @@ class BaseReportView(View):
         return response
 
 
-class ReportsView(BaseReportView):
+class ReportsView(LoginRequiredMixin, BaseReportView):
     template_name = 'report/reports.html'
+    login_url = reverse_lazy('accounts:login')
 
     def get_report_context(self, request, *args, **kwargs):
-        # 1. Base Context (Form Data)
-        context = {
-            'years': AcademicYear.objects.all().order_by('-start_date'),
-            'grades_list': Grade.objects.filter(is_active=True).order_by('level'),
-            'classes_list': SchoolClass.objects.filter(is_active=True).select_related('grade').order_by('grade__level', 'section'),
-            'report_type': request.GET.get('report_type', 'class'),
-            'selected_year_id': int(request.GET.get('year')) if request.GET.get('year') else None,
-            'selected_grade_id': int(request.GET.get('grade')) if request.GET.get('grade') else None,
-            'selected_class_id': int(request.GET.get('class_id')) if request.GET.get('class_id') else None,
-            'has_report': False,
-        }
+        scope = ReportScope(request.user)
+        context = {'has_report': False, 'form': None, 'scope_message': None}
 
-        # 2. Process Report Generation if params exist
-        if request.GET.get('report_type'):
-             report_data = self.generate_report_data(request)
-             if report_data:
-                 context.update(report_data)
-                 context['has_report'] = True
+        if scope.error_message:
+            context['scope_message'] = scope.error_message
+            return context
+
+        years = list(scope.years())
+
+        if not years:
+            context['scope_message'] = NO_ASSIGNMENT_MESSAGE
+            return context
+
+        if scope.is_restricted and not any(year.is_current for year in years):
+            context['scope_notice'] = NO_CURRENT_YEAR_NOTICE
+
+        is_submitted = 'report_type' in request.GET
+        form = ReportFilterForm(
+            request.GET if is_submitted else None, scope=scope, years=years
+        )
+        context['form'] = form
+        context['report_type'] = form['report_type'].value()
+
+        if is_submitted and form.is_valid():
+            data = form.cleaned_data
+
+            if data['report_type'] == REPORT_TYPE_CLASS:
+                report = build_class_report(scope, data['class_id'])
+            else:
+                report = build_grade_report(scope, data['year'], data['grade'])
+
+            context.update(report)
+            context['has_report'] = True
 
         return context
 
-    def generate_report_data(self, request):
-        report_type = request.GET.get('report_type')
+
+class ReportOptionsView(LoginRequiredMixin, View):
+    """
+    Grades and classes of one academic year for the report filter, as
+    JSON. Uses the same form (and therefore the same ``ReportScope``
+    querysets) as the page, so the dropdowns can never offer more than
+    the server would accept.
+    """
+
+    login_url = reverse_lazy('accounts:login')
+
+    def get(self, request):
+        scope = ReportScope(request.user)
+        years = [] if scope.error_message else list(scope.years())
         year_id = request.GET.get('year')
-        
-        if not year_id:
-            return None
 
-        # --- CLASS BASED REPORT ---
-        if report_type == 'class':
-            class_id = request.GET.get('class_id')
-            if not class_id:
-                return None
-            
-            return self._get_class_report_data(class_id)
+        if not any(str(year.pk) == year_id for year in years):
+            return JsonResponse({'grades': [], 'classes': []}, status=404)
 
-        # --- GRADE BASED REPORT ---
-        elif report_type == 'grade':
-            grade_id = request.GET.get('grade')
-            return self._get_grade_report_data(year_id, grade_id)
+        form = ReportFilterForm({'year': year_id}, scope=scope, years=years)
 
-        return None
-
-    def _get_class_report_data(self, class_id):
-        school_class = get_object_or_404(SchoolClass, pk=class_id)
-        
-        class_subjects = ClassSubject.objects.filter(
-            school_class=school_class
-        ).select_related(
-            'subject', 'teacher'
-        ).prefetch_related(
-            'schoolsession_set',
-            'schoolsession_set__session_contents'
-        ).order_by('subject__name')
-
-        subjects_data = []
-        global_first_date = None
-        global_last_date = None
-        total_sessions_count = 0
-
-        for cs in class_subjects:
-            sessions = cs.schoolsession_set.all().order_by('date', 'session_number')
-            session_list = []
-            session_list_held = []
-            cs_first_date = None
-            cs_last_date = None
-            
-            for session in sessions:
-                if not global_first_date or (session.date and session.date < global_first_date):
-                    global_first_date = session.date
-                if not global_last_date or (session.date and session.date > global_last_date):
-                    global_last_date = session.date
-
-                if not cs_first_date: cs_first_date = session.date
-                cs_last_date = session.date 
-                
-                content_summary = ""
-                if hasattr(session, 'session_contents'):
-                    content_summary = session.session_contents.title + ": " + session.session_contents.content
-
-                session_list.append({
-                    'number': session.session_number,
-                    'date': session.date,
-                    'content': content_summary,
-                    'status': session.status,
-                })
-
-                if session.status == 'HD':
-                    session_list_held.append({
-                        'number': session.session_number,
-                        'date': session.date,
-                        'content': content_summary
-                    })
-            
-            subjects_data.append({
-                'name': cs.subject.name,
-                'teacher_name': cs.teacher.get_full_name() or cs.teacher.username,
-                'session_count': len(session_list),
-                'first_date': cs_first_date,
-                'last_date': cs_last_date,
-                'sessions': session_list
-            })
-            total_sessions_count += len(session_list_held)
-
-        return {
-            'class_name': school_class.section,
-            'grade': school_class.grade.name,
-            'academic_year': school_class.year.title,
-            'report_date': datetime.now().strftime("%Y-%m-%d"),
-            'total_subjects': len(subjects_data),
-            'total_sessions': total_sessions_count,
-            'first_session_date': global_first_date,
-            'last_session_date': global_last_date,
-            'subjects': subjects_data,
-        }
-
-    def _get_grade_report_data(self, year_id, grade_id=None):
-        academic_year = get_object_or_404(AcademicYear, pk=year_id)
-        
-        grades_query = Grade.objects.filter(is_active=True).order_by('level')
-        if grade_id:
-            grades_query = grades_query.filter(pk=grade_id)
-
-        grades_data = []
-
-        for grade in grades_query:
-            classes = SchoolClass.objects.filter(grade=grade, year=academic_year).order_by('section')
-            if not classes.exists():
-                continue
-
-            classes_list = []
-            for school_class in classes:
-                sessions = SchoolSession.objects.filter(
-                    class_subject__school_class=school_class
-                ).select_related(
-                    'class_subject', 
-                    'class_subject__subject',
-                    'class_subject__teacher'
-                ).prefetch_related(
-                    'sessioncontent'
-                ).order_by('date', 'session_number')
-
-                if not sessions.exists():
-                    classes_list.append({'class_name': school_class.section, 'sessions': []})
-                    continue
-
-                session_rows = []
-                for s in sessions:
-                    content_summary = ""
-                    if hasattr(s, 'sessioncontent'):
-                        content = s.sessioncontent.content
-                        if len(content) > 50: content = content[:50] + "..."
-                        content_summary = content
-
-                    session_rows.append({
-                        'date': s.date,
-                        'subject_name': s.class_subject.subject.name,
-                        'teacher_name': s.class_subject.teacher.get_full_name() or s.class_subject.teacher.username,
-                        'content_summary': content_summary
-                    })
-                
-                classes_list.append({
-                    'class_name': school_class.section,
-                    'sessions': session_rows
-                })
-
-            if classes_list:
-                 grades_data.append({
-                    'grade_name': grade.name,
-                    'classes': classes_list
-                })
-
-        return {
-            'academic_year': academic_year.title,
-            'report_date': datetime.now().strftime("%Y/%m/%d"),
-            'grades_data': grades_data
-        }
+        return JsonResponse({
+            'grades': [
+                {'id': grade.pk, 'name': grade.name}
+                for grade in form.fields['grade'].queryset
+            ],
+            'classes': [
+                {
+                    'id': school_class.pk,
+                    'label': class_label(school_class),
+                    'grade_id': school_class.grade_id,
+                }
+                for school_class in form.fields['class_id'].queryset
+            ],
+        })

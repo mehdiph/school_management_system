@@ -2,12 +2,12 @@
 <!-- Content of Grade Sessions Report (Partial) -->
 <div class="grade-report-container">
     <!-- Main Header -->
-    <header class="main-header">
+    <header class="grade-report-header">
         <h1>{% if is_pdf %}{{ "گزارش جلسات تدریس بر اساس پایه"|reshape }}{% else %}گزارش جلسات تدریس بر اساس پایه{%endif %}</h1>
         <div class="meta">
-            <span>{% if is_pdf %}{{ "سال تحصیلی"|reshape }}{% else %}سال تحصیلی{% endif %}: {{ academic_year|reshape }}</span>
+            <span>{% if is_pdf %}{{ "سال تحصیلی"|reshape }}{% else %}سال تحصیلی{% endif %}: {% if is_pdf %}{{ academic_year|reshape }}{% else %}<span dir="ltr">{{ academic_year }}</span>{% endif %}</span>
             <span class="separator">|</span>
-            <span>{% if is_pdf %}{{ "تاریخ اخذ گزارش"|reshape }}{% else %}تاریخ اخذ گزارش{% endif %}: {{ report_date }}</span>
+            <span>{% if is_pdf %}{{ "تاریخ اخذ گزارش"|reshape }}{% else %}تاریخ اخذ گزارش{% endif %}: <span dir="ltr">{{ report_date }}</span></span>
         </div>
     </header>
 
@@ -22,7 +22,7 @@
         <div class="class-section">
             <h3 class="class-title">{% if is_pdf %}{{ "کلاس"|reshape }}{% else %}کلاس{% endif %}: {% if is_pdf %}{{class_data.class_name|reshape }}{% else %}{{ class_data.class_name }}{% endif %}</h3>
             {% if class_data.sessions %}
-            <table class="session-table">
+            <table class="session-table report-table--stack">
                 <thead>
                     <tr>
                         {% if is_pdf %}
@@ -52,11 +52,11 @@
                         <td style="text-align: right;">{{ session.date }}</td>
                         <td style="text-align: center;">{{ forloop.counter }}</td>
                         {% else %}
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ session.date }}</td>
-                        <td>{{ session.subject_name }}</td>
-                        <td>{{ session.teacher_name }}</td>
-                        <td>{{ session.content_summary|truncatechars:100 }}</td>
+                        <td data-label="ردیف" class="cell-index">{{ forloop.counter }}</td>
+                        <td data-label="تاریخ" class="cell-nowrap">{{ session.date }}</td>
+                        <td data-label="درس" class="cell-title">{{ session.subject_name }}</td>
+                        <td data-label="دبیر">{{ session.teacher_name }}</td>
+                        <td data-label="خلاصه محتوا" class="cell-text">{{ session.content_summary|truncatechars:100|default:"-" }}</td>
                         {% endif %}
                     </tr>
                     {% endfor %}

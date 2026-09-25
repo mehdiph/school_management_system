@@ -1,130 +1,357 @@
-/* Unified Reports Page Styles - Fixed for PDF Compatibility */
-/*
-    --primary-color: #3b82f6;
-    --border-color: #e2e8f0;
-    --bg-gray: #f8fafc;
-    --text-primary: #1e293b;
-*/
+/* Unified Reports Page Styles (mobile-first).
+   Colors kept from the original page; the blues were darkened one step
+   (#3b82f6 -> #2563eb) where they carry text, for WCAG AA contrast. */
+
+.reports-page {
+    padding-block-start: 0.5rem;
+}
 
 .reports-page-header {
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
     border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 1rem;
+    padding-bottom: 0.75rem;
 }
 
 .reports-page-header h1 {
-    font-size: 1.8rem;
+    font-size: 1.4rem;
+    line-height: 1.6;
     color: #1e293b;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
-/* Filter Form */
+.reports-page-header .desc {
+    color: #475569;
+    font-size: 0.95rem;
+}
+
+/* Inline notices (the base .alert is styled as a floating toast). */
+.report-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    line-height: 1.8;
+}
+
+.report-notice i {
+    margin-top: 0.4em;
+}
+
+.report-notice--warning {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #78350f;
+}
+
+/* ----- Filter ----- */
+
 .reports-filter-section {
     background: white;
-    padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     border: 1px solid #e2e8f0;
+}
+
+.reports-filter-section [hidden] {
+    display: none;
+}
+
+/* The toggle only exists on phones, and only once reports.js has made
+   the section collapsible -- without JS the filter simply stays open. */
+.filter-toggle {
+    display: none;
+}
+
+.filter-panel {
+    padding: 1rem;
 }
 
 .filter-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    align-items: end;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
 }
 
-.form-group {
+.reports-filter-section .form-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
 }
 
-.form-group label {
-    font-weight: 500;
-    font-size: 0.9rem;
+.reports-filter-section legend,
+.reports-filter-section .form-group > label {
+    padding: 0;
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
     color: #1e293b;
 }
 
-.form-control {
-    padding: 0.5rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
+/* 16px text: iOS Safari zooms into any focused field smaller than that. */
+.reports-filter-section .form-control {
     width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #64748b;
+    border-radius: 8px;
+    background-color: white;
+    color: #1e293b;
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: 1rem;
 }
 
-.form-control:focus {
-    border-color: #3b82f6;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.reports-filter-section .form-control:focus {
+    border-color: #2563eb;
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+    box-shadow: none;
+}
+
+.reports-filter-section .form-control[aria-invalid="true"] {
+    border-color: #b91c1c;
 }
 
 .radio-group {
     display: flex;
-    gap: 1.5rem;
-    padding: 0.6rem 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .radio-label {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    min-height: 44px;
+    margin: 0;
+    padding-inline: 0.875rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-weight: 500;
+    color: #1e293b;
     cursor: pointer;
+}
+
+.radio-label:has(input:checked) {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.radio-label input {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: #2563eb;
+}
+
+.field-error {
+    margin: 0;
+    color: #b91c1c;
+    font-size: 0.875rem;
+    line-height: 1.7;
+}
+
+.filter-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.btn-submit,
+.btn-reset,
+.btn-pdf {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 
 .btn-submit {
-    background-color: #3b82f6;
+    background-color: #2563eb;
+    border: 1px solid #2563eb;
     color: white;
-    border: none;
-    padding: 0.6rem 1.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background 0.2s;
-    height: 40px;
-    /* aligning with inputs */
 }
 
 .btn-submit:hover {
-    background-color: #2563eb;
+    background-color: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.btn-reset {
+    background-color: white;
+    border: 1px solid #94a3b8;
+    color: #334155;
+}
+
+.btn-reset:hover {
+    background-color: #f1f5f9;
 }
 
 .btn-pdf {
-    display: inline-block;
     background-color: #dc2626;
-    /* Red for PDF */
+    border: 1px solid #dc2626;
     color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    margin-top: 1rem;
 }
 
-.btn-pdf i {
-    margin-left: 0.5rem;
+.btn-pdf:hover {
+    background-color: #b91c1c;
 }
 
-/* Print Specifics */
-@media print {
+.btn-submit:focus-visible,
+.btn-reset:focus-visible,
+.btn-pdf:focus-visible,
+.filter-toggle:focus-visible {
+    outline: 3px solid #1e3a8a;
+    outline-offset: 2px;
+}
 
-    .reports-filter-section,
-    .reports-page-header .desc,
-    .btn-pdf,
-    .no-print {
-        display: none !important;
+.report-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+/* ----- Phones: collapsible filter ----- */
+@media (max-width: 767.98px) {
+    .reports-filter-section.is-collapsible .filter-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        min-height: 52px;
+        padding: 0.5rem 1rem;
+        border: 0;
+        border-radius: 8px;
+        background: none;
+        color: #1e293b;
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        text-align: start;
+        cursor: pointer;
     }
 
+    .filter-toggle__title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .filter-toggle__summary {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #475569;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .filter-toggle__icon {
+        margin-inline-start: auto;
+        transition: transform 0.2s;
+    }
+
+    .filter-toggle[aria-expanded="true"] .filter-toggle__icon {
+        transform: rotate(180deg);
+    }
+
+    .reports-filter-section.is-collapsible .filter-panel {
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .reports-filter-section.is-collapsible .filter-toggle[aria-expanded="false"] + .filter-panel {
+        display: none;
+    }
+
+    .report-actions .btn-pdf {
+        width: 100%;
+    }
+}
+
+@media (min-width: 576px) {
+    .filter-actions {
+        flex-direction: row;
+    }
+}
+
+@media (min-width: 768px) {
     .reports-page-header {
-        border-bottom: none;
-        margin-bottom: 1rem;
-        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+    }
+
+    .reports-page-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .filter-panel {
+        padding: 1.5rem;
+    }
+
+    .filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem 1.5rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .filter-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .filter-toggle__icon {
+        transition: none;
+    }
+}
+
+/* ----- Print: only the report itself ----- */
+@media print {
+    .main-header,
+    .app-sidebar,
+    .sidebar-overlay,
+    .sidebar-reopen,
+    .mobile-topbar,
+    .messages,
+    .site-footer,
+    .reports-filter-section,
+    .reports-page-header,
+    .report-notice,
+    .report-actions,
+    .no-print {
+        display: none;
     }
 
     body {
         background: white;
+    }
+
+    .app-shell__main > .container {
+        max-width: none;
+        margin: 0;
+        padding: 0;
     }
 }
