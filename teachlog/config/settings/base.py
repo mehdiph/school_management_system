@@ -40,6 +40,10 @@ CSRF_TRUSTED_ORIGINS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# Where @login_required sends logged-out users. Django's default
+# (/accounts/login/) does not exist here: the login page is /auth/login/.
+LOGIN_URL = 'accounts:login'
+
 # Application definition
 
 INSTALLED_APPS = [

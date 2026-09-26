@@ -380,8 +380,11 @@ class WeeklyScheduleViewTests(ScheduleFixtureMixin, TestCase):
 
     def test_anonymous_is_sent_to_login(self):
         self.client.logout()
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            self.client.get(self.url),
+            f"{reverse('accounts:login')}?next={self.url}",
+            fetch_redirect_response=False,
+        )
 
     def test_non_student_is_forbidden(self):
         self.client.force_login(self.teacher.staff.user)
@@ -431,7 +434,11 @@ class WeeklySchedulePdfTests(ScheduleFixtureMixin, TestCase):
         self.slot(self.class_subject("علوم"), Day.SUNDAY, self.bell_1, WEEK_ONE)
 
     def test_anonymous_is_sent_to_login(self):
-        self.assertEqual(self.client.get(self.url).status_code, 302)
+        self.assertRedirects(
+            self.client.get(self.url),
+            f"{reverse('accounts:login')}?next={self.url}",
+            fetch_redirect_response=False,
+        )
 
     def test_non_student_is_forbidden(self):
         self.client.force_login(self.teacher.staff.user)

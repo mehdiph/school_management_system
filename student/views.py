@@ -5,10 +5,12 @@ from datetime import timedelta
 from django.utils import timezone
 from django.http import JsonResponse
 from .templatetags import persian_filters
+from .decorators import student_required
 from .services import get_classes_for_day
 
 # Create your views here.
 
+@student_required
 def student_dashboard(request):
     student = request.user.student_profile.enrollments.all()[0]
     print(f"student: {student}")
@@ -37,6 +39,7 @@ def student_dashboard(request):
 
 
 
+@student_required
 def sessions_list(request):
     # print(type(request.user.student_profile.enrollments.all()[0]))
     # print(hasattr(request.user.student_profile.enrollments.all()[0], 'school_class'))
@@ -51,6 +54,7 @@ def sessions_list(request):
     return render(request, 'student/session_list.html', context)
 
 
+@student_required
 def session_list_json(request, subject):
     school_class = request.user.student_profile.enrollments.get().school_class
 
