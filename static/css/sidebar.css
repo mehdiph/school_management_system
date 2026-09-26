@@ -248,18 +248,9 @@
   gap: var(--space-3);
 }
 
+/* Header avatar (partials/avatar.html); smaller on phones, see below. */
 .sidebar-user__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--gray-bg);
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12.5px;
-  font-weight: 700;
-  flex-shrink: 0;
+  --avatar-size: 36px;
 }
 
 .sidebar-user__text {
@@ -536,6 +527,11 @@
 
   .app-topbar .sidebar-user {
     min-width: 0;
+    gap: var(--space-2);
+  }
+
+  .app-topbar .sidebar-user__avatar {
+    --avatar-size: 28px;
   }
 
   .app-topbar .sidebar-user__text strong {

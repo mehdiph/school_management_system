@@ -1,6 +1,9 @@
 {% load report_tags %}
 <div class="app-topbar">
   <div class="sidebar-user">
+    {% if request.user.is_authenticated %}
+      {% include "partials/avatar.html" with person=request.user extra_class="sidebar-user__avatar" decorative=True %}
+    {% endif %}
     <div class="sidebar-user__text">
       <strong>{{ teacher.name }}</strong>
       {% if request.user.role == "supervisor" %}

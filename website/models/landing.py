@@ -263,8 +263,8 @@ class LandingTeacher(OrderedItem):
         if self.photo_override:
             return self.photo_override.url
         user = self._user
-        if user is not None and user.avatar:
-            return user.avatar.url
+        if user is not None:
+            return user.avatar_url or ""
         return ""
 
     @property

@@ -24,7 +24,7 @@
                     <p>امروز آماده یادگیری چیزهای جدید هستی؟</p>
                 </div>
                 <div class="hero-icon-box">
-                    <img src="{{ user.avatar.url }}" alt="">
+                    {% include "partials/avatar.html" with person=user size=60 %}
                 </div>
             </section>
 

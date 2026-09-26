@@ -104,6 +104,35 @@ ul {
     list-style: none;
 }
 
+/* ===== AVATAR (template/partials/avatar.html) ===== */
+/* Fixed size from --avatar-size, so a slow or missing image never shifts the layout. */
+.avatar {
+    display: inline-grid;
+    place-items: center;
+    inline-size: var(--avatar-size, 40px);
+    block-size: var(--avatar-size, 40px);
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--primary-darker);
+    color: #fff;
+    font-weight: 700;
+    font-size: calc(var(--avatar-size, 40px) * 0.42);
+    line-height: 1;
+}
+
+.avatar__img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.avatar__img[hidden],
+.avatar__initial[hidden] {
+    display: none;
+}
+
 /* ===== HEADER / NAVBAR ===== */
 .main-header {
     display: flex;
