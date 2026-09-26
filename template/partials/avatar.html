@@ -1,0 +1,36 @@
+{% comment %}
+  A user's avatar, or a coloured badge with their initial.
+
+    {% include "partials/avatar.html" with person=request.user size=36 %}
+
+  person      -- the User (required)
+  size        -- px; fixed width/height so nothing shifts. Leave it out to
+                 size from CSS instead (--avatar-size, default 40px)
+  extra_class -- e.g. "sidebar-brand__mark" to take that element's shape/colours
+  decorative  -- True when the name is already written next to it
+
+  If the image file is missing (path in the DB, file gone from MEDIA_ROOT),
+  onerror swaps to the initial. Styles: .avatar in static/css/base.css.
+{% endcomment %}
+{% with px=size|default:40 name=person.get_full_name|default:person.username %}
+<span
+  class="avatar {{ extra_class }}"
+  {% if size %}style="--avatar-size: {{ size }}px"{% endif %}
+  {% if decorative %}aria-hidden="true"{% else %}role="img" aria-label="{{ name }}"{% endif %}
+>
+  {% if person.avatar_url %}
+    <img
+      class="avatar__img"
+      src="{{ person.avatar_url }}"
+      alt="{{ name }}"
+      width="{{ px }}"
+      height="{{ px }}"
+      decoding="async"
+      onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
+    >
+    <span class="avatar__initial" aria-hidden="true" hidden>{{ person.initials }}</span>
+  {% else %}
+    <span class="avatar__initial" aria-hidden="true">{{ person.initials }}</span>
+  {% endif %}
+</span>
+{% endwith %}

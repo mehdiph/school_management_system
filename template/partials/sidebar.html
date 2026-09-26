@@ -11,7 +11,11 @@
 <aside class="app-sidebar" id="appSidebar" aria-label="منوی ناوبری">
   <div class="sidebar-header">
     <div class="sidebar-brand">
-      <span class="sidebar-brand__mark">{{ teacher.name|first|default:"م" }}</span>
+      {% if request.user.is_authenticated %}
+        {% include "partials/avatar.html" with person=request.user size=38 extra_class="sidebar-brand__mark" %}
+      {% else %}
+        <span class="sidebar-brand__mark">م</span>
+      {% endif %}
       <div class="sidebar-brand__text">
         <strong>سامانه مدیریت مدرسه</strong>
         <span>مدرسه نسل قلم</span>

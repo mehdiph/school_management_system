@@ -43,13 +43,6 @@
     backdrop-filter: blur(5px);
 }
 
-.hero-icon-box img {
-    width: inherit;
-    height: inherit;
-    object-fit: contain;
-    border-radius: inherit;
-}
-
 /* ===== ACHIEVEMENTS & CLASSES GRID ===== */
 .grid-2-col {
     display: grid;
