@@ -59,5 +59,20 @@ class Staff(models.Model):
         verbose_name_plural = 'پرسنل'
         ordering = ['user__first_name', 'user__last_name']
 
+    @property
+    def formal_name(self):
+        """
+        "آقای رضایی" / "خانم حسینی" -- how students address a teacher.
+        Falls back to the full name (then the username) when the gender
+        or last name is missing.
+        """
+
+        last_name = (self.user.last_name or "").strip()
+        title = {self.Gender.MALE: "آقای", self.Gender.FEMALE: "خانم"}.get(self.gender)
+
+        if title and last_name:
+            return f"{title} {last_name}"
+        return self.user.get_full_name() or self.user.get_username()
+
     def __str__(self):
         return self.user.get_full_name()

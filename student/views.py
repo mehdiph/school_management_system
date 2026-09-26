@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from teaching.models.session_content import SessionContent
 from school.models.class_subject import ClassSubject
-from datetime import date, timedelta
+from datetime import timedelta
+from django.utils import timezone
 from django.http import JsonResponse
 from .templatetags import persian_filters
 from .services import get_classes_for_day
@@ -12,8 +13,8 @@ def student_dashboard(request):
     student = request.user.student_profile.enrollments.all()[0]
     print(f"student: {student}")
     school_class = student.school_class
-    today_classes = get_classes_for_day(school_class, date.today())
-    tomorrow_classes = get_classes_for_day(school_class, date.today() + timedelta(days=1))
+    today_classes = get_classes_for_day(school_class, timezone.localdate())
+    tomorrow_classes = get_classes_for_day(school_class, timezone.localdate() + timedelta(days=1))
     homework_queryset = (
         SessionContent.objects
         .filter(session__class_subject__school_class=school_class)

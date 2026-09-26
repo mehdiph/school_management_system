@@ -5,7 +5,20 @@ from django_jalali.db import models as jmodels
 from .bell import Bell
 
 
+class ClassScheduleQuerySet(models.QuerySet):
+    def for_week(self, week_type):
+        """
+        Slots that take place in rotation week ``week_type`` (WEEK_ONE or
+        WEEK_TWO): that week's own slots plus the every-week (BOTH) ones.
+        """
+
+        return self.filter(
+            week_type__in=[week_type, ClassSchedule.WeekTypeChoices.BOTH]
+        )
+
+
 class ClassSchedule(models.Model):
+    objects = ClassScheduleQuerySet.as_manager()
 
     class DayChoices(models.IntegerChoices):
         SATURDAY = 0, "شنبه"
@@ -16,6 +29,15 @@ class ClassSchedule(models.Model):
         THURSDAY = 5, "پنج‌شنبه"
 
     class WeekTypeChoices(models.IntegerChoices):
+        """
+        The school runs a two-week rotation (see ``scheduling.utils``):
+
+        * WEEK_ONE / WEEK_TWO -- the slot only happens in that week.
+        * BOTH -- "every week": the slot happens in week 1 *and* week 2,
+          and is shown on both. Use ``ClassSchedule.objects.for_week()``
+          rather than filtering on ``week_type`` by hand.
+        """
+
         WEEK_ONE = 1, "هفته اول"
         WEEK_TWO = 2, "هفته دوم"
         BOTH = 3, "هر دو هفته"
