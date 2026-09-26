@@ -1,0 +1,15 @@
+<div class="color-picker" data-color-picker>
+  <div class="color-picker__row">
+    {% include "django/forms/widgets/input.html" %}
+    <input type="text" class="color-picker__hex" value="{{ widget.value }}" maxlength="7" pattern="#[0-9a-fA-F]{6}" dir="ltr" aria-label="کد هگز رنگ" spellcheck="false">
+    <span class="color-picker__preview" aria-hidden="true">
+      <span class="color-picker__icon">◆</span>
+      <span class="color-picker__text"><strong>نمونه درس</strong><small>آقای معلم</small></span>
+    </span>
+  </div>
+  <div class="color-picker__presets" role="group" aria-label="رنگ‌های پیشنهادی">
+    {% for color, label in widget.palette %}
+    <button type="button" class="color-picker__preset" data-color="{{ color }}" style="--preset: {{ color }}" title="{{ label }}" aria-label="{{ label }} ({{ color }})"></button>
+    {% endfor %}
+  </div>
+</div>

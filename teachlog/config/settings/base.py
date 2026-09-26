@@ -157,6 +157,18 @@ USE_I18N = True
 USE_TZ = True
 
 
+# Weekly schedule (see scheduling/utils.py)
+#
+# Days the school holds classes, as ClassSchedule.DayChoices values:
+# 0=شنبه 1=یکشنبه 2=دوشنبه 3=سه‌شنبه 4=چهارشنبه 5=پنج‌شنبه.
+SCHOOL_WORKING_DAYS = [0, 1, 2, 3, 4]
+
+# Any date ('YYYY-MM-DD', Gregorian) in the week the school calls
+# "هفته اول". Leave unset to use the week of the academic year's start
+# date. When set it applies to every year, so update it each year.
+SCHEDULE_ROTATION_ANCHOR = os.environ.get('SCHEDULE_ROTATION_ANCHOR') or None
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
@@ -213,6 +225,11 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'ERROR',
             'propagate': False,
+        },
+        # WeasyPrint subsets the font on every PDF and fontTools logs a
+        # dozen INFO lines each time (weekly schedule / reports).
+        'fontTools': {
+            'level': 'WARNING',
         },
     },
 }

@@ -1,351 +1,490 @@
+/*
+ * Weekly schedule (scheduling/weekly-schedule.html), scoped under .ws.
+ *
+ * One markup, two layouts, chosen by the width of .ws itself (container
+ * query) rather than the viewport, because the sidebar changes how much
+ * room the page really has:
+ *   narrow  -> day chips + the selected day's cards (JS picks the day;
+ *              without JS every day is listed one after another)
+ *   >= 720px -> days x bells grid (CSS subgrid)
+ *
+ * Subject colours arrive as --subject-color / --subject-on on each card
+ * (validated #rrggbb from the server); tints are derived here.
+ */
 
-/* هدر سامانه */
-.hero-header {
-    background: var(--primary-gradient);
-    border-radius: var(--border-radius-lg);
-    padding: 25px 20px;
-    color: white;
-    text-align: center;
-    box-shadow: 0 10px 25px rgba(255, 107, 107, 0.15);
-}
+.ws {
+    --ws-text: #2d2a26;
+    --ws-muted: #6b625a;
+    --ws-line: #eadfd3;
+    --ws-surface: #ffffff;
+    --ws-cream: #faead2;
+    --ws-accent: var(--primary-darker, #a8552a);
+    --ws-today: linear-gradient(135deg, var(--primary-dark, #c16a37), var(--primary-darker, #a8552a));
 
-.hero-title {
-    font-size: 22px;
-    font-weight: 900;
-    margin-bottom: 8px;
-}
-
-.student-info {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background-color: rgba(255, 255, 255, 0.2);
-    padding: 6px 18px;
-    border-radius: 50px;
-    backdrop-filter: blur(5px);
-    font-size: 13px;
-    font-weight: 700;
-}
-
-/* دکمه انتخاب هفته */
-.week-selector-wrapper {
-    display: flex;
-    justify-content: center;
-}
-
-.week-selector {
-    background-color: #f1ede6;
-    padding: 5px;
-    border-radius: 50px;
-    display: inline-flex;
-    gap: 5px;
-    margin-bottom: 1rem;
-}
-
-.week-btn {
-    border: none;
-    background: none;
-    padding: 8px 24px;
-    border-radius: 50px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: var(--transition-smooth);
-}
-
-.week-btn.active {
-    background-color: var(--card-bg);
-    color: var(--primary-orange);
-    box-shadow: 0 4px 10px rgba(255, 122, 89, 0.1);
-}
-
-/* استایل کارت‌های فشرده دروس */
-.schedule-card {
-    background-color: var(--card-bg);
-    border-radius: var(--border-radius-md);
-    padding: 10px 14px;
-    box-shadow: var(--shadow-light);
-    border-right: 4px solid var(--subject-color, #ccc);
+    container: ws / inline-size;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    transition: var(--transition-smooth);
+    gap: 1rem;
+    color: var(--ws-text);
+    min-width: 0;
 }
 
-.schedule-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-hover);
+.ws :focus-visible {
+    outline: 3px solid var(--ws-accent);
+    outline-offset: 2px;
 }
 
-.schedule-card-header {
+/* ---------- Header + PDF button ---------- */
+
+.ws-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-}
-
-.subject-icon-box {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background-color: var(--subject-bg);
-    color: var(--subject-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-}
-
-.subject-details h3 {
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--text-main);
-    white-space: nowrap;
-}
-
-.subject-details p {
-    font-size: 10px;
-    color: var(--text-muted);
-}
-
-.card-meta-row {
-    display: flex;
     justify-content: space-between;
+    gap: 0.75rem 1rem;
+}
+
+.ws-head__title {
+    font-size: 1.35rem;
+    font-weight: 900;
+}
+
+.ws-head__meta {
+    margin-block-start: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--ws-muted);
+}
+
+.ws-pdf-btn {
+    display: inline-flex;
     align-items: center;
-    margin-top: 2px;
-}
-
-.card-time {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-muted);
-    background-color: #fafafa;
-    padding: 2px 8px;
-    border-radius: 5px;
-}
-
-.period-badge-mobile {
-    font-size: 9px;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding-block: 0.5rem;
+    padding-inline: 1.1rem;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--ws-accent);
+    color: #fff;
     font-weight: 800;
-    background-color: #f1ede6;
-    color: var(--text-main);
-    padding: 1px 6px;
-    border-radius: 5px;
+    font-size: 0.9rem;
+    box-shadow: 0 6px 16px rgba(168, 85, 42, 0.25);
+    transition: var(--transition, all 0.2s ease);
 }
 
-/* تعریف رنگ کلاس‌ها */
-.class-math { --subject-color: var(--color-math); --subject-bg: var(--color-math-bg); }
-.class-oloom { --subject-color: var(--color-science); --subject-bg: var(--color-science-bg); }
-.class-farsi { --subject-color: var(--color-persian); --subject-bg: var(--color-persian-bg); }
-.class-computer { --subject-color: var(--color-computer); --subject-bg: var(--color-computer-bg); }
-.class-honar { --subject-color: var(--color-art); --subject-bg: var(--color-art-bg); }
-.class-varzesh { --subject-color: var(--color-sports); --subject-bg: var(--color-sports-bg); }
-.class-qoran { --subject-color: var(--color-quran); --subject-bg: var(--color-quran-bg); }
-.class-motaleat { --subject-color: var(--color-motaleat); --subject-bg: var(--color-motaleat-bg); }
-.class-negaresh { --subject-color: var(--color-negaresh); --subject-bg: var(--color-negaresh-bg); }
+.ws-pdf-btn:hover {
+    background: #8f4521;
+}
 
-/* چیدمان موبایل */
-.mobile-schedule {
+/* ---------- Week tabs ---------- */
+
+.ws-weeks {
+    align-self: center;
+    display: inline-flex;
+    gap: 0.3rem;
+    padding: 0.3rem;
+    border-radius: var(--radius-pill, 999px);
+    background: #f1ede6;
+}
+
+.ws-weeks__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 40px;
+    padding-inline: 1.25rem;
+    border-radius: var(--radius-pill, 999px);
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--ws-muted);
+    transition: var(--transition, all 0.2s ease);
+}
+
+.ws-weeks__tab[aria-selected="true"] {
+    background: var(--card-bg, #fff8f3);
+    color: var(--ws-accent);
+    box-shadow: 0 4px 10px rgba(168, 85, 42, 0.12);
+}
+
+.ws-weeks__now {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--radius-pill, 999px);
+    background: #fde8d7;
+    color: var(--ws-accent);
+}
+
+.ws-week[hidden] {
+    display: none;
+}
+
+/* ---------- Day chips (narrow layout only) ---------- */
+
+.ws-chips {
     display: flex;
-    flex-direction: column;
-    gap: 25px;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-block: 0.25rem 0.75rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
 }
 
-.day-section {
-    background-color: rgba(255, 255, 255, 0.4);
-    border-radius: var(--border-radius-lg);
-    padding: 15px;
+.ws-chips::-webkit-scrollbar {
+    display: none;
+}
+
+/* The chips need JS; without it every day is simply listed. */
+.ws:not(.ws--js) .ws-chips {
+    display: none;
+}
+
+.ws-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 44px;
+    padding-inline: 1rem;
+    border: 1.5px solid var(--ws-line);
+    border-radius: var(--radius-pill, 999px);
+    background: var(--ws-surface);
+    color: var(--ws-text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    scroll-snap-align: center;
+}
+
+.ws-chip.is-today {
+    border-color: var(--ws-accent);
+}
+
+.ws-chip[aria-pressed="true"] {
+    background: var(--ws-accent);
+    border-color: var(--ws-accent);
+    color: #fff;
+}
+
+.ws-chip__today {
+    font-size: 0.7rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: var(--radius-pill, 999px);
+    background: #fde8d7;
+    color: var(--ws-accent);
+}
+
+/* ---------- Days + slots: narrow layout (default) ---------- */
+
+.ws-grid__corner,
+.ws-grid__bell {
+    display: none;
+}
+
+.ws-day {
+    padding: 0.9rem;
+    border-radius: var(--radius-lg, 24px);
+    background: rgba(255, 255, 255, 0.55);
     border: 1px dashed #e6dec3;
 }
 
-.day-header {
+.ws-day + .ws-day {
+    margin-block-start: 1rem;
+}
+
+.ws--js .ws-day:not(.is-selected) {
+    display: none;
+}
+
+.ws-day.is-today {
+    background: #fffaf0;
+    border: 2px solid var(--ws-accent);
+}
+
+.ws-day__label {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.day-name {
-    font-size: 15px;
-    font-weight: 900;
-    color: var(--text-main);
-}
-
-.today-badge {
-    background: var(--primary-gradient);
-    color: white;
-    font-size: 10px;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 20px;
-}
-
-.day-section.is-today {
-    background-color: #fffaf0;
-    border: 2px solid var(--primary-orange);
-}
-
-.day-cards-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-/* پابرگ راهنمای رنگ */
-.legend-section {
-    background-color: var(--card-bg);
-    border-radius: var(--border-radius-lg);
-    padding: 20px;
-    box-shadow: var(--shadow-light);
-}
-
-.legend-title {
-    font-size: 14px;
-    font-weight: 800;
-    margin-bottom: 12px;
-    color: var(--text-muted);
-}
-
-.legend-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.legend-color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background-color: var(--dot-color);
-}
-
-/* مخفی‌سازی دسکتاپ به صورت پیش‌فرض */
-.desktop-timetable {
-    display: none;
-}
-
-@media (min-width: 768px) {
-    .day-cards-list {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    }
-    .legend-grid {
-    grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-/* استایل‌دهی دسکتاپ بر پایه چرخش سطر و ستون (روزها عمودی / زنگ‌ها افقی) */
-@media (min-width: 1024px) {
-    .mobile-schedule {
-    display: none;
-    }
-
-    .desktop-timetable {
-    display: block;
-    background-color: var(--card-bg);
-    border-radius: var(--border-radius-lg);
-    padding: 22px;
-    box-shadow: var(--shadow-light);
-    overflow-x: auto;
-    }
-
-    .desktop-timetable * p {
-        font-size: 0.8rem;
-    }
-
-    .desktop-timetable * h3 {
+    margin-block-end: 0.75rem;
     font-size: 1rem;
-    }
+    font-weight: 900;
+}
 
-    .timetable-grid {
+.ws-badge-today {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.15rem 0.6rem;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--ws-today);
+    color: #fff;
+}
+
+.ws-day__slots {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.ws-slot {
     display: grid;
-    /* ۱ ستون برای روزها (100px) + ۶ ستون برای زنگ‌ها (1fr) */
-    grid-template-columns: 100px repeat(6, 1fr);
-    gap: 12px;
-    min-width: 1100px; /* جلوگیری از مچاله شدن کارت‌ها روی صفحات متوسط */
-    }
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm, 12px);
+    background: var(--ws-surface);
+    background: color-mix(in srgb, var(--subject-color) 9%, var(--ws-surface));
+    border-inline-start: 4px solid var(--subject-color);
+    box-shadow: var(--shadow-light, 0 8px 24px rgba(221, 186, 163, 0.12));
+}
 
-    .grid-header {
-    font-weight: 900;
+.ws-slot.is-now {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 2px;
+}
+
+.ws-slot__icon {
+    display: grid;
+    place-items: center;
+    inline-size: 2.4rem;
+    block-size: 2.4rem;
+    border-radius: 10px;
+    background: var(--subject-color);
+    color: var(--subject-on);
+    font-size: 1rem;
+}
+
+.ws-slot__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.ws-slot__subject {
+    font-size: 0.95rem;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.ws-slot__teacher {
+    font-size: 0.8rem;
+    color: var(--ws-muted);
+}
+
+.ws-slot__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ws-muted);
+    white-space: nowrap;
+}
+
+.ws-slot__bell {
+    padding: 0.05rem 0.5rem;
+    border-radius: 6px;
+    background: #f1ede6;
+    color: var(--ws-text);
+}
+
+.ws-slot__now {
+    grid-column: 1 / -1;
+    justify-self: start;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.1rem 0.55rem;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--ws-accent);
+    color: #fff;
+}
+
+/* Empty bell: a compact one-liner, neutral. */
+.ws-slot--empty {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-block: 0.4rem;
+    background: transparent;
+    border: 1px dashed var(--ws-line);
+    box-shadow: none;
+}
+
+.ws-slot--empty .ws-slot__meta {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ws-slot__empty-label {
+    font-size: 0.75rem;
+    color: var(--ws-muted);
+}
+
+.ws-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    border-radius: var(--radius-lg, 24px);
+    background: var(--ws-surface);
     text-align: center;
-    padding: 10px;
-    background-color: #faead2;
-    border-radius: 10px;
-    font-size: 1.1rem;
-    color: var(--text-main);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    color: var(--ws-muted);
+}
+
+.ws-empty-state i {
+    font-size: 2rem;
+    color: var(--ws-accent);
+}
+
+/* ---------- Wide layout: days x bells grid ---------- */
+
+@container ws (min-width: 720px) {
+    .ws-chips {
+        display: none !important;
     }
 
-    .grid-header span {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-top: 2px;
+    .ws-grid {
+        display: grid;
+        grid-template-columns: minmax(4.5rem, 6.5rem) repeat(var(--ws-bells), minmax(0, 1fr));
+        gap: 0.6rem;
+        padding: 1rem;
+        border-radius: var(--radius-lg, 24px);
+        background: var(--card-bg, #fff8f3);
+        box-shadow: var(--shadow-light, 0 8px 24px rgba(221, 186, 163, 0.12));
     }
 
-    .day-col-header {
-    background-color: black;
-    color:white;
-    font-size: 12px;
+    .ws-grid__corner,
+    .ws-grid__bell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        padding: 0.5rem 0.25rem;
+        border-radius: 10px;
+        background: var(--ws-cream);
+        text-align: center;
     }
 
-    /* استایل برچسب روزها در ستون اول عمودی */
-    .day-row-label {
-    font-weight: 900;
-    font-size: 14px;
-    color: var(--text-main);
-    background-color: #faead2;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    border-left: 4px solid #e6dec3;
+    .ws-grid__corner {
+        background: var(--ws-text);
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 800;
     }
 
-    /* روز جاری در سطر دسکتاپ متمایز می‌شود */
-    .day-row-label.is-today {
-    background: var(--primary-gradient);
-    color: white;
-    border-left-color: #ff5252;
-    box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2);
+    .ws-grid__bell-title {
+        font-weight: 900;
+        font-size: 0.95rem;
     }
 
-    .day-row-label.is-today span {
-    background-color: rgba(255, 255, 255, 0.25);
-    color: white;
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 10px;
+    .ws-grid__bell-time {
+        font-size: 0.75rem;
+        color: var(--ws-muted);
     }
 
-    .empty-slot {
-    grid-column-start: 2;
-    grid-column-end: 8;
-    background-color: #fcfcfc;
-    border: 2px dashed #f1ede6;
-    border-radius: var(--border-radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ddd4ca;
-    font-size: 11px;
+    /* Rows are real <section>/<ol>/<li> elements lined up with subgrid. */
+    .ws-day,
+    .ws--js .ws-day:not(.is-selected) {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: subgrid;
+        padding: 0;
+        margin: 0;
+        border: 0;
+        background: none;
     }
 
-    .legend-grid {
-    grid-template-columns: repeat(7, 1fr);
+    .ws-day.is-today {
+        border: 0;
+        background: none;
+    }
+
+    .ws-day__label {
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.3rem;
+        margin: 0;
+        padding: 0.5rem 0.25rem;
+        border-radius: 12px;
+        background: var(--ws-cream);
+        border-inline-end: 4px solid #e6dec3;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .ws-day.is-today .ws-day__label {
+        background: var(--ws-today);
+        border-inline-end-color: var(--primary-darker, #a8552a);
+        color: #fff;
+        box-shadow: 0 4px 10px rgba(168, 85, 42, 0.25);
+    }
+
+    .ws-day.is-today .ws-badge-today {
+        background: #fff;
+        color: var(--ws-accent);
+    }
+
+    .ws-day__slots {
+        grid-column: 2 / -1;
+        display: grid;
+        grid-template-columns: subgrid;
+        gap: inherit;
+    }
+
+    .ws-slot {
+        position: relative;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-content: center;
+        min-height: 4.5rem;
+        padding: 0.6rem;
+    }
+
+    /* The column header already shows bell and time; keep them for screen readers. */
+    .ws-slot__meta {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .ws-slot--empty {
+        grid-template-columns: 1fr;
+        place-items: center;
+        background: #fcfaf7;
+        border: 2px dashed #f1ede6;
+    }
+
+    .ws-slot__subject {
+        font-size: 0.9rem;
+    }
+
+    .ws-slot__teacher {
+        font-size: 0.75rem;
+    }
+}
+
+/* Not enough room for the icon next to the text in each cell. */
+@container ws (min-width: 720px) and (max-width: 1000px) {
+    .ws-slot__icon {
+        display: none;
+    }
+
+    .ws-slot {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media print {
+    .ws-slot,
+    .ws-slot__icon,
+    .ws-day__label {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
     }
 }

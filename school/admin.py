@@ -1,11 +1,15 @@
+from django import forms
 from django.contrib import admin
+from django.utils.html import format_html
 from django_jalali.admin.filters import JDateFieldListFilter
 import django_jalali.admin as jadmin
 
 from core.admin import BranchScopedAdminMixin
 from staff.models import TeacherAssignment
 
+from .colors import readable_text_color, safe_hex
 from .models import AcademicYear, Grade, Subject, SchoolClass, ClassSubject, Branch
+from .widgets import ColorPickerWidget
 
 
 @admin.register(AcademicYear)
@@ -51,14 +55,31 @@ class GradeAdmin(admin.ModelAdmin):
     )
 
 
+class SubjectAdminForm(forms.ModelForm):
+    class Meta:
+        model = Subject
+        fields = '__all__'
+        widgets = {'color': ColorPickerWidget()}
+
+
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug', 'is_active', 'created_at')
+    form = SubjectAdminForm
+    list_display = ('name', 'color_swatch', 'slug', 'is_active', 'created_at')
     list_filter = ('is_active',)
     search_fields = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
     list_editable = ('is_active',)
     ordering = ('name',)
+
+    @admin.display(description='رنگ', ordering='color')
+    def color_swatch(self, obj):
+        color = safe_hex(obj.color)
+        return format_html(
+            '<span style="display:inline-block;padding:2px 10px;border-radius:6px;'
+            'background:{};color:{};font-family:monospace" dir="ltr">{}</span>',
+            color, readable_text_color(color), color,
+        )
 
 
 @admin.register(SchoolClass)

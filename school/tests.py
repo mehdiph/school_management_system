@@ -132,3 +132,114 @@ class ClassSubjectValidationTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("teacher_assignment", form.errors)
+
+
+# ---------------------------------------------------------------------------
+# Subject colours
+# ---------------------------------------------------------------------------
+
+from django.test import SimpleTestCase, override_settings  # noqa: E402
+from django.urls import reverse  # noqa: E402
+
+from core.testing import make_superuser  # noqa: E402
+from school.colors import (  # noqa: E402
+    DARK_TEXT,
+    LIGHT_TEXT,
+    SUBJECT_PALETTE,
+    contrast_ratio,
+    hex_color_validator,
+    readable_text_color,
+    safe_hex,
+    tint,
+)
+from school.models import Subject  # noqa: E402
+
+
+class HexColorValidatorTests(SimpleTestCase):
+
+    def test_accepts_six_digit_hex(self):
+        for value in ("#2563eb", "#2563EB", "#000000", "#ffffff"):
+            with self.subTest(value=value):
+                hex_color_validator(value)
+
+    def test_rejects_anything_else(self):
+        for value in (
+            "2563eb", "#abc", "#2563eb0", "#12345g", "red", "",
+            "#2563eb;", "#2563eb\n", "url(x)", "#fff;background:url(x)",
+        ):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                hex_color_validator(value)
+
+    def test_safe_hex_falls_back(self):
+        self.assertEqual(safe_hex("#2563EB"), "#2563eb")
+        self.assertEqual(safe_hex("red", "#111111"), "#111111")
+        self.assertEqual(safe_hex(None, "#111111"), "#111111")
+
+    def test_readable_text_color(self):
+        self.assertEqual(readable_text_color("#1e3a8a"), LIGHT_TEXT)
+        self.assertEqual(readable_text_color("#fde047"), DARK_TEXT)
+        self.assertEqual(readable_text_color("#ffffff"), DARK_TEXT)
+        self.assertEqual(readable_text_color("#000000"), LIGHT_TEXT)
+
+    def test_palette_is_usable(self):
+        colors = [color for color, _ in SUBJECT_PALETTE]
+        self.assertEqual(len(colors), len(set(colors)))
+        for color in colors:
+            with self.subTest(color=color):
+                hex_color_validator(color)
+                # Non-text UI contrast (accent stripe / icon box) on white.
+                self.assertGreaterEqual(contrast_ratio(color, "#ffffff"), 3)
+                # And whatever text we put on it is readable.
+                self.assertGreaterEqual(contrast_ratio(color, readable_text_color(color)), 4.5)
+
+    def test_tint(self):
+        self.assertEqual(tint("#000000", 0.5), "#808080")
+        self.assertEqual(tint("#2563eb", 0), "#ffffff")
+        self.assertEqual(tint("#2563eb", 1), "#2563eb")
+
+
+class SubjectColorModelTests(TestCase):
+
+    def test_default_and_normalised(self):
+        subject = Subject.objects.create(name="ریاضی", slug="math", color="#2563EB")
+        self.assertEqual(subject.color, "#2563eb")
+        self.assertEqual(Subject.objects.create(name="x", slug="x").color, "#d96a30")
+
+    def test_full_clean_rejects_invalid_color(self):
+        subject = Subject(name="ریاضی", slug="math", color="blue")
+        with self.assertRaises(ValidationError) as ctx:
+            subject.full_clean()
+        self.assertIn("color", ctx.exception.message_dict)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class SubjectAdminColorTests(TestCase):
+
+    def setUp(self):
+        self.client.force_login(make_superuser())
+        self.subject = Subject.objects.create(name="ریاضی", slug="math", color="#2563eb")
+        self.url = reverse("admin:school_subject_change", args=[self.subject.pk])
+
+    def post(self, color):
+        return self.client.post(self.url, {
+            "name": "ریاضی", "slug": "math", "color": color, "is_active": "on",
+        })
+
+    def test_form_uses_color_picker(self):
+        response = self.client.get(reverse("admin:school_subject_add"))
+        self.assertContains(response, 'type="color"')
+        self.assertContains(response, "class=\"color-picker__preset\"", count=len(SUBJECT_PALETTE))
+
+    def test_color_can_be_changed(self):
+        response = self.post("#16A34A")
+
+        self.assertEqual(response.status_code, 302)
+        self.subject.refresh_from_db()
+        self.assertEqual(self.subject.color, "#16a34a")
+
+    def test_invalid_color_is_rejected(self):
+        response = self.post("red")
+
+        self.assertEqual(response.status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertEqual(self.subject.color, "#2563eb")

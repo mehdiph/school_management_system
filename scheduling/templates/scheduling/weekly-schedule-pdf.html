@@ -1,0 +1,156 @@
+{% load report_tags %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>برنامه هفتگی</title>
+<style>
+  /* WeasyPrint: no color-mix() and no logical properties, so tints come
+     precomputed from the server and borders use physical sides (the page
+     is always RTL). */
+  @font-face {
+    font-family: "Vazirmatn";
+    src: url("{{ font_uri }}");
+    font-weight: 100 900;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm 10mm 12mm;
+
+    @bottom-center {
+      content: "صفحه " counter(page, persian) " از " counter(pages, persian);
+      font-family: "Vazirmatn", sans-serif;
+      font-size: 8pt;
+      color: #6b625a;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { font-family: "Vazirmatn", sans-serif; color: #2d2a26; font-size: 9.5pt; }
+
+  body { margin: 0; }
+
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 3mm;
+    margin-bottom: 4mm;
+    border-bottom: 1.5pt solid #d96a30;
+  }
+
+  .school { display: flex; align-items: center; gap: 3mm; }
+  .school img { height: 14mm; width: auto; }
+  .school-name { font-size: 15pt; font-weight: 900; color: #a8552a; }
+
+  .title { text-align: left; }
+  .title h1 { margin: 0; font-size: 16pt; font-weight: 900; }
+  .title .generated { font-size: 8.5pt; color: #6b625a; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm 7mm;
+    margin-bottom: 4mm;
+    padding: 2.5mm 4mm;
+    border-radius: 3mm;
+    background: #fff4e8;
+    font-size: 9pt;
+  }
+  .meta b { font-weight: 800; }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 1.5mm;
+    table-layout: fixed;
+  }
+
+  th {
+    padding: 2mm 1mm;
+    border-radius: 2mm;
+    background: #faead2;
+    font-weight: 900;
+    text-align: center;
+  }
+  th .time { display: block; font-size: 8pt; font-weight: 500; color: #6b625a; }
+  th.corner { width: 22mm; background: #2d2a26; color: #fff; font-size: 8pt; }
+  th.day { font-size: 10.5pt; }
+
+  td {
+    height: 21mm;
+    padding: 2mm 2.5mm;
+    border-radius: 2mm;
+    vertical-align: middle;
+    text-align: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  td.filled { border-right: 3pt solid; }
+  td .subject { display: block; font-size: 10.5pt; font-weight: 800; }
+  td .teacher { display: block; margin-top: 0.8mm; font-size: 8.5pt; color: #4a433c; }
+
+  td.empty { border: 0.8pt dashed #e3d7c9; background: #fcfaf7; color: #b3a79b; font-size: 8pt; }
+</style>
+</head>
+<body>
+{% for week in schedule.weeks %}
+<section class="page">
+  <header class="head">
+    <div class="school">
+      {% if logo_uri %}<img src="{{ logo_uri }}" alt="">{% endif %}
+      <span class="school-name">{{ school_name }}</span>
+    </div>
+    <div class="title">
+      <h1>برنامه هفتگی – {{ week.label }}</h1>
+      <span class="generated">تاریخ تهیه: {{ schedule.generated_on }}</span>
+    </div>
+  </header>
+
+  <div class="meta">
+    <span><b>دانش‌آموز:</b> {{ enrollment.student.user.get_full_name }}</span>
+    <span><b>پایه:</b> {{ enrollment.school_class.grade.name }}</span>
+    <span><b>کلاس:</b> {{ enrollment.school_class.section|to_persian }}</span>
+    <span><b>شعبه:</b> {{ enrollment.school_class.branch.name }}</span>
+    <span><b>سال تحصیلی:</b> {{ enrollment.academic_year.title|to_persian }}</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="corner">روز / زنگ</th>
+        {% for bell in schedule.bells %}
+        <th>
+          {{ bell.title }}
+          <span class="time">{{ bell.start_time|time:"H:i"|to_persian }} – {{ bell.end_time|time:"H:i"|to_persian }}</span>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in week.days %}
+      <tr>
+        <th class="day" scope="row">{{ day.label }}</th>
+        {% for slot in day.slots %}
+          {% if slot.entry %}
+          <td class="filled" style="background: {{ slot.entry.tint }}; border-right-color: {{ slot.entry.color }};">
+            <span class="subject">{{ slot.entry.subject }}</span>
+            <span class="teacher">{{ slot.entry.teacher }}</span>
+          </td>
+          {% else %}
+          <td class="empty">—</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+</body>
+</html>

@@ -1,0 +1,73 @@
+{% load report_tags %}
+{% comment %}
+  One rotation week. The same markup is both layouts (see weekly-schedule.css):
+  wide container -> days x bells grid; narrow -> day chips + that day's cards.
+  Context: schedule (services.WeeklySchedule), week (services.WeekSchedule).
+{% endcomment %}
+
+<div class="ws-chips" role="group" aria-label="روزهای {{ week.label }}">
+  {% for day in week.days %}
+  <button
+    type="button"
+    class="ws-chip{% if day.is_today %} is-today{% endif %}"
+    data-day="{{ day.value }}"
+    aria-controls="ws-w{{ week.number }}-d{{ day.value }}"
+    aria-pressed="{% if day.value == schedule.default_day %}true{% else %}false{% endif %}"
+  >
+    {{ day.label }}
+    {% if day.is_today %}<span class="ws-chip__today">امروز</span>{% endif %}
+  </button>
+  {% endfor %}
+</div>
+
+<div class="ws-grid" style="--ws-bells: {{ schedule.bells|length }}">
+  {# Column headers are for sighted desktop users; every card carries its own bell and time. #}
+  <div class="ws-grid__corner" aria-hidden="true">روز / زنگ</div>
+  {% for bell in schedule.bells %}
+  <div class="ws-grid__bell" aria-hidden="true">
+    <span class="ws-grid__bell-title">{{ bell.title }}</span>
+    <span class="ws-grid__bell-time">{{ bell.start_time|time:"H:i"|to_persian }} – {{ bell.end_time|time:"H:i"|to_persian }}</span>
+  </div>
+  {% endfor %}
+
+  {% for day in week.days %}
+  <section
+    class="ws-day{% if day.is_today %} is-today{% endif %}{% if day.value == schedule.default_day %} is-selected{% endif %}"
+    id="ws-w{{ week.number }}-d{{ day.value }}"
+    data-day="{{ day.value }}"
+    aria-labelledby="ws-w{{ week.number }}-d{{ day.value }}-label"
+  >
+    <h2 class="ws-day__label" id="ws-w{{ week.number }}-d{{ day.value }}-label">
+      <span>{{ day.label }}</span>
+      {% if day.is_today %}<span class="ws-badge-today">امروز</span>{% endif %}
+    </h2>
+
+    <ol class="ws-day__slots">
+      {% for slot in day.slots %}
+      {% if slot.entry %}
+      <li class="ws-slot{% if slot.is_now %} is-now{% endif %}" style="{{ slot.entry.style }}">
+        <span class="ws-slot__icon" aria-hidden="true"><i class="fa-solid {{ slot.entry.icon }}"></i></span>
+        <span class="ws-slot__body">
+          <strong class="ws-slot__subject">{{ slot.entry.subject }}</strong>
+          <span class="ws-slot__teacher">{{ slot.entry.teacher }}</span>
+        </span>
+        <span class="ws-slot__meta">
+          <span class="ws-slot__bell">زنگ {{ slot.bell.order|to_persian }}</span>
+          <span class="ws-slot__time">{{ slot.bell.start_time|time:"H:i"|to_persian }} – {{ slot.bell.end_time|time:"H:i"|to_persian }}</span>
+        </span>
+        {% if slot.is_now %}<span class="ws-slot__now">در حال برگزاری</span>{% endif %}
+      </li>
+      {% else %}
+      <li class="ws-slot ws-slot--empty">
+        <span class="ws-slot__meta">
+          <span class="ws-slot__bell">زنگ {{ slot.bell.order|to_persian }}</span>
+          <span class="ws-slot__time">{{ slot.bell.start_time|time:"H:i"|to_persian }} – {{ slot.bell.end_time|time:"H:i"|to_persian }}</span>
+        </span>
+        <span class="ws-slot__empty-label">بدون کلاس</span>
+      </li>
+      {% endif %}
+      {% endfor %}
+    </ol>
+  </section>
+  {% endfor %}
+</div>

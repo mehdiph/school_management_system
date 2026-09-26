@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Prefetch
-from datetime import date
+from django.utils import timezone
 
 from school.models import AcademicYear, ClassSubject
 from teaching.models import SchoolSession
@@ -73,11 +73,11 @@ def dashboard(request):
 
     print(class_subjects_query)
     week_type = get_current_week_type(
-        date.today()
+        timezone.localdate()
     )
 
     today_day = get_today_schedule_day(
-        date.today()
+        timezone.localdate()
     )
 
 
