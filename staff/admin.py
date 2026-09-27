@@ -69,12 +69,17 @@ class StaffAdmin(EffectiveBranchesMixin, admin.ModelAdmin):
         'emergency_phone',
     ]
 
+    # The national code lives on User (single source of truth).
+    @admin.display(description='کد ملی', ordering='user__national_code')
+    def national_code(self, obj):
+        return obj.user.national_code or '-'
+
     search_fields = [
         'user__first_name',
         'user__last_name',
         'user__username',
         'personnel_code',
-        'national_code',
+        'user__national_code',
     ]
 
     list_select_related = ['user']
@@ -85,7 +90,8 @@ class StaffAdmin(EffectiveBranchesMixin, admin.ModelAdmin):
 
     fieldsets = (
         ('اطلاعات اصلی', {
-            'fields': ('user', 'personnel_code', 'national_code', 'gender')
+            'fields': ('user', 'personnel_code', 'gender'),
+            'description': 'کد ملی در صفحه‌ی «کاربر» ثبت می‌شود.',
         }),
         ('اطلاعات تماس و استخدام', {
             'fields': ('birth_date', 'hire_date', 'address', 'emergency_phone')

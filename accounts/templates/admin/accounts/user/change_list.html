@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  {% if can_import %}
+    <li><a href="{% url 'admin:accounts_user_import' %}" class="addlink">ورود گروهی از اکسل</a></li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

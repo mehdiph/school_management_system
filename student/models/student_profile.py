@@ -14,6 +14,8 @@ class StudentProfile(models.Model):
     student_code = models.CharField(
         max_length=20,
         unique=True,
+        null=True,
+        blank=True,
         verbose_name="کد دانش‌آموزی",
     )
 
@@ -26,4 +28,6 @@ class StudentProfile(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.student_code} - {self.user.get_full_name()}"
+        if self.student_code:
+            return f"{self.student_code} - {self.user.get_full_name()}"
+        return self.user.get_full_name() or self.user.get_username()

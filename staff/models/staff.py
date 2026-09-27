@@ -20,21 +20,24 @@ class Staff(models.Model):
                                 )
     personnel_code = models.CharField(max_length=20,
                                       unique=True,
+                                      null=True,
+                                      blank=True,
                                       verbose_name='کد پرسنلی'
                                       )
-    national_code = models.CharField(max_length=10,
-                                     unique=True,
-                                     verbose_name='کد ملی'
-                                     )
     gender = models.CharField(choices=Gender.choices,
                               max_length=10,
+                              blank=True,
+                              default='',
                               verbose_name='جنسیت'
                               )
     birth_date = jmodels.jDateField(blank=True,
                                     null=True,
                                     verbose_name='تاریخ تولد'
                                     )
-    hire_date = jmodels.jDateField(verbose_name='تاریخ استخدام')
+    hire_date = jmodels.jDateField(blank=True,
+                                   null=True,
+                                   verbose_name='تاریخ استخدام'
+                                   )
     address = models.TextField(blank=True,
                                null=True,
                                verbose_name='آدرس'

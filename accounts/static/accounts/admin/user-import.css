@@ -1,0 +1,37 @@
+/* Admin «ورود گروهی از اکسل» (accounts/templates/admin/accounts/user/import*.html) */
+.user-import .module { margin-block-end: 20px; }
+.user-import__guide p { padding: 8px 12px; line-height: 1.9; }
+.user-import__guide table { inline-size: 100%; }
+
+.user-import__banner {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+.user-import__banner--ok {
+  background: var(--message-success-bg, #dfd);
+  color: var(--body-fg);
+}
+
+.user-import__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0;
+  margin: 16px 0;
+  list-style: none;
+}
+.user-import__counts li {
+  list-style: none;
+  min-inline-size: 120px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline-color);
+  border-radius: 8px;
+  text-align: center;
+}
+.user-import__counts strong { display: block; font-size: 1.6rem; }
+.user-import__counts .has-errors { border-color: var(--error-fg); color: var(--error-fg); }
+
+.user-import__table { inline-size: 100%; }
+.user-import__table td { vertical-align: top; }
+.user-import__table tr.is-error td:nth-child(4) { color: var(--error-fg); font-weight: 700; }

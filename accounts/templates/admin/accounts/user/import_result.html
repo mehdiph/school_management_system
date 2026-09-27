@@ -1,0 +1,45 @@
+{% extends "admin/accounts/user/import.html" %}
+{% load report_tags %}
+
+{% block content %}
+<div id="content-main" class="user-import">
+
+  {% if result.committed %}
+    <p class="user-import__banner user-import__banner--ok">ورود گروهی {{ role_label }} انجام شد.</p>
+  {% else %}
+    <p class="errornote">به دلیل خطا در {{ result.errors|length|to_persian }} ردیف، هیچ کاربری ساخته نشد. خطاها را در فایل اصلاح و دوباره بارگذاری کنید.</p>
+  {% endif %}
+
+  <ul class="user-import__counts">
+    <li><strong>{{ result.created|length|to_persian }}</strong> ایجاد شد</li>
+    <li><strong>{{ result.skipped|length|to_persian }}</strong> رد شد</li>
+    <li class="{% if result.errors %}has-errors{% endif %}"><strong>{{ result.errors|length|to_persian }}</strong> خطا</li>
+  </ul>
+
+  {% if result.problems %}
+  <div class="module">
+    <table class="user-import__table">
+      <thead>
+        <tr><th>ردیف اکسل</th><th>کد ملی</th><th>نام</th><th>وضعیت</th><th>دلیل</th></tr>
+      </thead>
+      <tbody>
+        {% for row in result.problems %}
+        <tr class="is-{{ row.status }}">
+          <td>{{ row.number|to_persian }}</td>
+          <td dir="ltr">{{ row.national_code|default:"—"|to_persian }}</td>
+          <td>{{ row.full_name|default:"—" }}</td>
+          <td>{% if row.status == "error" %}خطا{% else %}رد شد{% endif %}</td>
+          <td>{% for reason in row.reasons %}<div>{{ reason }}</div>{% endfor %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <p>
+    <a class="button" href="{% url 'admin:accounts_user_import' %}">ورود فایل دیگر</a>
+    <a class="button" href="{% url 'admin:accounts_user_changelist' %}">فهرست کاربران</a>
+  </p>
+</div>
+{% endblock %}
