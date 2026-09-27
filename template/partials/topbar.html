@@ -9,7 +9,7 @@
       {% if request.user.role == "supervisor" %}
         <span>پشتیبان {{ request.supervisor.grade.name }}</span>
       {% elif request.user.role == "student" %}
-        <span>دانش‌آموز {{ school_class }}</span>
+        <span>دانش‌آموز{% if school_class %} {{ school_class }}{% endif %}</span>
       {% elif request.user.role == "teacher" %}
         <span>معلم</span>
       {% endif %}

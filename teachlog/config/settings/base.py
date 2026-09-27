@@ -76,6 +76,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.branch.BranchMiddleware',
+    'accounts.middleware.ForcePasswordChangeMiddleware',
 ]
 
 ROOT_URLCONF = 'teachlog.urls'
@@ -145,6 +146,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'accounts.validators.NotNationalCodePasswordValidator',
     },
 ]
 

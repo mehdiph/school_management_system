@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+from accounts.validators import validate_national_code
+
 # Create your models here.
 
 class User(AbstractUser):
@@ -15,7 +17,21 @@ class User(AbstractUser):
         ADMIN = 'admin', 'مدیر'
 
     role = models.CharField(choices=Roles.choices, max_length=20, verbose_name='نقش')
-    phone_number = models.CharField(max_length=20, verbose_name='شماره تماس')
+    phone_number = models.CharField(max_length=20, blank=True, default='', verbose_name='شماره تماس')
+    # The single source of truth for a person's national code (Staff used
+    # to carry its own copy). Null only for legacy / superuser accounts.
+    national_code = models.CharField(
+        max_length=10,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[validate_national_code],
+        verbose_name='کد ملی',
+    )
+    # Set for accounts created with a known password (the Excel import
+    # uses the national code). Cleared only by a successful password
+    # change -- see accounts.middleware and accounts.views.password_change.
+    must_change_password = models.BooleanField(default=False, verbose_name='باید رمز عبور را تغییر دهد')
     avatar = models.ImageField(upload_to='users/avatars/', blank=True, null=True, verbose_name='تصویر پروفایل')
 
     @property

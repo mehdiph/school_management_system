@@ -108,7 +108,6 @@ def make_teacher(branch, academic_year, status=TeacherAssignment.AssignmentStatu
     staff = Staff.objects.create(
         user=user,
         personnel_code=_unique("pc"),
-        national_code=_unique("nc")[:10],
         gender=Staff.Gender.MALE,
         hire_date=jdatetime.date(1400, 1, 1),
     )

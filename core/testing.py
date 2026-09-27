@@ -102,7 +102,6 @@ def make_staff(role=User.Roles.TEACHER, is_staff=False, password="test-pass-123"
     return Staff.objects.create(
         user=user,
         personnel_code=unique("pc"),
-        national_code=unique("nc")[:10],
         gender=Staff.Gender.MALE,
         hire_date=jdatetime.date(1400, 1, 1),
     )

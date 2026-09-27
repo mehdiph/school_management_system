@@ -53,7 +53,6 @@ def make_teacher(first_name="سارا", last_name="احمدی", avatar=None, fie
     staff = Staff.objects.create(
         user=user,
         personnel_code=f"p{user.pk}",
-        national_code=f"{user.pk:010d}",
         gender=Staff.Gender.FEMALE,
         hire_date=jdatetime.date(1400, 1, 1),
     )
