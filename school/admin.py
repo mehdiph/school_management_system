@@ -1,5 +1,12 @@
+import json
+
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import quote, unquote
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse
+from django.shortcuts import render
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django_jalali.admin.filters import JDateFieldListFilter
 import django_jalali.admin as jadmin
@@ -92,7 +99,7 @@ class SchoolClassAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
 
     search_fields = ('section', 'grade__name', 'year__title')
 
-    list_display = ('get_class_name', 'year', 'grade', 'section', 'branch', 'created_at')
+    list_display = ('get_class_name', 'year', 'grade', 'section', 'branch', 'created_at', 'timetable_link')
     list_filter = ('year', 'grade', 'is_active', 'branch')
     search_fields = ('section', 'grade__name', 'year__title')
     ordering = ('-created_at',)
@@ -109,6 +116,142 @@ class SchoolClassAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
     def get_class_name(self, obj):
         return f"{obj.grade.name} - {obj.section}"
     get_class_name.short_description = 'کلاس'
+
+    # ------------------------------------------------------------------
+    # «برنامه هفتگی» -- the timetable grid (scheduling/timetable.py)
+    # ------------------------------------------------------------------
+
+    #: Everything the three old screens (ClassSchedule, ClassSubject)
+    #: needed; the grid writes both models.
+    TIMETABLE_EDIT_PERMISSIONS = (
+        'scheduling.add_classschedule',
+        'scheduling.change_classschedule',
+        'scheduling.delete_classschedule',
+        'school.add_classsubject',
+        'school.change_classsubject',
+    )
+
+    def get_urls(self):
+        return [
+            path(
+                '<path:object_id>/timetable/',
+                self.admin_site.admin_view(self.timetable_view),
+                name='school_schoolclass_timetable',
+            ),
+            path(
+                '<path:object_id>/timetable/teacher-busy/',
+                self.admin_site.admin_view(self.timetable_busy_view),
+                name='school_schoolclass_timetable_busy',
+            ),
+        ] + super().get_urls()
+
+    def can_view_timetable(self, request):
+        return request.user.has_perm('scheduling.view_classschedule') or self.can_edit_timetable(request)
+
+    def can_edit_timetable(self, request):
+        return request.user.has_perms(self.TIMETABLE_EDIT_PERMISSIONS)
+
+    def _timetable_class(self, request, object_id):
+        if not self.can_view_timetable(request):
+            raise PermissionDenied
+        # get_object() goes through get_queryset(), i.e. branch scoping.
+        school_class = self.get_object(request, unquote(object_id))
+        if school_class is None:
+            raise Http404
+        return school_class
+
+    @admin.display(description='برنامه هفتگی')
+    def timetable_link(self, obj):
+        return format_html(
+            '<a href="{}">برنامه هفتگی</a>',
+            reverse('admin:school_schoolclass_timetable', args=[quote(obj.pk)]),
+        )
+
+    def get_list_display(self, request):
+        list_display = super().get_list_display(request)
+        if not self.can_view_timetable(request):
+            list_display = [f for f in list_display if f != 'timetable_link']
+        return list_display
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = {**(extra_context or {}), 'can_view_timetable': self.can_view_timetable(request)}
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+
+    def timetable_view(self, request, object_id):
+        # Imported here: scheduling's modules import school's models.
+        from scheduling import timetable
+
+        school_class = self._timetable_class(request, object_id)
+        can_edit = self.can_edit_timetable(request)
+
+        if request.method == 'POST':
+            if not can_edit:
+                raise PermissionDenied
+            try:
+                payload = json.loads(request.body or b'{}')
+                entries = payload['entries']
+            except (ValueError, KeyError, TypeError):
+                return JsonResponse({'ok': False, 'errors': [], 'general': ['داده‌ی فرستاده‌شده معتبر نیست.']}, status=400)
+
+            result = timetable.save_grid(
+                school_class,
+                entries,
+                can_delete_class_subjects=request.user.has_perm('school.delete_classsubject'),
+            )
+            if not result.ok:
+                return JsonResponse({
+                    'ok': False,
+                    'errors': [e for e in result.errors if e['day'] is not None],
+                    'general': [e['message'] for e in result.errors if e['day'] is None],
+                }, status=400)
+            return JsonResponse({
+                'ok': True,
+                'grid': timetable.load_grid(school_class),
+                'counts': {'created': result.created, 'updated': result.updated, 'deleted': result.deleted},
+            })
+
+        if request.method != 'GET':
+            return HttpResponseNotAllowed(['GET', 'POST'])
+
+        grid = timetable.load_grid(school_class)
+        context = {
+            **self.admin_site.each_context(request),
+            'opts': self.opts,
+            'original': school_class,
+            'title': f'برنامه هفتگی کلاس {grid["class_label"]}',
+            'subtitle': str(school_class),
+            'grid': {
+                **grid,
+                'can_edit': can_edit,
+                'can_add_subject': request.user.has_perm('school.add_subject'),
+                'urls': {
+                    'save': request.path,
+                    'busy': reverse('admin:school_schoolclass_timetable_busy', args=[quote(school_class.pk)]),
+                    'add_subject': reverse('admin:school_subject_add'),
+                },
+            },
+        }
+        return render(request, 'admin/school/schoolclass/timetable.html', context)
+
+    def timetable_busy_view(self, request, object_id):
+        from scheduling import timetable
+
+        if request.method != 'GET':
+            return HttpResponseNotAllowed(['GET'])
+
+        school_class = self._timetable_class(request, object_id)
+        try:
+            assignment_id = int(request.GET.get('teacher', ''))
+        except ValueError:
+            raise Http404
+        # Only assignments the grid itself offers for this class.
+        assignment = next(
+            (a for a in timetable.teacher_choices(school_class, [assignment_id]) if a.pk == assignment_id),
+            None,
+        )
+        if assignment is None:
+            raise Http404
+        return JsonResponse({'busy': timetable.teacher_busy(school_class, assignment)})
 
 
 @admin.register(ClassSubject)

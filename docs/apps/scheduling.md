@@ -178,11 +178,36 @@ A conflict exists because "Both Weeks" includes Week One.
 
 ---
 
+### Full Conflict Rules
+
+Implemented once in `scheduling/conflicts.py`. Two slots clash when they are in the same academic year, on the same day and `Bell` (bells are global, so the same bell is the same time in every branch), their week types overlap, both `ClassSubject`s are active, and their `start_date`..`end_date` windows overlap, and either:
+
+* they belong to the same class (class conflict), or
+* they are taught by the same `TeacherProfile` (teacher conflict). Teachers are compared by profile, not by `TeacherAssignment`, so a teacher's assignments in two branches still clash.
+
+The rules run on every write path: `ClassSchedule.save()` / `clean()`, `ClassSchedule.objects.bulk_create()` / `bulk_update()` / `update()`, `ClassSubject.save()` / `clean()` (a new teacher, window or re-activation moves all of its slots) and the admin timetable grid. Writers lock the affected `SchoolClass` and `TeacherProfile` rows (`SELECT ... FOR NO KEY UPDATE`) before checking, so two admins saving at once cannot both create a clash.
+
+---
+
+### Week Rotation (هفته اول / هفته دوم)
+
+Implemented in `scheduling/utils.py` (`get_academic_week_number`, `get_week_cycle`), and used by every page that decides what happens on a date.
+
+* Weeks run Saturday..Friday, counted from `AcademicYear.start_date`.
+* If the year does not start on a Saturday, the days from `start_date` to the first Friday are merged into the following full week. That whole stretch is week 1.
+* Odd academic weeks are "هفته اول", even weeks "هفته دوم".
+* A date before `start_date` raises `DateBeforeAcademicYearError`.
+
+Example, 1405 (1 Mehr = Wednesday): 1..10 Mehr is week 1, 11..17 Mehr week 2, 18..24 Mehr week 1, and so on.
+
+---
+
 ## Views
 
-This application currently does not contain any views.
+* Student weekly schedule page and its PDF (`scheduling/views.py`).
+* Admin timetable grid: the "برنامه هفتگی" button on a class's admin page opens one grid (days x active bells) where subjects and teachers are set per cell, "every week" or split into week 1 / week 2. `ClassSubject` rows are created or reused behind the scenes. Saving is one transaction that only writes the changed rows (`scheduling/timetable.py`). A class subject that loses its last slot is deactivated if it has sessions, and deleted otherwise.
 
-The Scheduling app acts as a domain module and provides scheduling data to other applications.
+The Scheduling app otherwise acts as a domain module and provides scheduling data to other applications.
 
 Scheduling information is primarily consumed by:
 

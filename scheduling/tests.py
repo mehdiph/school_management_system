@@ -5,10 +5,9 @@ and PDF are built from, and who may see it.
 Fixed calendar used throughout (1405 academic year):
 
     AcademicYear.start_date = 1405/07/01 = Wed 2026-09-23
-    rotation anchor         = Sat 2026-09-19  (Saturday on or before it)
-    Sat 2026-09-19 .. Fri 09-25  -> week 1
-    Sat 2026-09-26 .. Fri 10-02  -> week 2   <- NOW is in here
-    Sat 2026-10-03 .. Fri 10-09  -> week 1   (shown as "week 1" while NOW)
+    Wed 2026-09-23 .. Fri 10-02  -> week 1   (partial first days merged)
+    Sat 2026-10-03 .. Fri 10-09  -> week 2   <- NOW is in here
+    Sat 2026-10-10 .. Fri 10-16  -> week 1   (shown as "week 1" while NOW)
 """
 
 from datetime import date, datetime, time, timedelta
@@ -44,9 +43,10 @@ from .services import (
     get_student_weekly_schedule,
 )
 from .utils import (
-    get_current_week_type,
-    get_rotation_anchor,
+    DateBeforeAcademicYearError,
+    get_academic_week_number,
     get_today_schedule_day,
+    get_week_cycle,
     persian_weekday,
     week_start,
 )
@@ -59,7 +59,7 @@ Day = ClassSchedule.DayChoices
 
 YEAR_START = jdatetime.date(1405, 7, 1)  # Wednesday 2026-09-23
 #: Saturday of rotation week 2, 09:10 -> during the second bell.
-NOW = datetime(2026, 9, 26, 9, 10, tzinfo=TEHRAN)
+NOW = datetime(2026, 10, 3, 9, 10, tzinfo=TEHRAN)
 
 FAST_HASHER = override_settings(
     PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"]
@@ -104,39 +104,93 @@ class WeekdayMappingTests(SimpleTestCase):
             self.assertEqual(get_today_schedule_day(), Day.SATURDAY)
 
 
-@override_settings(SCHEDULE_ROTATION_ANCHOR=None)
-class RotationWeekTests(SimpleTestCase):
+def jalali(year, month, day):
+    return jdatetime.date(year, month, day).togregorian()
+
+
+class AcademicWeekTests(SimpleTestCase):
+    """
+    1405: 1 Mehr is a Wednesday, so 1..10 Mehr (the partial first days
+    plus the following full Saturday..Friday week) is week 1, and the
+    rotation toggles every Saturday from there.
+    """
+
+    #: (first school day, last school day, academic week, rotation week)
+    EXPECTED_1405 = [
+        ((1405, 7, 1), (1405, 7, 8), 1, WEEK_ONE),     # 2026-09-23 .. 09-30
+        ((1405, 7, 11), (1405, 7, 15), 2, WEEK_TWO),   # 2026-10-03 .. 10-07
+        ((1405, 7, 18), (1405, 7, 22), 3, WEEK_ONE),   # 2026-10-10 .. 10-14
+        ((1405, 7, 25), (1405, 7, 29), 4, WEEK_TWO),   # 2026-10-17 .. 10-21
+        ((1405, 8, 2), (1405, 8, 6), 5, WEEK_ONE),     # 2026-10-24 .. 10-28
+    ]
 
     def setUp(self):
         self.year = year_starting(YEAR_START)
 
-    def week(self, value):
-        return get_current_week_type(value, academic_year=self.year)
+    def test_1405_ranges(self):
+        for first, last, number, cycle in self.EXPECTED_1405:
+            for value in (jalali(*first), jalali(*last)):
+                with self.subTest(date=value):
+                    self.assertEqual(get_academic_week_number(value, self.year), number)
+                    self.assertEqual(get_week_cycle(value, self.year), cycle)
 
-    def test_anchor_is_saturday_before_year_start(self):
-        self.assertEqual(get_rotation_anchor(self.year), date(2026, 9, 19))
+    def test_gregorian_dates_of_the_1405_ranges(self):
+        # The same boundaries spelled in Gregorian, as given in the spec.
+        self.assertEqual(jalali(1405, 7, 1), date(2026, 9, 23))
+        self.assertEqual(jalali(1405, 7, 8), date(2026, 9, 30))
+        self.assertEqual(jalali(1405, 7, 11), date(2026, 10, 3))
+        self.assertEqual(jalali(1405, 8, 2), date(2026, 10, 24))
+        self.assertEqual(jalali(1405, 8, 6), date(2026, 10, 28))
 
-    def test_rotation_flips_on_saturday_not_mid_week(self):
-        # The year starts on a Wednesday; the first week still ends on Friday.
-        self.assertEqual(self.week(date(2026, 9, 22)), WEEK_ONE)
-        self.assertEqual(self.week(date(2026, 9, 23)), WEEK_ONE)
-        self.assertEqual(self.week(date(2026, 9, 25)), WEEK_ONE)
-        self.assertEqual(self.week(date(2026, 9, 26)), WEEK_TWO)
-        self.assertEqual(self.week(date(2026, 10, 2)), WEEK_TWO)
-        self.assertEqual(self.week(date(2026, 10, 3)), WEEK_ONE)
-        self.assertEqual(self.week(date(2026, 10, 10)), WEEK_TWO)
+    def test_first_week_runs_through_the_first_full_friday(self):
+        # Every day of 1..10 Mehr, weekend included, is week 1.
+        for offset in range(10):
+            value = date(2026, 9, 23) + timedelta(days=offset)
+            with self.subTest(date=value):
+                self.assertEqual(get_academic_week_number(value, self.year), 1)
+        self.assertEqual(get_academic_week_number(date(2026, 10, 3), self.year), 2)
 
-    def test_year_starting_on_saturday(self):
+    def test_flips_on_saturday_not_mid_week(self):
+        self.assertEqual(get_week_cycle(date(2026, 10, 9), self.year), WEEK_TWO)   # Friday
+        self.assertEqual(get_week_cycle(date(2026, 10, 10), self.year), WEEK_ONE)  # Saturday
+
+    def test_mehr_to_aban_boundary(self):
+        # 30 Mehr (Thu 10-22) and 1 Aban (Fri 10-23) share week 4; 2 Aban
+        # (Sat 10-24) starts week 5.
+        self.assertEqual(get_academic_week_number(jalali(1405, 7, 30), self.year), 4)
+        self.assertEqual(get_academic_week_number(jalali(1405, 8, 1), self.year), 4)
+        self.assertEqual(get_academic_week_number(jalali(1405, 8, 2), self.year), 5)
+        self.assertEqual(get_week_cycle(jalali(1405, 8, 1), self.year), WEEK_TWO)
+        self.assertEqual(get_week_cycle(jalali(1405, 8, 2), self.year), WEEK_ONE)
+
+    def test_accepts_jalali_and_datetime_values(self):
+        self.assertEqual(get_academic_week_number(jdatetime.date(1405, 7, 11), self.year), 2)
+        self.assertEqual(get_academic_week_number(NOW, self.year), 2)
+
+    def test_year_starting_on_saturday_is_not_merged(self):
         year = year_starting(jdatetime.date.fromgregorian(date=date(2026, 9, 26)))
-        self.assertEqual(get_current_week_type(date(2026, 9, 26), academic_year=year), WEEK_ONE)
-        self.assertEqual(get_current_week_type(date(2026, 10, 3), academic_year=year), WEEK_TWO)
 
-    def test_configured_anchor_overrides_year(self):
-        # Any day of the intended week-1 works; it snaps to its Saturday.
-        with override_settings(SCHEDULE_ROTATION_ANCHOR="2026-09-28"):
-            self.assertEqual(get_rotation_anchor(self.year), date(2026, 9, 26))
-            self.assertEqual(self.week(date(2026, 9, 26)), WEEK_ONE)
-            self.assertEqual(self.week(date(2026, 10, 3)), WEEK_TWO)
+        self.assertEqual(get_academic_week_number(date(2026, 9, 26), year), 1)
+        self.assertEqual(get_academic_week_number(date(2026, 10, 2), year), 1)
+        self.assertEqual(get_academic_week_number(date(2026, 10, 3), year), 2)
+        self.assertEqual(get_week_cycle(date(2026, 10, 3), year), WEEK_TWO)
+        self.assertEqual(get_week_cycle(date(2026, 10, 10), year), WEEK_ONE)
+
+    def test_year_starting_on_friday_merges_one_day(self):
+        year = year_starting(jdatetime.date.fromgregorian(date=date(2026, 9, 25)))
+
+        self.assertEqual(get_academic_week_number(date(2026, 9, 25), year), 1)
+        self.assertEqual(get_academic_week_number(date(2026, 10, 2), year), 1)
+        self.assertEqual(get_academic_week_number(date(2026, 10, 3), year), 2)
+
+    def test_date_before_year_start_is_rejected(self):
+        for helper in (get_academic_week_number, get_week_cycle):
+            with self.subTest(helper=helper.__name__):
+                with self.assertRaises(DateBeforeAcademicYearError):
+                    helper(date(2026, 9, 22), self.year)
+
+    def test_error_is_a_value_error(self):
+        self.assertTrue(issubclass(DateBeforeAcademicYearError, ValueError))
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +243,7 @@ def subjects_on(week, day_value):
     return [slot.entry.subject if slot.entry else None for slot in day.slots]
 
 
-@override_settings(SCHEDULE_ROTATION_ANCHOR=None, SCHOOL_WORKING_DAYS=[0, 1, 2, 3, 4])
+@override_settings(SCHOOL_WORKING_DAYS=[0, 1, 2, 3, 4])
 class WeeklyScheduleServiceTests(ScheduleFixtureMixin, TestCase):
 
     def test_every_week_entries_appear_in_both_weeks(self):
@@ -214,6 +268,31 @@ class WeeklyScheduleServiceTests(ScheduleFixtureMixin, TestCase):
         # Today is only highlighted in the week being lived now.
         self.assertEqual([d.value for d in schedule.week(2).days if d.is_today], [Day.SATURDAY])
         self.assertEqual([d for d in schedule.week(1).days if d.is_today], [])
+
+    def test_merged_first_week_pairs_with_the_week_after_it(self):
+        # Wed 1 Mehr and Sat 4 Mehr are both in the (merged) week 1, so
+        # the week 2 shown next to it is the one starting Sat 11 Mehr.
+        for now, week_1_start in (
+            (datetime(2026, 9, 23, 10, 0, tzinfo=TEHRAN), date(2026, 9, 19)),
+            (datetime(2026, 9, 26, 10, 0, tzinfo=TEHRAN), date(2026, 9, 26)),
+        ):
+            with self.subTest(now=now):
+                schedule = self.build(now=now)
+                self.assertTrue(schedule.week(1).is_current)
+                self.assertEqual(schedule.week(1).start, week_1_start)
+                self.assertFalse(schedule.week(2).is_current)
+                self.assertEqual(schedule.week(2).start, date(2026, 10, 3))
+
+    def test_before_the_year_starts_shows_its_first_weeks(self):
+        self.slot(self.class_subject("ریاضی"), Day.SATURDAY, self.bell_1)
+
+        schedule = self.build(now=datetime(2026, 9, 10, 9, 10, tzinfo=TEHRAN))
+
+        self.assertEqual([w.is_current for w in schedule.weeks], [False, False])
+        self.assertEqual(schedule.current_week.number, 1)
+        self.assertEqual(schedule.week(2).start, date(2026, 10, 3))
+        self.assertEqual([d for w in schedule.weeks for d in w.days if d.is_today], [])
+        self.assertEqual(subjects_on(schedule.week(2), Day.SATURDAY), ["ریاضی", None])
 
     def test_running_bell_is_marked(self):
         self.slot(self.class_subject("ریاضی"), Day.SATURDAY, self.bell_2)
@@ -244,10 +323,10 @@ class WeeklyScheduleServiceTests(ScheduleFixtureMixin, TestCase):
 
     def test_class_subject_teaching_window_is_per_displayed_week(self):
         # Ended the Friday before this week: gone from both.
-        ended = self.class_subject("ختم‌شده", end=jdatetime.date.fromgregorian(date=date(2026, 9, 25)))
+        ended = self.class_subject("ختم‌شده", end=jdatetime.date.fromgregorian(date=date(2026, 10, 2)))
         self.slot(ended, Day.SATURDAY, self.bell_1)
-        # Starts next week (Sat 2026-10-03): only in week 1, which is shown as next week.
-        upcoming = self.class_subject("جدید", start=jdatetime.date.fromgregorian(date=date(2026, 10, 3)))
+        # Starts next week (Sat 2026-10-10): only in week 1, which is shown as next week.
+        upcoming = self.class_subject("جدید", start=jdatetime.date.fromgregorian(date=date(2026, 10, 10)))
         self.slot(upcoming, Day.SUNDAY, self.bell_1)
 
         schedule = self.build()
@@ -361,7 +440,6 @@ class CurrentEnrollmentTests(ScheduleFixtureMixin, TestCase):
 
 
 @FAST_HASHER
-@override_settings(SCHEDULE_ROTATION_ANCHOR=None)
 class WeeklyScheduleViewTests(ScheduleFixtureMixin, TestCase):
     url = reverse("scheduling:weekly-schedule")
 
@@ -423,7 +501,6 @@ class WeeklyScheduleViewTests(ScheduleFixtureMixin, TestCase):
 
 
 @FAST_HASHER
-@override_settings(SCHEDULE_ROTATION_ANCHOR=None)
 class WeeklySchedulePdfTests(ScheduleFixtureMixin, TestCase):
     url = reverse("scheduling:weekly-schedule-pdf")
 

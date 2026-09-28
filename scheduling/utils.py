@@ -8,24 +8,27 @@ supervisor pages cannot disagree about what "today" is.
 * The Persian week starts on Saturday: ``persian_weekday`` maps
   Saturday=0 .. Friday=6, which is exactly how
   ``ClassSchedule.day_of_week`` is stored (Friday has no choice).
-* Rotation weeks run Saturday..Friday. Week 1 is the week containing
-  the *anchor*: ``settings.SCHEDULE_ROTATION_ANCHOR`` if set, otherwise
-  the Saturday on or before the academic year's ``start_date``. From
-  there the weeks alternate 1, 2, 1, 2, ...
+* Academic weeks run Saturday..Friday and are counted from the academic
+  year's ``start_date`` (see ``get_academic_week_number``). When the year
+  starts mid-week, those first partial days are *merged* into the
+  following full week: 1405/07/01 is a Wednesday, so 1 Mehr .. 10 Mehr
+  (Wed 2026-09-23 .. Fri 2026-10-02) is academic week 1.
+* The rotation is odd week -> "هفته اول", even week -> "هفته دوم"
+  (``get_week_cycle``), toggling every Saturday after the first week.
 * "Today" is ``timezone.localdate()`` (Asia/Tehran), never the server's
   naive ``date.today()``.
 """
 
 from datetime import date, datetime, timedelta
 
-from django.conf import settings
+import jdatetime
 from django.utils import timezone
 
-from school.models import AcademicYear
 from scheduling.models import ClassSchedule
 
-#: Only used when there is no academic year at all.
-DEFAULT_SCHEDULE_START_DATE = date(2025, 9, 23)
+
+class DateBeforeAcademicYearError(ValueError):
+    """The date falls before the academic year's ``start_date``."""
 
 
 def persian_weekday(value):
@@ -41,65 +44,61 @@ def week_start(value):
 
 
 def _to_gregorian(value):
-    # jDateField values are jdatetime.date; everything here is Gregorian.
-    return value.togregorian() if hasattr(value, "togregorian") else value
+    """``date`` / ``datetime`` / ``jdatetime.date`` (what jDateField holds) -> ``date``."""
 
-
-def _parse_date(value):
+    if isinstance(value, (jdatetime.date, jdatetime.datetime)):
+        value = value.togregorian()
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
         return value
-    if isinstance(value, str):
-        return datetime.strptime(value, "%Y-%m-%d").date()
-    raise ValueError(f"SCHEDULE_ROTATION_ANCHOR must be a date or 'YYYY-MM-DD', got {value!r}")
+    raise TypeError(f"Expected a date, got {value!r}")
 
 
-def _default_academic_year():
-    return (
-        AcademicYear.objects
-        .filter(is_active=True)
-        .order_by("-start_date")
-        .first()
-    )
-
-
-def get_rotation_anchor(academic_year=None):
+def first_full_week_start(academic_year):
     """
-    Saturday that starts rotation week 1.
-
-    ``academic_year`` defaults to the latest active one (what the teacher
-    and supervisor pages have always used); the student schedule passes
-    the student's own enrollment year.
+    Saturday that starts the first *full* week of the academic year: the
+    ``start_date`` itself when it is a Saturday, otherwise the next one.
+    The days from ``start_date`` up to it still belong to week 1.
     """
 
-    configured = getattr(settings, "SCHEDULE_ROTATION_ANCHOR", None)
-    if configured:
-        return week_start(_parse_date(configured))
-
-    if academic_year is None:
-        academic_year = _default_academic_year()
-
-    start = (
-        _to_gregorian(academic_year.start_date)
-        if academic_year is not None
-        else DEFAULT_SCHEDULE_START_DATE
-    )
-    return week_start(start)
+    start = _to_gregorian(academic_year.start_date)
+    return start + timedelta(days=(7 - persian_weekday(start)) % 7)
 
 
-def week_type_for(current_date, anchor):
-    weeks = (week_start(current_date) - anchor).days // 7
-    if weeks % 2 == 0:
+def get_academic_week_number(value, academic_year):
+    """
+    1-based academic week of ``value`` (a Gregorian or Jalali date).
+
+    Weeks run Saturday..Friday. The partial days from ``start_date`` up
+    to the first Friday are merged into the following full week, so the
+    first week of the year can be up to 13 days long. Raises
+    ``DateBeforeAcademicYearError`` for a date before ``start_date``.
+    """
+
+    day = _to_gregorian(value)
+    start = _to_gregorian(academic_year.start_date)
+
+    if day < start:
+        raise DateBeforeAcademicYearError(
+            f"{day} is before the start of academic year {academic_year} "
+            f"({jdatetime.date.fromgregorian(date=start)} = {start})."
+        )
+
+    weeks_after_first = (week_start(day) - first_full_week_start(academic_year)).days // 7
+    return max(weeks_after_first, 0) + 1
+
+
+def get_week_cycle(value, academic_year):
+    """
+    ``ClassSchedule.WeekTypeChoices.WEEK_ONE`` or ``WEEK_TWO`` for the
+    rotation week ``value`` falls in (odd academic week -> week 1). Raises
+    ``DateBeforeAcademicYearError`` like ``get_academic_week_number``.
+    """
+
+    if get_academic_week_number(value, academic_year) % 2 == 1:
         return ClassSchedule.WeekTypeChoices.WEEK_ONE
     return ClassSchedule.WeekTypeChoices.WEEK_TWO
-
-
-def get_current_week_type(current_date=None, academic_year=None):
-    if current_date is None:
-        current_date = timezone.localdate()
-
-    return week_type_for(current_date, get_rotation_anchor(academic_year))
 
 
 def get_today_schedule_day(current_date=None):

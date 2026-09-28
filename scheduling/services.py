@@ -16,7 +16,7 @@ from student.models.student_enrollment import StudentEnrollment
 
 from .models.bell import Bell
 from .models.class_schedule import ClassSchedule
-from .utils import get_rotation_anchor, persian_weekday, week_start, week_type_for
+from .utils import get_week_cycle, persian_weekday, week_start
 
 WEEK_LABELS = {
     ClassSchedule.WeekTypeChoices.WEEK_ONE: "هفته اول",
@@ -110,7 +110,8 @@ class WeeklySchedule:
 
     @property
     def current_week(self):
-        return next(week for week in self.weeks if week.is_current)
+        # Before the academic year starts no week holds today; open on week 1.
+        return next((week for week in self.weeks if week.is_current), self.weeks[0])
 
     def week(self, number):
         return next((week for week in self.weeks if week.number == number), None)
@@ -155,7 +156,10 @@ def build_weekly_schedule(school_class, academic_year=None, now=None):
     Both rotation weeks of ``school_class``.
 
     The current rotation week is the calendar week (Sat..Fri) containing
-    today; the other one is shown as it will be next week. A slot is
+    today; the other one is shown as it will be when it next comes round
+    (usually next week, but two weeks ahead during the merged first week
+    of the year, see ``scheduling.utils``). Before the academic year
+    starts, both are shown as they will be in its first weeks. A slot is
     listed when its ``week_type`` is that week or BOTH, its class subject
     is active and teaching during that calendar week, and its bell is
     active.
@@ -164,18 +168,25 @@ def build_weekly_schedule(school_class, academic_year=None, now=None):
     now = timezone.localtime(now) if now else timezone.localtime()
     today = now.date()
 
-    anchor = get_rotation_anchor(academic_year or school_class.year)
-    current_type = week_type_for(today, anchor)
-    this_week = week_start(today)
+    academic_year = academic_year or school_class.year
+    year_start = _to_gregorian(academic_year.start_date)
+    started = today >= year_start
+    reference = today if started else year_start
+
+    current_type = get_week_cycle(reference, academic_year)
+    this_week = week_start(reference)
+    next_week = this_week + timedelta(days=7)
+    if get_week_cycle(next_week, academic_year) == current_type:
+        next_week += timedelta(days=7)
     week_starts = {
         current_type: this_week,
         (
             ClassSchedule.WeekTypeChoices.WEEK_TWO
             if current_type == ClassSchedule.WeekTypeChoices.WEEK_ONE
             else ClassSchedule.WeekTypeChoices.WEEK_ONE
-        ): this_week + timedelta(days=7),
+        ): next_week,
     }
-    span_start, span_end = this_week, this_week + timedelta(days=13)
+    span_start, span_end = this_week, next_week + timedelta(days=6)
 
     bells = list(Bell.objects.filter(is_active=True).order_by("order"))
 
@@ -207,7 +218,7 @@ def build_weekly_schedule(school_class, academic_year=None, now=None):
                               (2, ClassSchedule.WeekTypeChoices.WEEK_TWO)):
         start = week_starts[week_type]
         end = start + timedelta(days=6)
-        is_current = week_type == current_type
+        is_current = started and week_type == current_type
 
         cells = {}
         for schedule in schedules:

@@ -563,19 +563,11 @@ class SupervisorDashboardSelectorAttentionItemsTests(TestCase):
             week_type=ClassSchedule.WeekTypeChoices.WEEK_TWO,
         )
 
-        # get_current_week_type() looks at the AcademicYear with
-        # is_active=True and the latest start_date. Deactivate the
-        # setUp() year (it can't just be deleted: SchoolClass/ClassSubject
-        # rows PROTECT-reference it transitively) and add a dedicated one
-        # whose start_date == TODAY (in jalali) => week index 0 => WEEK_ONE.
-        self.year.is_active = False
-        self.year.save(update_fields=["is_active"])
-
-        make_academic_year(
-            jdatetime.date.fromgregorian(date=self.TODAY),
-            is_current=True,
-            is_active=True,
-        )
+        # The rotation week comes from the class's own academic year
+        # (scheduling.utils.get_week_cycle). Start it on TODAY (a
+        # Saturday) => academic week 1 => WEEK_ONE.
+        self.year.start_date = jdatetime.date.fromgregorian(date=self.TODAY)
+        self.year.save(update_fields=["start_date"])
 
         week_one_items = self._attention_items_at(self.TODAY, 9, 0)
         week_one_ids = {item["class_subject_id"] for item in week_one_items}

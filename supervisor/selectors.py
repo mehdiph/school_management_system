@@ -30,7 +30,11 @@ from attendance.models.attendance import Attendance
 from school.models import ClassSubject, SchoolClass
 from school.models.academic_year import AcademicYear
 from scheduling.models.class_schedule import ClassSchedule
-from scheduling.utils import get_current_week_type, get_today_schedule_day
+from scheduling.utils import (
+    DateBeforeAcademicYearError,
+    get_today_schedule_day,
+    get_week_cycle,
+)
 from staff.models.teacher_assignment import TeacherAssignment
 from staff.models.teacher_profile import TeacherProfile
 from student.models.student_enrollment import StudentEnrollment
@@ -259,15 +263,31 @@ class SupervisorDashboardSelector:
             # No classes are scheduled on this weekday (e.g. Friday).
             return ClassSchedule.objects.none()
 
-        week_type = get_current_week_type(today)
+        # Week 1 / week 2 depends on each class's own academic year.
+        in_this_week = Q()
+        years = AcademicYear.objects.filter(
+            schoolclass__in=self.scope.classes()
+        ).distinct()
+        for year in years:
+            try:
+                week_type = get_week_cycle(today, year)
+            except DateBeforeAcademicYearError:
+                continue  # that year has not started: nothing is held
+            in_this_week |= Q(
+                class_subject__school_class__year=year,
+                week_type__in=[week_type, ClassSchedule.WeekTypeChoices.BOTH],
+            )
+
+        if not in_this_week:
+            return ClassSchedule.objects.none()
+
         today_jalali = jdatetime.date.fromgregorian(date=today)
 
         return ClassSchedule.objects.filter(
             class_subject__in=self.scope.class_subjects(),
             day_of_week=day_of_week,
         ).filter(
-            Q(week_type=week_type)
-            | Q(week_type=ClassSchedule.WeekTypeChoices.BOTH)
+            in_this_week
         ).filter(
             class_subject__is_active=True,
             class_subject__school_class__is_active=True,

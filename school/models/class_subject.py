@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django_jalali.db import models as jmodels
 from core.managers.school import ClassSubjectManager
 
@@ -80,6 +80,37 @@ class ClassSubject(models.Model):
 
         if messages:
             raise ValidationError({"teacher_assignment": messages})
+
+        # A new teacher, class, teaching window or re-activation moves
+        # every slot of this subject: re-check them (scheduling.conflicts).
+        if self.pk and self.is_active:
+            from scheduling.conflicts import class_subject_slots, find_conflicts
+
+            conflicts = find_conflicts(class_subject_slots(self))
+            if conflicts:
+                raise ValidationError(list(dict.fromkeys(
+                    conflict.message_with_time for conflict in conflicts
+                )))
+
+    def save(self, *args, **kwargs):
+        if not (self.pk and self.is_active):
+            # New rows have no slots yet; deactivating never clashes.
+            return super().save(*args, **kwargs)
+
+        from scheduling.conflicts import (
+            check_slots,
+            class_subject_slots,
+            lock_for_schedule_change,
+        )
+
+        with transaction.atomic():
+            # Lock before reading the slots, so none can be added meanwhile.
+            lock_for_schedule_change(
+                class_ids=[self.school_class_id],
+                teacher_ids=[self.teacher_assignment.teacher_id],
+            )
+            check_slots(class_subject_slots(self), with_time=True)
+            super().save(*args, **kwargs)
 
     @property
     def icon(self):

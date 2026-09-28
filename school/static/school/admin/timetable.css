@@ -1,0 +1,206 @@
+/*
+ * Admin «برنامه هفتگی» grid (school/templates/admin/school/schoolclass/timetable.html).
+ * Only Django admin's own CSS variables are used, so the custom theme and
+ * dark mode apply as everywhere else in the admin.
+ */
+
+.tt { --tt-slot-min: 150px; }
+
+.tt-messages:empty { display: none; }
+
+/* ---- toolbar ---------------------------------------------------------- */
+
+.tt-toolbar {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline-color);
+  border-radius: 8px;
+  background: var(--darkened-bg);
+}
+
+.tt-brush {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+.tt-brush__title { font-weight: 700; align-self: center; }
+.tt-brush__field { display: grid; gap: 4px; min-inline-size: 180px; }
+.tt-brush__field > span { font-size: 0.8125rem; color: var(--body-quiet-color); }
+
+.tt .button[aria-pressed="true"] {
+  background: var(--secondary);
+  color: var(--primary-fg);
+  box-shadow: inset 0 0 0 2px var(--primary-fg);
+}
+.tt .button[aria-pressed="true"]::before { content: "✓ "; }
+
+.tt-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tt-recent__title { font-size: 0.8125rem; color: var(--body-quiet-color); }
+.tt-recent__list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tt-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: start;
+  padding: 4px 10px;
+  border: 1px solid var(--hairline-color);
+  border-inline-start: 4px solid var(--tt-color, var(--primary));
+  border-radius: 6px;
+  background: var(--body-bg);
+  color: var(--body-fg);
+  font: inherit;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.tt-chip:hover, .tt-chip:focus-visible { border-color: var(--primary); }
+.tt-chip__subject { font-weight: 700; font-size: 0.8125rem; }
+.tt-chip__teacher { font-size: 0.75rem; color: var(--body-quiet-color); }
+
+.tt-help { margin: 0; }
+
+.tt-busy-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--message-warning-bg, #ffc);
+  color: var(--body-fg);
+}
+.tt-busy-legend[hidden] { display: none; }
+
+/* ---- grid ------------------------------------------------------------- */
+
+.tt-scroll {
+  position: relative;  /* contains the visually hidden caption */
+  margin-block: 12px;
+  overflow-x: auto;
+  border: 1px solid var(--hairline-color);
+  border-radius: 8px;
+}
+
+.tt-grid {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+/* the page heading already says it; kept for screen readers */
+.tt-grid caption {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.tt-grid th, .tt-grid td {
+  border: 1px solid var(--hairline-color);
+  vertical-align: top;
+}
+.tt-corner, .tt-day {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background: var(--darkened-bg);
+  white-space: nowrap;
+}
+.tt-day { vertical-align: middle !important; font-weight: 700; }
+.tt-bell { min-inline-size: var(--tt-slot-min); text-align: center; }
+.tt-bell__title { display: block; font-weight: 700; }
+.tt-bell__time { display: block; font-size: 0.75rem; font-weight: 400; color: var(--body-quiet-color); }
+
+.tt-cell {
+  min-inline-size: var(--tt-slot-min);
+  padding: 4px !important;
+}
+.tt-cell.has-error { background: var(--message-error-bg, #ffefef); }
+
+.tt-mode {
+  display: block;
+  margin: 0 0 4px auto;
+  padding: 1px 8px;
+  border: 1px solid var(--hairline-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--body-quiet-color);
+  font: inherit;
+  font-size: 0.6875rem;
+  cursor: pointer;
+}
+.tt-mode:hover, .tt-mode:focus-visible { border-color: var(--primary); color: var(--primary); }
+.tt-mode[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+
+.tt-slot {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  border-inline-start: 4px solid transparent;
+}
+.tt-slot + .tt-slot { margin-block-start: 4px; }
+.tt-slot.has-subject {
+  border-inline-start-color: var(--tt-color, var(--primary));
+  background: color-mix(in srgb, var(--tt-color, var(--primary)) 10%, transparent);
+}
+
+/* every-week slot, or the two halves of an alternating cell */
+.tt-cell:not(.is-alt) .tt-slot[data-week="1"],
+.tt-cell:not(.is-alt) .tt-slot[data-week="2"],
+.tt-cell.is-alt .tt-slot[data-week="3"] { display: none; }
+.tt-cell.is-alt .tt-slot { outline: 1px dashed var(--hairline-color); }
+
+.tt-slot__label { font-size: 0.6875rem; font-weight: 700; color: var(--body-quiet-color); }
+.tt-slot__subject { display: flex; align-items: center; gap: 4px; }
+.tt-slot__subject > select, .tt-slot__subject > .select2 { flex: 1 1 auto; min-inline-size: 0; }
+.tt-slot select { inline-size: 100%; max-inline-size: 100%; }
+
+.tt-add-subject {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: 50%;
+  font-weight: 700;
+  text-decoration: none !important;
+  opacity: 0.45;
+}
+.tt-slot:hover .tt-add-subject,
+.tt-slot:focus-within .tt-add-subject,
+.tt-add-subject:focus-visible { opacity: 1; }
+
+.tt-slot__error, .tt-slot__busy { margin: 0; font-size: 0.75rem; line-height: 1.6; }
+.tt-slot__error:empty, .tt-slot__busy:empty { display: none; }
+.tt-slot__error { color: var(--error-fg); font-weight: 700; }
+.tt-slot.has-error { outline: 2px solid var(--error-fg); outline-offset: -2px; }
+
+.tt-slot.is-busy {
+  background-image: repeating-linear-gradient(
+    -45deg, transparent 0 6px, color-mix(in srgb, var(--body-quiet-color) 18%, transparent) 6px 8px
+  );
+}
+.tt-slot__busy { color: var(--body-medium-color); }
+.tt-slot.has-error .tt-slot__busy { display: none; }  /* the error already says it */
+.tt-slot.is-clash .tt-slot__busy { color: var(--error-fg); font-weight: 700; }
+
+/* paint / erase: a click anywhere on a slot fills it */
+.tt.is-painting .tt-slot, .tt.is-erasing .tt-slot { cursor: crosshair; }
+.tt.is-painting .tt-slot > *, .tt.is-erasing .tt-slot > * { pointer-events: none; }
+.tt.is-painting .tt-slot:hover { outline: 2px solid var(--primary); outline-offset: -2px; }
+.tt.is-erasing .tt-slot:hover { outline: 2px dashed var(--error-fg); outline-offset: -2px; }
+
+.tt-submit { display: flex; align-items: center; gap: 12px; }
+.tt-dirty { color: var(--body-quiet-color); }
+.tt-dirty[hidden] { display: none; }
+
+/* select2 sized for grid cells */
+.tt .select2-container .select2-selection--single { block-size: 28px; }
+.tt .select2-container .select2-selection--single .select2-selection__rendered { line-height: 26px; font-size: 0.8125rem; }
+
+@media (max-width: 767px) {
+  .tt { --tt-slot-min: 130px; }
+  .tt-brush__field { min-inline-size: 100%; }
+}

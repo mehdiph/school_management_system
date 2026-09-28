@@ -1,0 +1,85 @@
+{% extends "admin/base_site.html" %}
+{% load static admin_urls %}
+
+{# «برنامه هفتگی» of one class -- see scheduling/timetable.py and school/static/school/admin/timetable.js #}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/vendor/select2/select2.min.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/css/autocomplete.css' %}">
+  <link rel="stylesheet" href="{% static 'school/admin/timetable.css' %}">
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'admin/js/vendor/jquery/jquery.min.js' %}"></script>
+  <script src="{% static 'admin/js/vendor/select2/select2.full.min.js' %}"></script>
+  <script src="{% static 'admin/js/vendor/select2/i18n/fa.js' %}"></script>
+  <script src="{% static 'admin/js/jquery.init.js' %}"></script>
+  <script src="{% static 'admin/js/admin/RelatedObjectLookups.js' %}"></script>
+  <script src="{% static 'school/admin/timetable.js' %}" defer></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} timetable-page{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">خانه</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">{{ original }}</a>
+  &rsaquo; برنامه هفتگی
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="tt" data-timetable>
+  <ul class="messagelist tt-messages" data-tt-messages aria-live="polite"></ul>
+
+  {% if grid.can_edit %}
+  <div class="module tt-toolbar" data-model-ref="subject">
+    <div class="tt-brush" role="group" aria-labelledby="tt-brush-title">
+      <span class="tt-brush__title" id="tt-brush-title">پر کردن سریع</span>
+      <label class="tt-brush__field">
+        <span>درس</span>
+        <select id="id_tt_brush_subject" data-tt-brush="subject" data-context="available-source"></select>
+      </label>
+      <label class="tt-brush__field">
+        <span>معلم</span>
+        <select id="id_tt_brush_teacher" data-tt-brush="teacher"></select>
+      </label>
+      <button type="button" class="button tt-paint" data-tt-paint aria-pressed="false">حالت رنگ‌آمیزی</button>
+      <button type="button" class="button tt-erase" data-tt-erase aria-pressed="false">پاک‌کن</button>
+    </div>
+    <div class="tt-recent" data-tt-recent hidden>
+      <span class="tt-recent__title">پرکاربردها:</span>
+      <div class="tt-recent__list" data-tt-recent-list></div>
+    </div>
+    <p class="help tt-help">
+      در «حالت رنگ‌آمیزی» با کلیک روی هر خانه، درس و معلم انتخاب‌شده در آن قرار می‌گیرد؛ «پاک‌کن» خانه را خالی می‌کند.
+      برای درس‌های یک هفته در میان، دکمه‌ی «هفته‌درمیان» همان خانه را باز کنید.
+    </p>
+  </div>
+  {% endif %}
+
+  <p class="tt-busy-legend" data-tt-busy-legend hidden></p>
+
+  <div class="tt-scroll" data-model-ref="subject">
+    <table class="tt-grid" data-tt-grid aria-describedby="tt-grid-caption">
+      <caption id="tt-grid-caption">{{ title }}</caption>
+    </table>
+  </div>
+
+  {% if grid.can_edit %}
+  <div class="submit-row tt-submit">
+    <input type="button" class="default" value="ذخیره برنامه" data-tt-save>
+    <span class="tt-dirty" data-tt-dirty hidden>تغییرات ذخیره نشده دارید.</span>
+  </div>
+  {% else %}
+  <p class="help">شما اجازه‌ی ویرایش برنامه را ندارید؛ برنامه فقط برای مشاهده نمایش داده می‌شود.</p>
+  {% endif %}
+
+  {% csrf_token %}
+  {{ grid|json_script:"tt-data" }}
+</div>
+{% endblock %}

@@ -8,8 +8,9 @@ from teaching.models import SchoolSession
 from scheduling.models.class_schedule import ClassSchedule
 
 from scheduling.utils import (
-    get_current_week_type,
-    get_today_schedule_day
+    DateBeforeAcademicYearError,
+    get_today_schedule_day,
+    get_week_cycle,
 )
 
 
@@ -72,22 +73,26 @@ def dashboard(request):
     )
 
     print(class_subjects_query)
-    week_type = get_current_week_type(
-        timezone.localdate()
-    )
-
     today_day = get_today_schedule_day(
         timezone.localdate()
     )
 
+    week_type = None
 
     if current_year:
+        try:
+            week_type = get_week_cycle(timezone.localdate(), current_year)
+        except DateBeforeAcademicYearError:
+            # The year has not started yet: nothing is held today.
+            class_subjects_query = class_subjects_query.none()
 
+
+    if week_type is not None:
+
+        # One filter() call, so day and week type must hold for the
+        # *same* schedule row (two calls would join schedules twice).
         class_subjects_query = (
             class_subjects_query
-            .filter(
-                schedules__day_of_week=today_day
-            )
             .filter(
                 Q(
                     schedules__week_type=week_type
@@ -96,7 +101,8 @@ def dashboard(request):
                 Q(
                     schedules__week_type=
                     ClassSchedule.WeekTypeChoices.BOTH
-                )
+                ),
+                schedules__day_of_week=today_day,
             )
             .distinct()
         )
