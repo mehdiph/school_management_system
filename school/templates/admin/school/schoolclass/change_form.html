@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}
+{% load admin_urls %}
+
+{% block object-tools-items %}
+  {% if original.pk and can_view_timetable %}
+    <li><a href="{% url 'admin:school_schoolclass_timetable' original.pk|admin_urlquote %}">برنامه هفتگی</a></li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}
