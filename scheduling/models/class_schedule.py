@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django_jalali.db import models as jmodels
 
 from .bell import Bell
@@ -15,6 +15,75 @@ class ClassScheduleQuerySet(models.QuerySet):
         return self.filter(
             week_type__in=[week_type, ClassSchedule.WeekTypeChoices.BOTH]
         )
+
+    # bulk_create(), bulk_update() and update() skip clean() and save(),
+    # so they run the conflict rules (scheduling.conflicts) themselves.
+
+    def bulk_create(self, objs, *args, **kwargs):
+        from scheduling.conflicts import check_slots, schedules_as_slots
+
+        objs = list(objs)
+        with transaction.atomic(using=self.db):
+            check_slots(schedules_as_slots(objs))
+            return super().bulk_create(objs, *args, **kwargs)
+
+    def bulk_update(self, objs, fields, *args, **kwargs):
+        from scheduling.conflicts import (
+            CONFLICT_FIELDS,
+            check_slots,
+            prevalidated,
+            schedules_as_slots,
+        )
+
+        objs = list(objs)
+        fields = list(fields)
+        with transaction.atomic(using=self.db):
+            if CONFLICT_FIELDS & {_field_name(name) for name in fields}:
+                check_slots(schedules_as_slots(self._as_saved_with(objs, fields)))
+            with prevalidated():
+                return super().bulk_update(objs, fields, *args, **kwargs)
+
+    def update(self, **kwargs):
+        from scheduling.conflicts import (
+            CONFLICT_FIELDS,
+            check_slots,
+            is_prevalidated,
+            schedules_as_slots,
+        )
+
+        if is_prevalidated() or not CONFLICT_FIELDS & {_field_name(k) for k in kwargs}:
+            return super().update(**kwargs)
+
+        for name, value in kwargs.items():
+            if hasattr(value, "resolve_expression"):
+                raise TypeError(
+                    f"ClassSchedule update() cannot check timetable conflicts for "
+                    f"an expression on {name!r}; use save() or bulk_update()."
+                )
+
+        with transaction.atomic(using=self.db):
+            rows = list(self.select_related("class_subject__school_class", "class_subject__teacher_assignment"))
+            for row in rows:
+                for name, value in kwargs.items():
+                    setattr(row, name, value)
+            check_slots(schedules_as_slots(rows))
+            return super().update(**kwargs)
+
+    def _as_saved_with(self, objs, fields):
+        """``objs`` as they will be after bulk_update: saved row + ``fields``."""
+
+        saved = ClassSchedule.objects.in_bulk([obj.pk for obj in objs])
+        merged = []
+        for obj in objs:
+            row = saved.get(obj.pk, obj)
+            for name in fields:
+                setattr(row, name, getattr(obj, name))
+            merged.append(row)
+        return merged
+
+
+def _field_name(name):
+    return name[:-3] if name.endswith("_id") else name
 
 
 class ClassSchedule(models.Model):
@@ -104,63 +173,25 @@ class ClassSchedule(models.Model):
                 "bell": "زمان پایان زنگ باید بعد از زمان شروع باشد."
             })
 
-        if self.week_type == self.WeekTypeChoices.BOTH:
-            applicable_weeks = [
-                self.WeekTypeChoices.WEEK_ONE,
-                self.WeekTypeChoices.WEEK_TWO,
-                self.WeekTypeChoices.BOTH,
-            ]
-        elif self.week_type == self.WeekTypeChoices.WEEK_ONE:
-            applicable_weeks = [
-                self.WeekTypeChoices.WEEK_ONE,
-                self.WeekTypeChoices.BOTH,
-            ]
-        else:
-            applicable_weeks = [
-                self.WeekTypeChoices.WEEK_TWO,
-                self.WeekTypeChoices.BOTH,
-            ]
+        # Class and teacher conflicts: see scheduling.conflicts.
+        from scheduling.conflicts import Slot, find_conflicts
 
-        teacher_assignment = self.class_subject.teacher_assignment
-        school_class = self.class_subject.school_class
-
-        # ---------- Teacher Conflict ----------
-
-        teacher_conflict = ClassSchedule.objects.filter(
-            class_subject__teacher_assignment=teacher_assignment,
-            day_of_week=self.day_of_week,
-            week_type__in=applicable_weeks,
-            bell=self.bell,
-        )
-
-        if self.pk:
-            teacher_conflict = teacher_conflict.exclude(pk=self.pk)
-
-        if teacher_conflict.exists():
+        conflicts = find_conflicts([Slot.of(self)])
+        if conflicts:
             raise ValidationError({
-                "bell": "این معلم در این زنگ کلاس دیگری دارد."
-            })
-
-        # ---------- Class Conflict ----------
-
-        class_conflict = ClassSchedule.objects.filter(
-            class_subject__school_class=school_class,
-            day_of_week=self.day_of_week,
-            week_type__in=applicable_weeks,
-            bell=self.bell,
-        )
-
-        if self.pk:
-            class_conflict = class_conflict.exclude(pk=self.pk)
-
-        if class_conflict.exists():
-            raise ValidationError({
-                "bell": "برای این کلاس در این زنگ، درس دیگری ثبت شده است."
+                "bell": list(dict.fromkeys(conflict.message for conflict in conflicts))
             })
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+        from scheduling.conflicts import Slot, lock_slots
+
+        with transaction.atomic():
+            # Lock the class and the teacher before clean() looks for
+            # conflicts, so a concurrent save cannot slip in between.
+            if self.class_subject_id:
+                lock_slots([Slot.of(self)])
+            self.full_clean()
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return (
