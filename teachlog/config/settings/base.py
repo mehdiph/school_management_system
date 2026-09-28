@@ -171,10 +171,8 @@ USE_TZ = True
 # 0=شنبه 1=یکشنبه 2=دوشنبه 3=سه‌شنبه 4=چهارشنبه 5=پنج‌شنبه.
 SCHOOL_WORKING_DAYS = [0, 1, 2, 3, 4]
 
-# Any date ('YYYY-MM-DD', Gregorian) in the week the school calls
-# "هفته اول". Leave unset to use the week of the academic year's start
-# date. When set it applies to every year, so update it each year.
-SCHEDULE_ROTATION_ANCHOR = os.environ.get('SCHEDULE_ROTATION_ANCHOR') or None
+# "هفته اول" / "هفته دوم" is derived from AcademicYear.start_date alone
+# (scheduling.utils.get_week_cycle); there is no setting for it.
 
 
 # Static files (CSS, JavaScript, Images)
