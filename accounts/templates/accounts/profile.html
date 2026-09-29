@@ -1,0 +1,324 @@
+{% extends 'teacher/base.html' %}
+{% load static jalali_tags %}
+
+{% comment %}
+  «پروفایل و تنظیمات» (accounts.views.profile). Two tabs addressable by
+  ?tab=personal|security; both panels are in the page, the inactive one
+  hidden, so a form with errors re-renders on its own tab. Without JS the
+  tabs are plain links.
+{% endcomment %}
+
+{% block title %}پروفایل و تنظیمات | پنل معلم{% endblock %}
+{% block page_title %}پروفایل و تنظیمات{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'accounts/css/profile.css' %}">
+{% endblock %}
+
+{% block content %}
+{% with user=request.user %}
+<div class="pf" data-pf>
+
+    {# ---------------- Header ---------------- #}
+    <section class="ui-card pf-head" aria-labelledby="pfName">
+        <div class="pf-head__main">
+            {% include "partials/avatar.html" with person=user size=72 extra_class="pf-head__avatar" decorative=True %}
+            <div class="pf-head__text">
+                <h1 class="pf-head__name" id="pfName">{{ teacher.name }}</h1>
+                <p class="pf-head__meta">
+                    معلم · {{ site_settings.site_name|default:"مدرسه نسل قلم" }}
+                    {% if overview.academic_year %}· سال تحصیلی {{ overview.academic_year.title|fa_digits }}{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <dl class="pf-stats">
+            <div class="pf-stat">
+                <dt>زنگ در هفته</dt>
+                <dd>{{ overview.weekly_periods|fa_digits }}</dd>
+            </div>
+            <div class="pf-stat">
+                <dt>کلاس فعال</dt>
+                <dd>{{ overview.active_classes|fa_digits }}</dd>
+            </div>
+            <div class="pf-stat">
+                <dt>جلسه ثبت‌شده امسال</dt>
+                <dd>{{ overview.sessions_this_year|fa_digits }}</dd>
+            </div>
+        </dl>
+
+        {% if overview.subjects or overview.classes %}
+        <div class="pf-head__chips">
+            {% if overview.subjects %}
+            <div class="pf-chip-row">
+                <span class="pf-chip-row__label">درس‌ها</span>
+                <ul class="ui-chip-list">
+                    {% for subject in overview.subjects %}<li class="ui-chip ui-chip--accent">{{ subject }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if overview.classes %}
+            <div class="pf-chip-row">
+                <span class="pf-chip-row__label">کلاس‌ها</span>
+                <ul class="ui-chip-list">
+                    {% for class_name in overview.classes %}<li class="ui-chip">{{ class_name }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
+
+    {# ---------------- Tabs ---------------- #}
+    <div class="ui-tabs pf-tabs" role="tablist" aria-label="بخش‌های پروفایل">
+        {% for key, label in tabs %}
+        <a
+            class="ui-tab"
+            role="tab"
+            id="pf-tab-{{ key }}"
+            href="?tab={{ key }}"
+            data-tab="{{ key }}"
+            aria-controls="pf-panel-{{ key }}"
+            {% if key == tab %}aria-selected="true" tabindex="0"{% else %}aria-selected="false" tabindex="-1"{% endif %}
+        >
+            <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="{% if key == 'personal' %}#i-user{% else %}#i-shield{% endif %}"></use></svg>
+            {{ label }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {# ---------------- Personal ---------------- #}
+    <div class="pf-panel" role="tabpanel" id="pf-panel-personal" aria-labelledby="pf-tab-personal" {% if tab != 'personal' %}hidden{% endif %}>
+        <form method="post" enctype="multipart/form-data" class="pf-form" action="?tab=personal" novalidate data-busy-form>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="personal">
+
+            {% if profile_form.non_field_errors %}
+            <div class="ui-alert ui-alert--danger" role="alert">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+                <div>{% for error in profile_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+            </div>
+            {% endif %}
+
+            <section class="ui-card" aria-labelledby="pfAvatarTitle">
+                <header class="ui-card__header"><h2 class="ui-card__title" id="pfAvatarTitle">تصویر پروفایل</h2></header>
+                <div class="ui-card__body pf-avatar" data-avatar>
+                    <div class="pf-avatar__preview" data-avatar-preview>
+                        {% include "partials/avatar.html" with person=user size=96 decorative=True %}
+                        <img class="pf-avatar__new" alt="" width="96" height="96" hidden data-avatar-new>
+                    </div>
+                    <div class="pf-avatar__body">
+                        <div class="pf-avatar__actions">
+                            <label class="ui-btn ui-btn--secondary pf-avatar__pick" for="{{ profile_form.avatar.id_for_label }}">
+                                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-camera"></use></svg>
+                                {% if user.avatar %}تغییر تصویر{% else %}انتخاب تصویر{% endif %}
+                            </label>
+                            <input
+                                type="file"
+                                name="{{ profile_form.avatar.html_name }}"
+                                id="{{ profile_form.avatar.id_for_label }}"
+                                class="pf-avatar__input"
+                                accept="image/jpeg,image/png,image/webp"
+                                data-avatar-input
+                                data-max-bytes="2097152"
+                                {% if profile_form.avatar.errors %}aria-invalid="true"{% endif %}
+                                aria-describedby="pfAvatarHelp{% if profile_form.avatar.errors %} {{ profile_form.avatar.auto_id }}-error{% endif %}"
+                            >
+                            {% if user.avatar %}
+                            <label class="ui-btn ui-btn--danger pf-avatar__remove">
+                                <input type="checkbox" name="{{ profile_form.remove_avatar.html_name }}" data-avatar-remove{% if profile_form.remove_avatar.value %} checked{% endif %}>
+                                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-trash"></use></svg>
+                                حذف تصویر
+                            </label>
+                            {% endif %}
+                        </div>
+                        <p class="ui-help" id="pfAvatarHelp">JPG، PNG یا WebP، حداکثر ۲ مگابایت. تصویر به‌صورت مربعی بریده و اطلاعات مکان آن حذف می‌شود.</p>
+                        <p class="ui-help pf-avatar__status" data-avatar-status aria-live="polite"></p>
+                        {% if profile_form.avatar.errors %}
+                        <ul class="ui-error" id="{{ profile_form.avatar.auto_id }}-error">{% for error in profile_form.avatar.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                        {% endif %}
+                        <p class="ui-error" data-avatar-error hidden></p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ui-card" aria-labelledby="pfContactTitle">
+                <header class="ui-card__header"><h2 class="ui-card__title" id="pfContactTitle">اطلاعات تماس</h2></header>
+                <div class="ui-card__body ui-form">
+                    <div class="ui-form__row ui-form__row--2">
+                        {% for field in profile_form %}
+                        {% if field.name == 'phone_number' or field.name == 'email' %}
+                        <div class="ui-field">
+                            <label class="ui-label" for="{{ field.id_for_label }}">
+                                {{ field.label }}{% if not field.field.required %} <span class="ui-label__optional">(اختیاری)</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <ul class="ui-error" id="{{ field.auto_id }}-error">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <section class="ui-card" aria-labelledby="pfAccountTitle">
+                <header class="ui-card__header"><h2 class="ui-card__title" id="pfAccountTitle">اطلاعات حساب</h2></header>
+                <div class="ui-card__body ui-form">
+                    <div class="ui-form__row ui-form__row--2">
+                        <div class="ui-field">
+                            <label class="ui-label" for="pfFullName">نام و نام خانوادگی</label>
+                            <input class="ui-input" id="pfFullName" value="{{ user.get_full_name|default:'—' }}" readonly>
+                        </div>
+                        <div class="ui-field">
+                            <label class="ui-label" for="pfUsername">نام کاربری</label>
+                            <input class="ui-input ui-input--ltr" id="pfUsername" value="{{ user.username }}" dir="ltr" readonly>
+                        </div>
+                        <div class="ui-field">
+                            <label class="ui-label" for="pfNationalCode">کد ملی</label>
+                            <input class="ui-input" id="pfNationalCode" value="{{ user.national_code|fa_digits|default:'—' }}" readonly>
+                        </div>
+                        <div class="ui-field">
+                            <label class="ui-label" for="pfPersonnelCode">کد پرسنلی</label>
+                            <input class="ui-input" id="pfPersonnelCode" value="{{ staff.personnel_code|fa_digits|default:'—' }}" readonly>
+                        </div>
+                    </div>
+                    <p class="ui-alert">
+                        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-info"></use></svg>
+                        <span>برای تغییر، با مدیر مدرسه تماس بگیرید.</span>
+                    </p>
+                </div>
+            </section>
+
+            <div class="ui-form__actions">
+                <button type="submit" class="ui-btn ui-btn--primary">
+                    <span class="ui-btn__spinner" aria-hidden="true"></span>
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-check"></use></svg>
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {# ---------------- Security ---------------- #}
+    <div class="pf-panel" role="tabpanel" id="pf-panel-security" aria-labelledby="pf-tab-security" {% if tab != 'security' %}hidden{% endif %}>
+
+        <section class="ui-card" aria-labelledby="pfPasswordTitle">
+            <header class="ui-card__header"><h2 class="ui-card__title" id="pfPasswordTitle">تغییر رمز عبور</h2></header>
+            <form method="post" class="ui-card__body ui-form" action="?tab=security" novalidate data-busy-form data-password-form
+                  data-user-words="{{ user.username }} {{ user.first_name }} {{ user.last_name }} {{ user.email }}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="password">
+
+                {% if password_form.non_field_errors %}
+                <div class="ui-alert ui-alert--danger" role="alert">
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+                    <div>{% for error in password_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+                </div>
+                {% endif %}
+
+                {% for field in password_form %}
+                <div class="ui-field">
+                    <label class="ui-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    <div class="ui-input-group">
+                        {{ field }}
+                        <button type="button" class="ui-icon-btn ui-input-group__btn" data-toggle-password="{{ field.id_for_label }}" aria-label="نمایش رمز عبور" aria-pressed="false" hidden>
+                            <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-eye"></use></svg>
+                        </button>
+                    </div>
+                    {% if field.errors %}
+                    <ul class="ui-error" id="{{ field.auto_id }}-error">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                    {% endif %}
+
+                    {% if field.name == 'new_password1' %}
+                    <div class="pf-strength" data-strength hidden>
+                        <div class="pf-strength__bar" aria-hidden="true"><span data-strength-bar></span></div>
+                        <span class="pf-strength__label" data-strength-label aria-live="polite"></span>
+                    </div>
+                    <ul class="pf-rules" aria-label="شرایط رمز عبور">
+                        {% for rule in password_rules %}
+                        <li class="pf-rule" {% if rule.check %}data-rule="{{ rule.check }}"{% endif %}{% if rule.value %} data-value="{{ rule.value }}"{% endif %}>
+                            <svg class="ui-icon ui-icon--sm pf-rule__icon" aria-hidden="true"><use href="{% if rule.check %}#i-check{% else %}#i-info{% endif %}"></use></svg>
+                            <span>{{ rule.text }}</span>
+                            <span class="ui-visually-hidden" data-rule-state></span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="ui-help">راهنمای بالا فقط برای کمک است؛ بررسی نهایی را سامانه انجام می‌دهد.</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <p class="ui-alert ui-alert--info">
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-info"></use></svg>
+                    <span>پس از تغییر رمز، در همین دستگاه وارد می‌مانید ولی در دستگاه‌های دیگر باید دوباره وارد شوید.</span>
+                </p>
+
+                <div class="ui-form__actions">
+                    <button type="submit" class="ui-btn ui-btn--primary">
+                        <span class="ui-btn__spinner" aria-hidden="true"></span>
+                        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-lock"></use></svg>
+                        تغییر رمز عبور
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="ui-card" aria-labelledby="pfLoginsTitle">
+            <header class="ui-card__header"><h2 class="ui-card__title" id="pfLoginsTitle">ورودهای اخیر</h2></header>
+            {% if logins %}
+            <ul class="pf-logins">
+                {% for login in logins %}
+                <li class="pf-login{% if login.session_key and login.session_key == current_session_key %} is-current{% endif %}">
+                    <span class="pf-login__icon" aria-hidden="true">
+                        <svg class="ui-icon"><use href="{% if login.os == 'Android' or login.os == 'iOS' %}#i-phone{% else %}#i-device{% endif %}"></use></svg>
+                    </span>
+                    <div class="pf-login__text">
+                        <p class="pf-login__device">
+                            {{ login.browser|default:"مرورگر ناشناس" }}{% if login.os %} · {{ login.os }}{% endif %}
+                            {% if login.session_key and login.session_key == current_session_key %}<span class="ui-badge ui-badge--success">همین دستگاه</span>{% endif %}
+                        </p>
+                        <p class="pf-login__meta">
+                            <time datetime="{{ login.created_at|date:'c' }}">{{ login.created_at|jalali_datetime }}</time>
+                            {% if login.ip_address %}<span aria-hidden="true">·</span> <span dir="ltr">{{ login.ip_address }}</span>{% endif %}
+                        </p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="ui-empty">
+                <span class="ui-empty__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-device"></use></svg></span>
+                <p class="ui-empty__text">هنوز ورودی ثبت نشده است. از این به بعد، هر ورود شما این‌جا نمایش داده می‌شود.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="ui-card" aria-labelledby="pfSessionsTitle">
+            <header class="ui-card__header"><h2 class="ui-card__title" id="pfSessionsTitle">خروج از سایر دستگاه‌ها</h2></header>
+            <div class="ui-card__body pf-sessions">
+                {% if can_end_sessions %}
+                <p class="pf-sessions__text">اگر در رایانه یا گوشی دیگری وارد حساب شده‌اید و به آن دسترسی ندارید، از همه‌ی آن‌ها خارج شوید. همین دستگاه وارد می‌ماند.</p>
+                <form method="post" action="?tab=security" data-busy-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="end_sessions">
+                    <button type="submit" class="ui-btn ui-btn--danger">
+                        <span class="ui-btn__spinner" aria-hidden="true"></span>
+                        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-logout"></use></svg>
+                        خروج از سایر دستگاه‌ها
+                    </button>
+                </form>
+                {% else %}
+                <p class="pf-sessions__text">در تنظیمات فعلی سرور این امکان در دسترس نیست. برای خروج از همه‌ی دستگاه‌ها، رمز عبور خود را تغییر دهید.</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endwith %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'accounts/js/profile.js' %}" defer></script>
+{% endblock %}

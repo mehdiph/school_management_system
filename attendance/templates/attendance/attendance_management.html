@@ -1,7 +1,8 @@
-{% extends 'base.html' %}
+{% extends panel_base|default:"base.html" %}
 {% load static report_tags session_tags %}
 
 {% block title %}ثبت حضور و غیاب - {{ class_subject.subject.name }}{% endblock %}
+{% block page_title %}حضور و غیاب{% endblock %}
 
 {% comment %}
 Same shell as the session form and session list (header, topbar, sidebar

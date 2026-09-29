@@ -56,12 +56,13 @@ class AttendanceViewTestCase(TestCase):
 
 class AttendancePageTests(AttendanceViewTestCase):
 
-    def test_uses_the_shared_shell_not_the_old_navbar(self):
+    def test_uses_the_teacher_shell_not_the_old_navbar(self):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="appSidebar"')
-        self.assertContains(response, 'class="app-topbar"')
+        self.assertTemplateUsed(response, 'teacher/base.html')
+        self.assertContains(response, 'id="teacherSidebar"')
+        self.assertContains(response, 'class="ui-topbar"')
         self.assertNotContains(response, 'nav-info')
         self.assertContains(response, 'attendance/js/attendance.js')
 

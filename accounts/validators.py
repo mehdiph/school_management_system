@@ -70,3 +70,39 @@ class NotNationalCodePasswordValidator:
 
     def get_help_text(self):
         return "رمز عبور نباید با کد ملی شما یکسان باشد."
+
+
+# ----------------------------------------------------------------------
+# Iranian mobile numbers
+# ----------------------------------------------------------------------
+
+_MOBILE_RE = re.compile(r"09\d{9}")
+
+
+def normalize_mobile(value):
+    """
+    "۰۹۱۲ ۳۴۵ ۶۷۸۹", "+98 912-345-6789", "00989123456789", "9123456789"
+    -> "09123456789". Persian/Arabic digits become ASCII, spaces, dashes,
+    dots and brackets are dropped, and the country code becomes the
+    leading 0. Does not validate; see ``validate_mobile``.
+    """
+
+    value = str(value or "").strip().translate(_TO_ASCII_DIGITS)
+    value = re.sub(r"[\s\-().‌‎‏]", "", value)
+    if value.startswith("+98"):
+        value = "0" + value[3:]
+    elif value.startswith("0098"):
+        value = "0" + value[4:]
+    elif value.startswith("98") and len(value) == 12:
+        value = "0" + value[2:]
+    elif value.startswith("9") and len(value) == 10:
+        value = "0" + value
+    return value
+
+
+def validate_mobile(value):
+    if not _MOBILE_RE.fullmatch(value or ""):
+        raise ValidationError(
+            "شماره موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود؛ مثل ۰۹۱۲۳۴۵۶۷۸۹.",
+            code="invalid_mobile",
+        )

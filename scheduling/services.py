@@ -1,7 +1,16 @@
 """
-Builds a class's two-week timetable -- the single source of data for
-the weekly schedule page (desktop grid and mobile day cards) and its
-PDF. Three queries in total: enrollment, bells, schedule slots.
+Builds the two-week timetable -- the single source of data for the
+weekly schedule pages (desktop grid and mobile day cards) and their PDFs:
+
+* a class's, for the student page (``get_student_weekly_schedule``);
+  three queries: enrollment, bells, schedule slots;
+* a teacher's, across all their classes and branches in the current
+  academic year (``get_teacher_weekly_schedule``); three queries: year,
+  bells, schedule slots.
+
+Both go through the same rotation and grid code (``_rotation``,
+``_in_effect``, ``_build_weeks``), so they cannot disagree about which
+week is which or which lessons are in effect.
 """
 
 from dataclasses import dataclass, field
@@ -12,6 +21,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from school.colors import readable_text_color, safe_hex, tint
+from school.models import AcademicYear
 from student.models.student_enrollment import StudentEnrollment
 
 from .models.bell import Bell
@@ -71,6 +81,13 @@ class Slot:
     bell: Bell
     entry: ScheduleEntry | None = None
     is_now: bool = False
+    #: Every lesson in the cell. The student view keeps one (``entry``);
+    #: the teacher view keeps all of them, so a clash is visible.
+    entries: list = field(default_factory=list)
+
+    @property
+    def has_conflict(self):
+        return len(self.entries) > 1
 
 
 @dataclass
@@ -151,6 +168,117 @@ def _runs_in(class_subject, start, end):
     )
 
 
+@dataclass(frozen=True)
+class _Rotation:
+    """Which calendar weeks the two rotation weeks are shown as (see build_weekly_schedule)."""
+
+    started: bool
+    current_type: int
+    week_starts: dict   # week_type -> Saturday
+
+    @property
+    def span(self):
+        """First and last day covered by both weeks, for the teaching-window filter."""
+
+        starts = sorted(self.week_starts.values())
+        return starts[0], starts[-1] + timedelta(days=6)
+
+
+def _rotation(academic_year, today):
+    year_start = _to_gregorian(academic_year.start_date)
+    started = today >= year_start
+    reference = today if started else year_start
+
+    current_type = get_week_cycle(reference, academic_year)
+    this_week = week_start(reference)
+    next_week = this_week + timedelta(days=7)
+    if get_week_cycle(next_week, academic_year) == current_type:
+        next_week += timedelta(days=7)
+    other_type = (
+        ClassSchedule.WeekTypeChoices.WEEK_TWO
+        if current_type == ClassSchedule.WeekTypeChoices.WEEK_ONE
+        else ClassSchedule.WeekTypeChoices.WEEK_ONE
+    )
+    return _Rotation(
+        started=started,
+        current_type=current_type,
+        week_starts={current_type: this_week, other_type: next_week},
+    )
+
+
+def _in_effect(queryset, rotation):
+    """Rows whose class subject is active and teaching during the two weeks, on an active bell."""
+
+    span_start, span_end = rotation.span
+    return queryset.filter(
+        class_subject__is_active=True,
+        class_subject__start_date__lte=jdatetime.date.fromgregorian(date=span_end),
+        class_subject__end_date__gte=jdatetime.date.fromgregorian(date=span_start),
+        bell__is_active=True,
+    )
+
+
+def _build_weeks(schedules, rotation, now, make_entry, keep_all=False):
+    """
+    ``schedules`` (ordered week-specific first) -> ``WeeklySchedule``.
+
+    Per cell, the student view keeps the first class subject only
+    (``keep_all=False``: a week-specific slot wins over an every-week one
+    on bad legacy data); the teacher view keeps them all, so a clash
+    shows up instead of being hidden.
+    """
+
+    today = now.date()
+    bells = list(Bell.objects.filter(is_active=True).order_by("order"))
+    today_day = persian_weekday(today)
+    days = _working_days(s.day_of_week for s in schedules)
+    day_labels = dict(ClassSchedule.DayChoices.choices)
+
+    weeks = []
+    for number, week_type in ((1, ClassSchedule.WeekTypeChoices.WEEK_ONE),
+                              (2, ClassSchedule.WeekTypeChoices.WEEK_TWO)):
+        start = rotation.week_starts[week_type]
+        end = start + timedelta(days=6)
+        is_current = rotation.started and week_type == rotation.current_type
+
+        cells = {}
+        for schedule in schedules:
+            if schedule.week_type not in (week_type, ClassSchedule.WeekTypeChoices.BOTH):
+                continue
+            if not _runs_in(schedule.class_subject, start, end):
+                continue
+            cell = cells.setdefault((schedule.day_of_week, schedule.bell_id), [])
+            if keep_all or not cell:
+                cell.append(schedule.class_subject)
+
+        week_days = []
+        for day in days:
+            is_today = is_current and day == today_day
+            slots = []
+            for bell in bells:
+                entries = [make_entry(cs) for cs in cells.get((day, bell.id), [])]
+                slots.append(Slot(
+                    bell=bell,
+                    entry=entries[0] if entries else None,
+                    is_now=is_today and bell.start_time <= now.time() < bell.end_time,
+                    entries=entries,
+                ))
+            week_days.append(DaySchedule(
+                value=day, label=day_labels[day], slots=slots, is_today=is_today,
+            ))
+
+        weeks.append(WeekSchedule(
+            number=number,
+            week_type=week_type,
+            label=WEEK_LABELS[week_type],
+            start=start,
+            days=week_days,
+            is_current=is_current,
+        ))
+
+    return bells, weeks, (today_day if today_day in days else None)
+
+
 def build_weekly_schedule(school_class, academic_year=None, now=None):
     """
     Both rotation weeks of ``school_class``.
@@ -166,39 +294,11 @@ def build_weekly_schedule(school_class, academic_year=None, now=None):
     """
 
     now = timezone.localtime(now) if now else timezone.localtime()
-    today = now.date()
-
     academic_year = academic_year or school_class.year
-    year_start = _to_gregorian(academic_year.start_date)
-    started = today >= year_start
-    reference = today if started else year_start
-
-    current_type = get_week_cycle(reference, academic_year)
-    this_week = week_start(reference)
-    next_week = this_week + timedelta(days=7)
-    if get_week_cycle(next_week, academic_year) == current_type:
-        next_week += timedelta(days=7)
-    week_starts = {
-        current_type: this_week,
-        (
-            ClassSchedule.WeekTypeChoices.WEEK_TWO
-            if current_type == ClassSchedule.WeekTypeChoices.WEEK_ONE
-            else ClassSchedule.WeekTypeChoices.WEEK_ONE
-        ): next_week,
-    }
-    span_start, span_end = this_week, next_week + timedelta(days=6)
-
-    bells = list(Bell.objects.filter(is_active=True).order_by("order"))
+    rotation = _rotation(academic_year, now.date())
 
     schedules = list(
-        ClassSchedule.objects
-        .filter(
-            class_subject__school_class=school_class,
-            class_subject__is_active=True,
-            class_subject__start_date__lte=jdatetime.date.fromgregorian(date=span_end),
-            class_subject__end_date__gte=jdatetime.date.fromgregorian(date=span_start),
-            bell__is_active=True,
-        )
+        _in_effect(ClassSchedule.objects.filter(class_subject__school_class=school_class), rotation)
         .select_related(
             "bell",
             "class_subject__subject",
@@ -209,55 +309,13 @@ def build_weekly_schedule(school_class, academic_year=None, now=None):
         .order_by("week_type", "bell__order")
     )
 
-    today_day = persian_weekday(today)
-    days = _working_days(s.day_of_week for s in schedules)
-    day_labels = dict(ClassSchedule.DayChoices.choices)
-
-    weeks = []
-    for number, week_type in ((1, ClassSchedule.WeekTypeChoices.WEEK_ONE),
-                              (2, ClassSchedule.WeekTypeChoices.WEEK_TWO)):
-        start = week_starts[week_type]
-        end = start + timedelta(days=6)
-        is_current = started and week_type == current_type
-
-        cells = {}
-        for schedule in schedules:
-            if schedule.week_type not in (week_type, ClassSchedule.WeekTypeChoices.BOTH):
-                continue
-            if not _runs_in(schedule.class_subject, start, end):
-                continue
-            cells.setdefault((schedule.day_of_week, schedule.bell_id), schedule.class_subject)
-
-        week_days = []
-        for day in days:
-            is_today = is_current and day == today_day
-            slots = []
-            for bell in bells:
-                class_subject = cells.get((day, bell.id))
-                slots.append(Slot(
-                    bell=bell,
-                    entry=_entry(class_subject) if class_subject else None,
-                    is_now=is_today and bell.start_time <= now.time() < bell.end_time,
-                ))
-            week_days.append(DaySchedule(
-                value=day, label=day_labels[day], slots=slots, is_today=is_today,
-            ))
-
-        weeks.append(WeekSchedule(
-            number=number,
-            week_type=week_type,
-            label=WEEK_LABELS[week_type],
-            start=start,
-            days=week_days,
-            is_current=is_current,
-        ))
-
+    bells, weeks, today_day = _build_weeks(schedules, rotation, now, _entry)
     return WeeklySchedule(
         bells=bells,
         weeks=weeks,
-        today=today,
-        today_day=today_day if today_day in days else None,
-        generated_on=jalali_long(today),
+        today=now.date(),
+        today_day=today_day,
+        generated_on=jalali_long(now.date()),
     )
 
 
@@ -301,3 +359,173 @@ def schedule_pdf_filename(schedule):
         date=_to_gregorian(schedule.enrollment.academic_year.start_date)
     ).year
     return f"weekly-schedule-{year}.pdf"
+
+
+# ----------------------------------------------------------------------
+# Teacher schedule
+# ----------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class TeacherScheduleEntry:
+    key: int          # ClassSubject pk
+    subject: str
+    class_label: str  # "اول - یک"
+    branch: str
+    school_class_id: int
+    subject_id: int
+    color: str        # validated #rrggbb
+    tint: str         # for the PDF
+
+    @property
+    def style(self):
+        # Only values that went through safe_hex(): safe in style="".
+        return f"--subject-color: {self.color};"
+
+
+@dataclass
+class WeekSummary:
+    periods: int
+    classes: int
+    subjects: int
+    conflicts: int
+
+
+@dataclass
+class CombinedCell:
+    """One day x bell of the one-page print/PDF grid: both weeks merged."""
+
+    bell: Bell
+    items: list  # [(TeacherScheduleEntry, week label or None), ...]
+    has_conflict: bool = False
+
+
+@dataclass
+class TeacherWeeklySchedule(WeeklySchedule):
+    academic_year: object = None
+    teacher_name: str = ""
+
+    def summary(self, week):
+        entries = [entry for day in week.days for slot in day.slots for entry in slot.entries]
+        return WeekSummary(
+            periods=len(entries),
+            classes=len({entry.school_class_id for entry in entries}),
+            subjects=len({entry.subject_id for entry in entries}),
+            conflicts=sum(1 for day in week.days for slot in day.slots if slot.has_conflict),
+        )
+
+    @property
+    def has_entries(self):
+        return any(day.has_entries for week in self.weeks for day in week.days)
+
+    @property
+    def weeks_differ(self):
+        first, second = self.weeks
+        return [
+            [[e.key for e in slot.entries] for slot in day.slots] for day in first.days
+        ] != [
+            [[e.key for e in slot.entries] for slot in day.slots] for day in second.days
+        ]
+
+    @property
+    def combined_days(self):
+        """
+        ``[(DaySchedule of week 1, [CombinedCell, ...]), ...]``: a lesson
+        held in both weeks is listed once; one held in only one week is
+        tagged with that week. For a one-page PDF/print.
+        """
+
+        first, second = self.weeks
+        rows = []
+        for day_one, day_two in zip(first.days, second.days):
+            cells = []
+            for slot_one, slot_two in zip(day_one.slots, day_two.slots):
+                keys_one = [e.key for e in slot_one.entries]
+                keys_two = [e.key for e in slot_two.entries]
+                items = [(e, None) for e in slot_one.entries if e.key in keys_two]
+                items += [(e, WEEK_LABELS[first.week_type]) for e in slot_one.entries if e.key not in keys_two]
+                items += [(e, WEEK_LABELS[second.week_type]) for e in slot_two.entries if e.key not in keys_one]
+                cells.append(CombinedCell(
+                    bell=slot_one.bell,
+                    items=items,
+                    has_conflict=slot_one.has_conflict or slot_two.has_conflict,
+                ))
+            rows.append((day_one, cells))
+        return rows
+
+
+def _teacher_entry(class_subject):
+    color = safe_hex(class_subject.subject.color)
+    school_class = class_subject.school_class
+    return TeacherScheduleEntry(
+        key=class_subject.pk,
+        subject=class_subject.subject.name,
+        class_label=f"{school_class.grade.name} - {school_class.section}",
+        branch=school_class.branch.name,
+        school_class_id=school_class.pk,
+        subject_id=class_subject.subject_id,
+        color=color,
+        tint=tint(color, 0.12),
+    )
+
+
+def build_teacher_weekly_schedule(teacher_profile, academic_year, now=None):
+    """
+    Both rotation weeks of everything ``teacher_profile`` teaches in
+    ``academic_year``, across all classes and branches (same rules as
+    ``build_weekly_schedule``; inactive classes are left out, like on the
+    dashboard). Two lessons in one slot are both kept (``has_conflict``).
+    """
+
+    now = timezone.localtime(now) if now else timezone.localtime()
+    rotation = _rotation(academic_year, now.date())
+
+    schedules = list(
+        _in_effect(
+            ClassSchedule.objects.filter(
+                class_subject__teacher_assignment__teacher=teacher_profile,
+                class_subject__school_class__year=academic_year,
+                class_subject__school_class__is_active=True,
+            ),
+            rotation,
+        )
+        .select_related(
+            "bell",
+            "class_subject__subject",
+            "class_subject__school_class__grade",
+            "class_subject__school_class__branch",
+        )
+        .order_by("week_type", "bell__order", "class_subject__school_class__grade__level", "pk")
+    )
+
+    bells, weeks, today_day = _build_weeks(schedules, rotation, now, _teacher_entry, keep_all=True)
+    user = teacher_profile.staff.user
+    return TeacherWeeklySchedule(
+        bells=bells,
+        weeks=weeks,
+        today=now.date(),
+        today_day=today_day,
+        generated_on=jalali_long(now.date()),
+        academic_year=academic_year,
+        teacher_name=user.get_full_name() or user.get_username(),
+    )
+
+
+def get_teacher_weekly_schedule(teacher_profile, now=None):
+    """The teacher's own schedule for the current academic year, or None when there is none."""
+
+    academic_year = AcademicYear.objects.filter(is_current=True).first()
+    if academic_year is None:
+        return None
+    return build_teacher_weekly_schedule(teacher_profile, academic_year, now=now)
+
+
+def academic_year_span(academic_year):
+    """"1405-1406" from the Jalali years the academic year starts and ends in."""
+
+    start = jdatetime.date.fromgregorian(date=_to_gregorian(academic_year.start_date)).year
+    end = jdatetime.date.fromgregorian(date=_to_gregorian(academic_year.end_date)).year
+    return f"{start}-{end}" if end != start else f"{start}"
+
+
+def teacher_schedule_pdf_filename(schedule):
+    return f"weekly-schedule-{academic_year_span(schedule.academic_year)}.pdf"

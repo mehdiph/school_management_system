@@ -3,8 +3,15 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import render
 
-from .pdf import render_schedule_pdf
-from .services import get_student_weekly_schedule, schedule_pdf_filename
+from staff.decorators import teacher_required
+
+from .pdf import render_schedule_pdf, render_teacher_schedule_pdf
+from .services import (
+    get_student_weekly_schedule,
+    get_teacher_weekly_schedule,
+    schedule_pdf_filename,
+    teacher_schedule_pdf_filename,
+)
 
 
 def _student_profile(request):
@@ -45,4 +52,34 @@ def weekly_schedule_pdf(request):
 
     response = HttpResponse(render_schedule_pdf(schedule), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{schedule_pdf_filename(schedule)}"'
+    return response
+
+
+# ----------------------------------------------------------------------
+# Teacher
+# ----------------------------------------------------------------------
+# No teacher id in these URLs either: the schedule is always built for
+# request.teacher_profile (set by teacher_required), so a teacher can only
+# ever see their own.
+
+@teacher_required
+def teacher_schedule(request):
+    schedule = get_teacher_weekly_schedule(request.teacher_profile)
+
+    context = {"schedule": schedule}
+    if schedule is not None and schedule.has_entries:
+        context["selected_week"] = _selected_week(request, schedule)
+        context["weeks"] = [(week, schedule.summary(week)) for week in schedule.weeks]
+
+    return render(request, "scheduling/teacher-schedule.html", context)
+
+
+@teacher_required
+def teacher_schedule_pdf(request):
+    schedule = get_teacher_weekly_schedule(request.teacher_profile)
+    if schedule is None or not schedule.has_entries:
+        return render(request, "scheduling/teacher-schedule.html", {"schedule": schedule}, status=404)
+
+    response = HttpResponse(render_teacher_schedule_pdf(schedule), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{teacher_schedule_pdf_filename(schedule)}"'
     return response

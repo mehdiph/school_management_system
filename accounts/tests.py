@@ -151,7 +151,8 @@ class AvatarRenderingTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        header = re.search(r'<header class="main-header">(.*?)</header>', html, re.S).group(1)
+        # Students keep base.html's header; teachers get the teacher shell's top bar.
+        header = re.search(r'<header class="(?:main-header|ui-topbar)">(.*?)</header>', html, re.S).group(1)
         return html, header
 
     def test_no_avatar(self):

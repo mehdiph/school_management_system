@@ -1,0 +1,93 @@
+{% comment %}
+  Teacher sidebar. Desktop (>= 1024px): fixed, full height, collapsible to
+  icons. Below that: an off-canvas drawer (static/teacher/js/shell.js).
+{% endcomment %}
+{% with rm=request.resolver_match %}
+<aside class="ui-sidebar" id="teacherSidebar" aria-label="منوی اصلی">
+    <div class="ui-sidebar__brand">
+        <a class="ui-brand" href="{% url 'core:dashboard' %}" title="{{ site_settings.site_name|default:'مدرسه نسل قلم' }}">
+            <span class="ui-brand__logo" aria-hidden="true">
+                {% if site_settings.logo %}
+                    <img src="{{ site_settings.logo_url }}" alt="" width="40" height="40">
+                {% else %}
+                    <svg class="ui-icon"><use href="#i-school"></use></svg>
+                {% endif %}
+            </span>
+            <span class="ui-brand__text">
+                <strong>سامانه مدیریت مدرسه</strong>
+                <span>{{ site_settings.site_name|default:"مدرسه نسل قلم" }}</span>
+            </span>
+        </a>
+        <button type="button" class="ui-icon-btn ui-sidebar__close" data-sidebar-close aria-label="بستن منو">
+            <svg class="ui-icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+    </div>
+
+    <nav class="ui-sidebar__nav" aria-label="ناوبری اصلی">
+        <ul class="ui-nav">
+            <li>
+                {% if rm.app_name == 'core' and rm.url_name == 'dashboard' %}
+                <a class="ui-nav__item is-active" aria-current="page" href="{% url 'core:dashboard' %}" title="داشبورد">
+                {% else %}
+                <a class="ui-nav__item" href="{% url 'core:dashboard' %}" title="داشبورد">
+                {% endif %}
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-dashboard"></use></svg>
+                    <span class="ui-nav__label">داشبورد</span>
+                </a>
+            </li>
+            <li>
+                {% if rm.app_name == 'scheduling' and rm.url_name == 'teacher-schedule' %}
+                <a class="ui-nav__item is-active" aria-current="page" href="{% url 'scheduling:teacher-schedule' %}" title="برنامه هفتگی">
+                {% else %}
+                <a class="ui-nav__item" href="{% url 'scheduling:teacher-schedule' %}" title="برنامه هفتگی">
+                {% endif %}
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+                    <span class="ui-nav__label">برنامه هفتگی</span>
+                </a>
+            </li>
+            <li>
+                {# The session and attendance pages are reached from a class. #}
+                {% if rm.app_name == 'school' or rm.app_name == 'teaching' or rm.app_name == 'attendance' %}
+                <a class="ui-nav__item is-active"{% if rm.url_name == 'class_list' %} aria-current="page"{% endif %} href="{% url 'school:class_list' %}" title="کلاس‌ها">
+                {% else %}
+                <a class="ui-nav__item" href="{% url 'school:class_list' %}" title="کلاس‌ها">
+                {% endif %}
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-classes"></use></svg>
+                    <span class="ui-nav__label">کلاس‌ها</span>
+                </a>
+            </li>
+            <li>
+                {% if rm.app_name == 'report' %}
+                <a class="ui-nav__item is-active" aria-current="page" href="{% url 'report:reports_page' %}" title="گزارش‌ها">
+                {% else %}
+                <a class="ui-nav__item" href="{% url 'report:reports_page' %}" title="گزارش‌ها">
+                {% endif %}
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-reports"></use></svg>
+                    <span class="ui-nav__label">گزارش‌ها</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="ui-sidebar__footer">
+        <ul class="ui-nav">
+            <li>
+                {% if rm.app_name == 'accounts' and rm.url_name == 'profile' %}
+                <a class="ui-nav__item is-active" aria-current="page" href="{% url 'accounts:profile' %}" title="پروفایل و تنظیمات">
+                {% else %}
+                <a class="ui-nav__item" href="{% url 'accounts:profile' %}" title="پروفایل و تنظیمات">
+                {% endif %}
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-settings"></use></svg>
+                    <span class="ui-nav__label">پروفایل و تنظیمات</span>
+                </a>
+            </li>
+            <li>
+                <a class="ui-nav__item ui-nav__item--danger" href="{% url 'accounts:logout' %}" title="خروج از حساب">
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-logout"></use></svg>
+                    <span class="ui-nav__label">خروج از حساب</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</aside>
+{% endwith %}

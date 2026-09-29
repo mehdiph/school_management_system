@@ -1,0 +1,44 @@
+{% load jalali_tags %}
+{% comment %}
+  Both rotation weeks in one days x bells table: a lesson held in both
+  weeks is listed once, one held in a single week carries that week's
+  name. Used by the print view (teacher-schedule.html) and the PDF
+  (teacher-schedule-pdf.html), which style the .tc-* classes themselves.
+  Context: schedule (services.TeacherWeeklySchedule).
+{% endcomment %}
+<table class="tc-table">
+    <thead>
+        <tr>
+            <th class="tc-corner">روز / زنگ</th>
+            {% for bell in schedule.bells %}
+            <th class="tc-bell">
+                {{ bell.title }}
+                <span class="tc-time">{{ bell.start_time|fa_time }}–{{ bell.end_time|fa_time }}</span>
+            </th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for day, cells in schedule.combined_days %}
+        <tr>
+            <th class="tc-day" scope="row">{{ day.label }}</th>
+            {% for cell in cells %}
+            {% if cell.items %}
+            <td class="tc-cell tc-cell--filled{% if cell.has_conflict %} tc-cell--conflict{% endif %}" style="background: {{ cell.items.0.0.tint }}; border-right-color: {{ cell.items.0.0.color }};">
+                {% for entry, week_label in cell.items %}
+                <div class="tc-lesson">
+                    <span class="tc-subject">{{ entry.subject }}</span>
+                    <span class="tc-class">{{ entry.class_label }} · {{ entry.branch }}</span>
+                    {% if week_label %}<span class="tc-week">فقط {{ week_label }}</span>{% endif %}
+                </div>
+                {% endfor %}
+                {% if cell.has_conflict %}<span class="tc-conflict">⚠ تداخل</span>{% endif %}
+            </td>
+            {% else %}
+            <td class="tc-cell tc-cell--empty">—</td>
+            {% endif %}
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

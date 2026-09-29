@@ -1,8 +1,9 @@
 <!-- templates/teaching/session_form.html -->
-{% extends 'base.html' %}
+{% extends panel_base|default:"base.html" %}
 {% load static report_tags %}
 
 {% block title %}{% if session %}ویرایش جلسه درسی{% else %}ثبت جلسه درسی{% endif %} - سیستم مدیریت معلمان{% endblock %}
+{% block page_title %}{% if session %}ویرایش جلسه{% else %}ثبت جلسه{% endif %}{% endblock %}
 
 {% comment %}
 Everything page-specific is scoped under body.session-form-page / .sf so

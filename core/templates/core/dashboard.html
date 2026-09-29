@@ -1,173 +1,163 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends 'teacher/base.html' %}
+{% load static jalali_tags %}
 
-{% block title %}داشبورد معلم | نیک‌آموز{% endblock %}
+{% block title %}داشبورد | پنل معلم{% endblock %}
+{% block page_title %}داشبورد{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{% static '/core/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'core/dashboard.css' %}">
 {% endblock %}
 
-{% block sidebar %}
-    {% include "partials/sidebar.html" %}
-{% endblock %}
-
-
-<!-- content of main page for teacher dashboard -->
 {% block content %}
+<header class="db-greeting">
+    <h1 class="db-greeting__title">سلام، {{ teacher.name }}</h1>
+    <p class="db-greeting__subtitle">
+        {{ today|jalali_date:"weekday" }}
+        {% if academic_year %}<span aria-hidden="true">·</span> سال تحصیلی {{ academic_year.title|fa_digits }}{% endif %}
+    </p>
+</header>
 
-<div class="welcome-section">
-    <h1 class="welcome-title">سلام، {{ teacher.name }}</h1>
-    <p class="welcome-subtitle">سال تحصیلی {{ academic_year }}</p>
-</div>
+<ul class="ui-kpis" aria-label="خلاصه">
+    <li class="ui-kpi">
+        <span class="ui-kpi__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-classes"></use></svg></span>
+        <span class="ui-kpi__text">
+            <span class="ui-kpi__value">{{ active_classes_count|fa_digits }}</span>
+            <span class="ui-kpi__label">کلاس فعال</span>
+        </span>
+    </li>
+    <li class="ui-kpi">
+        <span class="ui-kpi__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-sessions"></use></svg></span>
+        <span class="ui-kpi__text">
+            <span class="ui-kpi__value">{{ total_sessions|fa_digits }}</span>
+            <span class="ui-kpi__label">جلسه ثبت‌شده</span>
+        </span>
+    </li>
+    <li class="ui-kpi">
+        <span class="ui-kpi__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-calendar"></use></svg></span>
+        <span class="ui-kpi__text">
+            <span class="ui-kpi__value">{{ today_lessons_count|fa_digits }}</span>
+            <span class="ui-kpi__label">درس امروز</span>
+        </span>
+    </li>
+    <li class="ui-kpi">
+        <span class="ui-kpi__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-pending"></use></svg></span>
+        <span class="ui-kpi__text">
+            <span class="ui-kpi__value">{{ pending_today_count|fa_digits }}</span>
+            <span class="ui-kpi__label">در انتظار ثبت</span>
+        </span>
+    </li>
+</ul>
 
-<div class="dashboard-grid">
+<div class="db-grid">
 
-    <!-- Left Column: Primary Content -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <section class="ui-card db-today" aria-labelledby="todayTitle">
+        <header class="ui-card__header">
+            <h2 class="ui-card__title" id="todayTitle">برنامه امروز</h2>
+            <a class="ui-link" href="{% url 'scheduling:teacher-schedule' %}">
+                برنامه کامل هفته
+                <svg class="ui-icon ui-icon--sm ui-icon--dir" aria-hidden="true"><use href="#i-arrow-forward"></use></svg>
+            </a>
+        </header>
 
-        <!-- Today's Teaching -->
-        <!-- Helper class dashboard-card used to apply specific styling vs generic base card -->
-        <section class="card dashboard-card">
-            <div class="card-header">
-                <h2 class="card-title">برنامه امروز</h2>
-            </div>
-            <div class="card-body">
-                {% if today_class_subjects %}
-                <div class="today-list">
-                    {% for item in today_class_subjects %}
-                    <div class="today-item">
-                        <div class="today-header">
-                            <span class="class-badge">{{ item.class_name }}</span>
-                            <span class="today-meta">جلسه قبل: {{ item.last_session_number }}</span>
-                        </div>
-                        <div class="today-content">
-                            <h4>{{ item.subject_name }}</h4>
-                            <p class="today-meta">{{ item.last_session_summary|default:"بدون گزارش قبلی"|truncatechars:100 }}</p>
-                        </div>
-                        <a href="{% url 'teaching:session_form' item.id %}?class={{ item.id }}" class="btn-register">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
-                            ثبت جلسه جدید
-                        </a>
+        {% if today_lessons %}
+        <ol class="db-lessons">
+            {% for lesson in today_lessons %}
+            <li class="db-lesson{% if lesson.state == 'now' %} is-now{% endif %}{% if lesson.is_focus %} is-focus{% endif %}">
+                <div class="db-lesson__when">
+                    {% if lesson.bells %}
+                    <span class="db-lesson__bell">زنگ {% for bell in lesson.bells %}{{ bell.order|fa_digits }}{% if not forloop.last %} و {% endif %}{% endfor %}</span>
+                    <span class="db-lesson__time">{{ lesson.start_time|fa_time }}–{{ lesson.end_time|fa_time }}</span>
+                    {% else %}
+                    <span class="db-lesson__bell">—</span>
+                    {% endif %}
+                </div>
+
+                <div class="db-lesson__main">
+                    <div class="db-lesson__head">
+                        <h3 class="db-lesson__subject">{{ lesson.subject }}</h3>
+                        {% if lesson.state == 'now' %}
+                        <span class="ui-badge ui-badge--accent"><span class="ui-dot" aria-hidden="true"></span>در حال برگزاری</span>
+                        {% elif lesson.state == 'next' %}
+                        <span class="ui-badge ui-badge--soft">بعدی</span>
+                        {% endif %}
                     </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="empty-state">
-                    <p>برای امروز کلاسی تعریف نشده است.</p>
-                    <p style="font-size: 0.9em; margin-top: 0.5rem;">روز خوبی داشته باشید!</p>
-                </div>
-                {% endif %}
-            </div>
-        </section>
-
-        <!-- My Classes Grouping -->
-        <section class="card dashboard-card classes-section">
-            <div class="card-header">
-                <h2 class="card-title">کلاس‌های من</h2>
-            </div>
-            <div class="card-body">
-                <div class="filter-tabs">
-                    <button class="tab-btn active" onclick="toggleView('by-subject')">بر اساس درس</button>
-                    <button class="tab-btn" onclick="toggleView('by-grade')">بر اساس پایه</button>
+                    <span class="ui-chip db-lesson__class">{{ lesson.class_name }}</span>
+                    <p class="db-lesson__summary">{{ lesson.last_summary|default:"بدون گزارش قبلی"|truncatechars:140 }}</p>
+                    <p class="db-lesson__meta">
+                        {% if lesson.last_session_number %}آخرین جلسه: جلسه {{ lesson.last_session_number|fa_digits }}{% else %}هنوز جلسه‌ای ثبت نشده{% endif %}
+                    </p>
                 </div>
 
-                <!-- View 1: Group By Subject -->
-                <div id="view-by-subject" class="class-view">
-                    {% regroup class_subjects_summary|dictsort:"subject_name" by subject_name as subject_list %}
-                    {% for subject in subject_list %}
-                    <div class="class-group">
-                        <h3 class="group-title">{{ subject.grouper }}</h3>
-                        <div class="class-grid">
-                            {% for item in subject.list %}
-                            <div class="mini-card">
-                                <h5>{{ item.class_name }}</h5>
-                                <span>{{ item.grade_name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="empty-state">هیچ درسی یافت نشد.</div>
-                    {% endfor %}
+                <div class="db-lesson__action">
+                    {% if lesson.is_recorded %}
+                    <a class="ui-btn ui-btn--success ui-btn--sm" href="{% url 'teaching:update_session' lesson.recorded_session_id %}">
+                        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-check"></use></svg>
+                        ثبت‌شده
+                        <span class="ui-visually-hidden">(مشاهده جلسه امروز {{ lesson.subject }})</span>
+                    </a>
+                    {% else %}
+                    <a class="ui-btn {% if lesson.is_focus %}ui-btn--primary{% else %}ui-btn--secondary{% endif %} ui-btn--sm" href="{% url 'teaching:session_form' lesson.class_subject_id %}?class={{ lesson.class_subject_id }}">
+                        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-plus"></use></svg>
+                        ثبت جلسه
+                        <span class="ui-visually-hidden">{{ lesson.subject }}، {{ lesson.class_name }}</span>
+                    </a>
+                    {% endif %}
                 </div>
-
-                <!-- View 2: Group By Grade -->
-                <div id="view-by-grade" class="class-view" style="display: none;">
-                    {% regroup class_subjects_summary|dictsort:"grade_name" by grade_name as grade_list %}
-                    {% for grade in grade_list %}
-                    <div class="class-group">
-                        <h3 class="group-title">{{ grade.grouper }}</h3>
-                        <div class="class-grid">
-                            {% for item in grade.list %}
-                            <div class="mini-card">
-                                <h5>{{ item.subject_name }}</h5>
-                                <span>کلاس {{ item.class_name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="empty-state">هیچ کلاسی یافت نشد.</div>
-                    {% endfor %}
-                </div>
-            </div>
-        </section>
-
-    </div>
-
-    <!-- Right Column: Sidebar Stats & Recent -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-
-        <!-- Stats -->
-        <div class="dashboard-stats-grid">
-            <div class="stat-card-simple">
-                <span class="stat-value">{{ class_subjects_summary|length }}</span>
-                <span class="stat-label">کلاس فعال</span>
-            </div>
-            <div class="stat-card-simple">
-                <span class="stat-value">{{ total_sessions|default:"0" }}</span>
-                <span class="stat-label">جلسه ثبت شده</span>
-            </div>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <div class="ui-empty">
+            <span class="ui-empty__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-sun"></use></svg></span>
+            <p class="ui-empty__title">امروز کلاسی ندارید</p>
+            <p class="ui-empty__text">
+                {% if academic_year %}روز خوبی داشته باشید! برنامه‌ی روزهای دیگر را در برنامه‌ی هفتگی ببینید.{% else %}سال تحصیلی جاری هنوز تعریف نشده است.{% endif %}
+            </p>
         </div>
+        {% endif %}
+    </section>
 
-        <!-- Recent Sessions -->
-        <section class="card dashboard-card">
-            <div class="card-header">
-                <h2 class="card-title">آخرین جلسات</h2>
-            </div>
-            <div class="card-body" style="padding: 0;">
-                {% if recent_sessions %}
-                <div class="session-list">
-                    {% for session in recent_sessions %}
-                    <div class="session-item">
-                        <div class="session-info">
-                            <span class="session-title">{{ session.class_subject }} (ج {{ session.session_number}})</span>
-                            <span class="session-date">{{ session.date|date:"Y/m/d" }}</span>
-                        </div>
-                        <div class="session-actions">
-                            <a href="{% url 'teaching:update_session' session.id %}" class="btn-sm">مشاهده</a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="empty-state">
-                    <p>هنوز جلسه‌ای ثبت نشده است.</p>
-                </div>
-                {% endif %}
-            </div>
-        </section>
+    <section class="ui-card db-recent" aria-labelledby="recentTitle">
+        <header class="ui-card__header">
+            <h2 class="ui-card__title" id="recentTitle">آخرین جلسات</h2>
+            <a class="ui-link" href="{% url 'report:reports_page' %}">
+                مشاهده همه
+                <svg class="ui-icon ui-icon--sm ui-icon--dir" aria-hidden="true"><use href="#i-arrow-forward"></use></svg>
+            </a>
+        </header>
 
-    </div>
+        {% if recent_sessions %}
+        <ul class="db-sessions">
+            {% for row in recent_sessions %}
+            {% with session=row.session %}
+            <li class="db-session">
+                <div class="db-session__text">
+                    <p class="db-session__title">
+                        <span class="db-session__subject">{{ session.class_subject.subject.name }}</span>
+                        <span class="ui-badge ui-badge--neutral">جلسه {{ session.session_number|fa_digits }}</span>
+                    </p>
+                    <p class="db-session__meta">
+                        <span class="db-session__class">{{ row.class_name }}</span>
+                        <span aria-hidden="true">·</span>
+                        <time datetime="{{ session.date.togregorian|date:'Y-m-d' }}">{{ session.date|jalali_date }}</time>
+                    </p>
+                </div>
+                <a class="ui-btn ui-btn--ghost ui-btn--sm" href="{% url 'teaching:update_session' session.id %}">
+                    مشاهده
+                    <span class="ui-visually-hidden">جلسه {{ session.session_number|fa_digits }} {{ session.class_subject.subject.name }}</span>
+                </a>
+            </li>
+            {% endwith %}
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="ui-empty">
+            <span class="ui-empty__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-sessions"></use></svg></span>
+            <p class="ui-empty__title">هنوز جلسه‌ای ثبت نشده است</p>
+            <p class="ui-empty__text">جلسه‌هایی که ثبت می‌کنید این‌جا نمایش داده می‌شوند.</p>
+        </div>
+        {% endif %}
+    </section>
 
 </div>
-{% endblock %}
-
-
-<!-- link to js for teacher dashboard -->
-{% block scripts %}
-<script src="{% static 'core/dashboard.js' %}"></script>
 {% endblock %}

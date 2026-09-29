@@ -1,0 +1,103 @@
+{% load static %}<!DOCTYPE html>
+{% comment %}
+  Shell of the teacher panel. Teacher-only pages extend it directly;
+  pages shared with other roles extend `panel_base`, which the
+  teacher_info context processor sets to this file for teachers and to
+  base.html for everybody else -- so the student / supervisor panels
+  keep the old shell untouched.
+
+  base.css and Font Awesome are still loaded because the existing
+  teacher pages (class list, reports, session form, attendance) style
+  their content with them. Everything of the shell itself is "ui-"
+  prefixed (static/teacher/css/).
+{% endcomment %}
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}پنل معلم{% endblock %}</title>
+    {% block meta %}{% endblock %}
+    <link rel="preload" href="{% static 'fonts/Vazirmatn-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <script>
+        // Before first paint, so a collapsed sidebar never flashes open.
+        try {
+            if (localStorage.getItem("teacher.sidebar") === "collapsed") {
+                document.documentElement.classList.add("ui-sidebar-collapsed");
+            }
+        } catch (e) {}
+    </script>
+
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'teacher/css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'teacher/css/shell.css' %}">
+    <link rel="stylesheet" href="{% static 'teacher/css/components.css' %}">
+    {% block styles %}{% endblock %}
+</head>
+
+<body class="ui-body teacher-panel {% block body_class %}{% endblock %}">
+    {% include "teacher/partials/icons.html" %}
+    <a class="ui-skip-link" href="#main">پرش به محتوای اصلی</a>
+
+    {% include "teacher/partials/sidebar.html" %}
+    <div class="ui-overlay" id="sidebarOverlay" hidden></div>
+
+    <div class="ui-shell__main">
+        {# Slim top bar: sidebar toggle, page title (start), account menu (end). #}
+        <header class="ui-topbar">
+            <button
+                type="button"
+                class="ui-icon-btn"
+                id="sidebarToggle"
+                aria-controls="teacherSidebar"
+                aria-expanded="false"
+                aria-label="باز کردن منو"
+                data-label-open="باز کردن منو"
+                data-label-close="بستن منو"
+                data-label-collapse="جمع کردن منو"
+                data-label-expand="باز کردن منو"
+            >
+                <svg class="ui-icon ui-sidebar-toggle__menu" aria-hidden="true"><use href="#i-menu"></use></svg>
+                <svg class="ui-icon ui-sidebar-toggle__collapse" aria-hidden="true"><use href="#i-panel"></use></svg>
+            </button>
+
+            <p class="ui-topbar__title">{% block page_title %}پنل معلم{% endblock %}</p>
+
+            {% include "teacher/partials/usermenu.html" %}
+        </header>
+
+        <main class="ui-content" id="main" tabindex="-1">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="ui-footer">
+            <span>{{ site_settings.copyright_text|default:site_settings.site_name }}{% if site_settings.footer_note %} · {{ site_settings.footer_note }}{% endif %}</span>
+            {% if footer_links %}
+            <nav class="ui-footer__links" aria-label="پیوندهای پاورقی">
+                {% for link in footer_links %}
+                <a href="{{ link.url }}"{% if link.opens_externally %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.title }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+        </footer>
+    </div>
+
+    {% if messages %}
+    <ul class="ui-toasts" aria-live="polite" data-toasts>
+        {% for message in messages %}
+        <li class="ui-toast ui-toast--{{ message.level_tag|default:'info' }}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
+            <svg class="ui-icon" aria-hidden="true"><use href="#{% if message.level_tag == 'success' %}i-check-circle{% elif message.level_tag == 'error' or message.level_tag == 'warning' %}i-alert{% else %}i-info{% endif %}"></use></svg>
+            <span class="ui-toast__text">{{ message }}</span>
+            <button type="button" class="ui-icon-btn ui-toast__close" aria-label="بستن پیام" data-toast-close>
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-x"></use></svg>
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <script src="{% static 'js/jquery/jquery-3.7.1.js' %}"></script>
+    <script src="{% static 'teacher/js/shell.js' %}"></script>
+    {% block scripts %}{% endblock scripts %}
+</body>
+</html>

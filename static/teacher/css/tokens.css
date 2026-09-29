@@ -1,0 +1,125 @@
+/* ==========================================================================
+   Teacher panel design tokens.
+
+   Loaded only by template/teacher/base.html, so nothing here reaches the
+   student / supervisor panels or the public site. Every teacher-panel
+   stylesheet (shell, dashboard, schedule, profile) reads these; none of
+   them hard-codes a colour, radius, spacing or font size.
+
+   Contrast (WCAG AA) of the pairs actually used:
+     white on --ui-orange-600 ........ 5.07:1  (filled buttons, badges)
+     --ui-orange-700 on --ui-orange-50  6.57:1  (active nav, soft chips)
+     --ui-text-muted on white ......... 4.80:1  (secondary text)
+     --ui-orange-500 vs white ......... 3.47:1  (focus ring, non-text: 3:1 is enough)
+   ========================================================================== */
+
+@font-face {
+    font-family: "Vazirmatn VF";
+    /* Self-hosted variable font (100-900), converted from
+       report/static/report/fonts/Vazirmatn-VariableFont_wght.ttf. */
+    src: url("../../fonts/Vazirmatn-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    /* ---- Brand orange: 500 is the project's --primary (#d96a30) ---- */
+    --ui-orange-50: #fcf5f1;
+    --ui-orange-100: #f9e9e0;
+    --ui-orange-200: #f4d2c1;
+    --ui-orange-300: #ebb293;
+    --ui-orange-400: #e18b5e;
+    --ui-orange-500: #d96a30;
+    --ui-orange-600: #b35220;
+    --ui-orange-700: #8f421a;
+
+    /* ---- Warm neutrals ---- */
+    --ui-neutral-0: #ffffff;
+    --ui-neutral-50: #fafaf9;
+    --ui-neutral-100: #f5f5f4;
+    --ui-neutral-200: #e7e5e4;
+    --ui-neutral-300: #d6d3d1;
+    --ui-neutral-400: #a8a29e;
+    --ui-neutral-500: #78716c;
+    --ui-neutral-600: #57534e;
+    --ui-neutral-700: #44403c;
+    --ui-neutral-800: #292524;
+    --ui-neutral-900: #1c1917;
+
+    /* ---- Semantic colours ---- */
+    --ui-bg: var(--ui-neutral-50);
+    --ui-surface: var(--ui-neutral-0);
+    --ui-surface-muted: var(--ui-neutral-100);
+    --ui-border: var(--ui-neutral-200);
+    --ui-border-strong: var(--ui-neutral-300);
+    --ui-text: var(--ui-neutral-900);
+    --ui-text-soft: var(--ui-neutral-700);
+    --ui-text-muted: var(--ui-neutral-500);
+
+    --ui-accent: var(--ui-orange-600);          /* filled buttons */
+    --ui-accent-hover: var(--ui-orange-700);
+    --ui-accent-text: var(--ui-orange-700);     /* orange text/links */
+    --ui-accent-soft: var(--ui-orange-50);      /* active nav, tints */
+    --ui-accent-soft-strong: var(--ui-orange-100);
+    --ui-focus: var(--ui-orange-500);
+
+    --ui-success: #047857;
+    --ui-success-soft: #ecfdf5;
+    --ui-warning: #92400e;
+    --ui-warning-soft: #fffbeb;
+    --ui-danger: #b91c1c;
+    --ui-danger-soft: #fef2f2;
+
+    /* ---- Type ---- */
+    --ui-font: "Vazirmatn VF", "Vazirmatn", Tahoma, sans-serif;
+    --ui-text-xs: 12px;
+    --ui-text-sm: 14px;
+    --ui-text-md: 16px;
+    --ui-text-lg: 20px;
+    --ui-text-xl: 24px;
+    --ui-leading: 1.7;
+    --ui-leading-tight: 1.35;
+    --ui-weight-regular: 400;
+    --ui-weight-medium: 500;
+    --ui-weight-semibold: 600;
+    --ui-weight-bold: 700;
+
+    /* ---- Spacing (4/8 scale) ---- */
+    --ui-space-1: 4px;
+    --ui-space-2: 8px;
+    --ui-space-3: 12px;
+    --ui-space-4: 16px;
+    --ui-space-5: 20px;
+    --ui-space-6: 24px;
+    --ui-space-8: 32px;
+    --ui-space-10: 40px;
+    --ui-space-12: 48px;
+
+    /* ---- Radii: 8 for controls, 12 for cards, pill for chips ---- */
+    --ui-radius-sm: 8px;
+    --ui-radius-md: 12px;
+    --ui-radius-lg: 16px;
+    --ui-radius-pill: 999px;
+
+    /* ---- Elevation: cards are flat, only floating things get a shadow ---- */
+    --ui-shadow-xs: 0 1px 2px rgba(28, 25, 23, 0.04);
+    --ui-shadow-md: 0 8px 24px rgba(28, 25, 23, 0.08), 0 1px 2px rgba(28, 25, 23, 0.04);
+
+    /* ---- Motion ---- */
+    --ui-duration: 160ms;
+    --ui-ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* ---- Layout ---- */
+    --ui-sidebar-width: 256px;
+    --ui-sidebar-collapsed-width: 72px;
+    --ui-topbar-height: 60px;
+    --ui-content-max: 1280px;
+    --ui-tap: 44px;   /* minimum touch target */
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --ui-duration: 0ms;
+    }
+}

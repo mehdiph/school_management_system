@@ -1,340 +1,233 @@
-/* Dashboard Helpers to override or supplement base variables if needed */ 
+/* ==========================================================================
+   Teacher dashboard (core/templates/core/dashboard.html).
+   Shell and components: static/teacher/css/. Tokens: tokens.css.
+   ========================================================================== */
 
-.rainbow {
-    position: absolute;
-    left: 25px;
-    top: 160px;
+/* ---- Greeting ---- */
+
+.db-greeting {
+    margin-block-end: var(--ui-space-5);
 }
 
-.rainbow > img {
-    width: 250px;
-    height: 150px;
-    transform: rotate(330deg);
-    transform-origin: top left; /*pivot from top-left corner*/
+.db-greeting__title {
+    margin: 0;
+    font-size: var(--ui-text-xl);
+    font-weight: var(--ui-weight-bold);
+    line-height: var(--ui-leading-tight);
+    color: var(--ui-text);
 }
 
-/* Welcome Section */
-.welcome-section {
-    margin-bottom: 1.5rem;
+.db-greeting__subtitle {
+    margin: var(--ui-space-1) 0 0;
+    font-size: var(--ui-text-sm);
+    color: var(--ui-text-muted);
 }
 
-.welcome-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-dark);
-}
+/* ---- Two columns on desktop: today (2/3) + latest sessions (1/3) ----
+   From 1200px: below that the fixed sidebar leaves too little room for
+   a readable third column, so the two cards stack. */
 
-.welcome-subtitle {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-}
-
-/* Dashboard Grid */
-.dashboard-grid {
+.db-grid {
     display: grid;
-    gap: 1.5rem;
-    grid-template-columns: 1fr;
+    gap: var(--ui-space-4);
+    align-items: start;
 }
 
-@media (min-width: 1024px) {
-    .dashboard-grid {
-        grid-template-columns: 2fr 1fr;
+@media (min-width: 1200px) {
+    .db-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: var(--ui-space-6);
     }
 }
 
-/* Card Overrides/Specifics */
-/* We rely on base .card for basic shape, but add flex column for layout */
-.dashboard-card {
-    display: flex;
-    flex-direction: column;
+/* ---- Today's lessons ---- */
+
+.db-lessons {
+    margin: 0;
     padding: 0;
-    /* Override base padding for full-width headers */
-    overflow: hidden;
-    background-color: rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(2px);
+    list-style: none;
 }
 
-.dashboard-card .card-header {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--gray-200);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: rgba(252, 239, 232); /* Slightly transparent to show body gradient */
-    margin-bottom: 0;
-    /* Override base */
-}
-
-.card-body {
-    background-color: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(2px);
-}
-
-.dashboard-card .card-body {
-    padding: 1.5rem;
-    flex: 1;
-}
-
-.card-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--gray-700);
-    margin-bottom: 0;
-    /* Reset */
-}
-
-/* Section: Today's Teaching */
-.today-list {
-    display: grid;
-    gap: 1rem;
-}
-
-.today-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem;
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-lg);
-    background: #fff;
-    transition: transform 0.2s, box-shadow 0.2s;
+.db-lesson {
     position: relative;
-    overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "when"
+        "main"
+        "action";
+    gap: var(--ui-space-2) var(--ui-space-4);
+    padding: var(--ui-space-4) var(--ui-space-5);
+    border-block-end: 1px solid var(--ui-border);
 }
 
-.today-item:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--primary-light);
-}
-
-.today-item::before {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: var(--primary);
-}
-
-.today-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.class-badge {
-    background: var(--primary);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.8rem;
-    font-weight: bold;
-}
-
-.today-content h4 {
-    font-size: 1.1rem;
-    margin-bottom: 0.25rem;
-}
-
-.today-meta {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-bottom: 0.75rem;
-}
-
-.btn-register {
-    align-self: flex-end;
-    background: var(--primary);
-    color: white;
-    padding: 0.5rem 1.25rem;
-    border-radius: var(--radius);
-    font-weight: 500;
-    font-size: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: background 0.2s;
-    width: 100%;
-    justify-content: center;
-    text-decoration: none;
+.db-lesson:last-child {
+    border-block-end: 0;
 }
 
 @media (min-width: 640px) {
-    .btn-register {
-        width: auto;
+    .db-lesson {
+        grid-template-columns: 88px minmax(0, 1fr) auto;
+        grid-template-areas: "when main action";
+        align-items: center;
     }
 }
 
-.btn-register:hover {
-    background: var(--primary-dark);
+.db-lesson.is-now {
+    background: var(--ui-accent-soft);
 }
 
-/* Section: Overview Stats */
-.dashboard-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+/* Current lesson: the same small bar the active nav item uses. */
+.db-lesson.is-now::before {
+    content: "";
+    position: absolute;
+    inset-block: var(--ui-space-3);
+    inset-inline-start: 0;
+    inline-size: 3px;
+    border-start-end-radius: 3px;
+    border-end-end-radius: 3px;
+    background: var(--ui-orange-500);
 }
 
-.stat-card-simple {
-    background: var(--card-bg);
-    padding: 1rem;
-    border-radius: var(--radius-sm);
-    text-align: center;
-    border: 1px solid var(--gray-200);
+.db-lesson__when {
+    grid-area: when;
+    display: flex;
+    align-items: baseline;
+    gap: var(--ui-space-2);
+    line-height: var(--ui-leading-tight);
+    white-space: nowrap;
 }
 
-.stat-value {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: var(--primary);
-    display: block;
+@media (min-width: 640px) {
+    .db-lesson__when {
+        flex-direction: column;
+        gap: 2px;
+        align-self: start;
+        padding-block-start: 2px;
+    }
 }
 
-.stat-label {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+.db-lesson__bell {
+    font-size: var(--ui-text-sm);
+    font-weight: var(--ui-weight-semibold);
+    color: var(--ui-text);
 }
 
-/* Section: Recent Sessions */
-.session-list {
+.db-lesson__time {
+    font-size: var(--ui-text-xs);
+    color: var(--ui-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.db-lesson__main {
+    grid-area: main;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ui-space-1);
+    min-inline-size: 0;
 }
 
-.session-item {
+.db-lesson__head {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
     align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid var(--gray-200);
+    gap: var(--ui-space-2);
 }
 
-.session-item:last-child {
-    border-bottom: none;
+.db-lesson__subject {
+    margin: 0;
+    font-size: var(--ui-text-md);
+    font-weight: var(--ui-weight-bold);
+    line-height: var(--ui-leading-tight);
+    color: var(--ui-text);
 }
 
-.session-info {
-    display: flex;
-    flex-direction: column;
+.db-lesson__summary,
+.db-lesson__meta {
+    margin: 0;
+    max-inline-size: 100%;
+    font-size: var(--ui-text-xs);
+    line-height: var(--ui-leading);
+    color: var(--ui-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.session-title {
-    font-weight: 600;
-    font-size: 0.95rem;
+.db-lesson__summary {
+    font-size: var(--ui-text-sm);
+    color: var(--ui-text-soft);
 }
 
-.session-date {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+.db-lesson__action {
+    grid-area: action;
+    justify-self: start;
 }
 
-.session-actions {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.8rem;
-    border-radius: var(--radius);
-    background: var(--gray-50);
-    color: var(--gray-600);
-    transition: all 0.2s;
-    text-decoration: none;
-}
-
-.btn-sm:hover {
-    background: var(--primary-light);
-    color: white;
-}
-
-/* Section: My Classes */
-.classes-section {
-    grid-column: 1 / -1;
-}
-
-.filter-tabs {
-    display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.tab-btn {
-    background: transparent;
-    border: 1px solid var(--gray-300);
-    padding: 0.5rem 1rem;
-    border-radius: 9999px;
-    cursor: pointer;
-    font-family: inherit;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    transition: all 0.2s;
-}
-
-.tab-btn.active {
-    background: var(--gray-700);
-    color: white;
-    border-color: var(--gray-700);
-}
-
-.class-group {
-    margin-bottom: 1.5rem;
-}
-
-.group-title {
-    font-size: 1rem;
-    color: var(--text-muted);
-    margin-bottom: 0.75rem;
-    border-right: 3px solid var(--accent);
-    padding-right: 0.75rem;
-}
-
-.class-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.mini-card {
-    background: white;
-    padding: 1rem;
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius);
-    text-align: center;
-}
-
-.mini-card h5 {
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
-}
-
-.mini-card span {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-/* Bottom Nav (Mobile) */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    border-top: 1px solid var(--gray-200);
-    display: flex;
-    justify-content: space-around;
-    padding: 0.75rem 0;
-    z-index: 100;
-}
-
-@media (min-width: 1024px) {
-    .bottom-nav {
-        display: none;
+@media (min-width: 640px) {
+    .db-lesson__action {
+        justify-self: end;
     }
-
-    
 }
 
+/* ---- Latest sessions ---- */
+
+.db-sessions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.db-session {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-3) var(--ui-space-5);
+    border-block-end: 1px solid var(--ui-border);
+}
+
+.db-session:last-child {
+    border-block-end: 0;
+}
+
+.db-session__text {
+    flex: 1;
+    min-inline-size: 0;
+}
+
+.db-session__title {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    margin: 0;
+    line-height: var(--ui-leading-tight);
+}
+
+.db-session__subject {
+    min-inline-size: 0;
+    font-weight: var(--ui-weight-semibold);
+    color: var(--ui-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.db-session__meta {
+    display: flex;
+    gap: var(--ui-space-1);
+    margin: var(--ui-space-1) 0 0;
+    font-size: var(--ui-text-xs);
+    color: var(--ui-text-muted);
+    white-space: nowrap;
+}
+
+.db-session__class {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.db-session__meta time {
+    flex-shrink: 0;
+}

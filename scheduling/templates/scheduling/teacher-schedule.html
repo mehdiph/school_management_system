@@ -1,0 +1,224 @@
+{% extends 'teacher/base.html' %}
+{% load static jalali_tags %}
+
+{% comment %}
+  The teacher's weekly schedule: same days (from Saturday), bells and
+  two-week rotation as the student page (scheduling/weekly-schedule.html),
+  built by scheduling.services.build_teacher_weekly_schedule.
+
+  Wide screens: a days x bells table per rotation week (sticky header
+  row and day column when it scrolls). Narrow: day tabs + that day's
+  lessons. Print: .ts-print, one page with both weeks merged (like the PDF).
+{% endcomment %}
+
+{% block title %}برنامه هفتگی | پنل معلم{% endblock %}
+{% block page_title %}برنامه هفتگی{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'scheduling/teacher-schedule.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="ts" data-ts>
+
+    <header class="ui-page-head ts-screen">
+        <div>
+            <h1 class="ui-page-head__title">برنامه هفتگی</h1>
+            <p class="ui-page-head__subtitle">
+                {% if schedule.academic_year %}سال تحصیلی {{ schedule.academic_year.title|fa_digits }} · {% endif %}همه‌ی کلاس‌ها و شعبه‌ها
+            </p>
+        </div>
+        {% if schedule.has_entries %}
+        <div class="ui-page-head__actions">
+            <button type="button" class="ui-btn ui-btn--secondary" data-ts-print hidden>
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-printer"></use></svg>
+                چاپ
+            </button>
+            <a class="ui-btn ui-btn--primary" href="{% url 'scheduling:teacher-schedule-pdf' %}" download>
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-download"></use></svg>
+                دانلود PDF
+            </a>
+        </div>
+        {% endif %}
+    </header>
+
+    {% if not schedule.has_entries %}
+    <section class="ui-card">
+        <div class="ui-empty">
+            <span class="ui-empty__icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-calendar"></use></svg></span>
+            <p class="ui-empty__title">هنوز برنامه‌ای برای شما ثبت نشده است</p>
+            <p class="ui-empty__text">
+                {% if schedule %}وقتی مدیر مدرسه زنگ‌های شما را در برنامه‌ی کلاس‌ها ثبت کند، این‌جا نمایش داده می‌شوند.{% else %}سال تحصیلی جاری هنوز تعریف نشده است.{% endif %}
+            </p>
+        </div>
+    </section>
+    {% else %}
+
+    <div class="ui-tabs ts-screen" role="tablist" aria-label="هفته‌های برنامه">
+        {% for week, summary in weeks %}
+        <a
+            class="ui-tab"
+            role="tab"
+            id="ts-tab-{{ week.number }}"
+            href="?week={{ week.number }}"
+            data-week="{{ week.number }}"
+            aria-controls="ts-week-{{ week.number }}"
+            {% if week.number == selected_week.number %}aria-selected="true" tabindex="0"{% else %}aria-selected="false" tabindex="-1"{% endif %}
+        >
+            {{ week.label }}
+            {% if week.is_current %}<span class="ui-badge ui-badge--soft">این هفته</span>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% for week, summary in weeks %}
+    <section
+        class="ts-week ts-screen"
+        role="tabpanel"
+        id="ts-week-{{ week.number }}"
+        aria-labelledby="ts-tab-{{ week.number }}"
+        {% if week.number != selected_week.number %}hidden{% endif %}
+    >
+        <p class="ts-week__dates">{{ week.start|jalali_date }} تا {{ week.end|jalali_date }}</p>
+
+        <ul class="ui-chip-list ts-summary" aria-label="خلاصه‌ی {{ week.label }}">
+            <li class="ui-chip">{{ summary.periods|fa_digits }} زنگ در هفته</li>
+            <li class="ui-chip">{{ summary.classes|fa_digits }} کلاس</li>
+            <li class="ui-chip">{{ summary.subjects|fa_digits }} درس</li>
+            {% if summary.conflicts %}
+            <li class="ui-badge ui-badge--warning">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+                {{ summary.conflicts|fa_digits }} تداخل در برنامه
+            </li>
+            {% endif %}
+        </ul>
+
+        {# ---- Wide screens: days x bells ---- #}
+        <div class="ts-table-wrap" tabindex="0" role="region" aria-label="جدول {{ week.label }}">
+            <table class="ts-table" style="--ts-bells: {{ schedule.bells|length }}">
+                <caption class="ui-visually-hidden">برنامه‌ی {{ week.label }}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="ts-table__corner">روز</th>
+                        {% for bell in schedule.bells %}
+                        <th scope="col" class="ts-table__bell">
+                            <span class="ts-table__bell-title">{{ bell.title }}</span>
+                            <span class="ts-table__bell-time">{{ bell.start_time|fa_time }}–{{ bell.end_time|fa_time }}</span>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in week.days %}
+                    <tr class="{% if day.is_today %}is-today{% endif %}">
+                        <th scope="row" class="ts-table__day">
+                            {{ day.label }}
+                            {% if day.is_today %}<span class="ui-badge ui-badge--soft">امروز</span>{% endif %}
+                        </th>
+                        {% for slot in day.slots %}
+                        <td class="ts-cell{% if slot.entries %} has-lesson{% endif %}{% if slot.is_now %} is-now{% endif %}{% if slot.has_conflict %} has-conflict{% endif %}">
+                            {% if slot.is_now %}<span class="ui-visually-hidden">(زنگ در حال برگزاری)</span>{% endif %}
+                            {% if slot.has_conflict %}
+                            <span class="ui-badge ui-badge--warning ts-cell__conflict" title="دو درس در یک زنگ ثبت شده است">
+                                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+                                تداخل
+                            </span>
+                            {% endif %}
+                            {% for entry in slot.entries %}
+                            <div class="ts-lesson" style="{{ entry.style }}">
+                                <strong class="ts-lesson__subject">{{ entry.subject }}</strong>
+                                <span class="ui-chip ts-lesson__class">{{ entry.class_label }} · {{ entry.branch }}</span>
+                            </div>
+                            {% empty %}
+                            <span class="ui-visually-hidden">بدون کلاس</span>
+                            {% endfor %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# ---- Narrow screens: day tabs + a list ---- #}
+        <div class="ts-mobile">
+            <div class="ts-days" role="tablist" aria-label="روزهای {{ week.label }}">
+                {% for day in week.days %}
+                <button
+                    type="button"
+                    class="ts-day-tab{% if day.is_today %} is-today{% endif %}"
+                    role="tab"
+                    id="ts-w{{ week.number }}-d{{ day.value }}-tab"
+                    data-day="{{ day.value }}"
+                    aria-controls="ts-w{{ week.number }}-d{{ day.value }}"
+                    {% if day.value == schedule.default_day %}aria-selected="true" tabindex="0"{% else %}aria-selected="false" tabindex="-1"{% endif %}
+                >
+                    {{ day.label }}
+                    {% if day.is_today %}<span class="ts-day-tab__today">امروز</span>{% endif %}
+                </button>
+                {% endfor %}
+            </div>
+
+            {% for day in week.days %}
+            <section
+                class="ts-day{% if day.value == schedule.default_day %} is-selected{% endif %}"
+                role="tabpanel"
+                id="ts-w{{ week.number }}-d{{ day.value }}"
+                data-day="{{ day.value }}"
+                aria-labelledby="ts-w{{ week.number }}-d{{ day.value }}-tab"
+            >
+                <h2 class="ts-day__title">{{ day.label }}</h2>
+                {% if day.has_entries %}
+                <ol class="ts-day__list">
+                    {% for slot in day.slots %}
+                    {% if slot.entries %}
+                    <li class="ts-row{% if slot.is_now %} is-now{% endif %}">
+                        <span class="ts-row__when">
+                            <span class="ts-row__bell">زنگ {{ slot.bell.order|fa_digits }}</span>
+                            <span class="ts-row__time">{{ slot.bell.start_time|fa_time }}–{{ slot.bell.end_time|fa_time }}</span>
+                        </span>
+                        <span class="ts-row__lessons">
+                            {% for entry in slot.entries %}
+                            <span class="ts-lesson" style="{{ entry.style }}">
+                                <strong class="ts-lesson__subject">{{ entry.subject }}</strong>
+                                <span class="ui-chip ts-lesson__class">{{ entry.class_label }} · {{ entry.branch }}</span>
+                            </span>
+                            {% endfor %}
+                            {% if slot.is_now %}<span class="ui-badge ui-badge--accent"><span class="ui-dot" aria-hidden="true"></span>در حال برگزاری</span>{% endif %}
+                            {% if slot.has_conflict %}<span class="ui-badge ui-badge--warning"><svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>تداخل</span>{% endif %}
+                        </span>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <p class="ts-day__empty">در این روز کلاسی ندارید.</p>
+                {% endif %}
+            </section>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+
+    {# ---- Print: one page, both weeks merged ---- #}
+    <div class="ts-print" aria-hidden="true">
+        <header class="ts-print__head">
+            <div class="ts-print__school">
+                {% if site_settings.logo %}<img src="{{ site_settings.logo_url }}" alt="">{% endif %}
+                <strong>{{ site_settings.site_name }}</strong>
+            </div>
+            <div class="ts-print__title">
+                <h2>برنامه هفتگی — {{ schedule.teacher_name }}</h2>
+                <span>سال تحصیلی {{ schedule.academic_year.title|fa_digits }} · تاریخ تهیه: {{ schedule.generated_on }}</span>
+            </div>
+        </header>
+        {% include "scheduling/partials/teacher-combined-table.html" %}
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'scheduling/teacher-schedule.js' %}" defer></script>
+{% endblock %}

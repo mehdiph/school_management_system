@@ -1,0 +1,622 @@
+/* ==========================================================================
+   Teacher panel components: card, button, chip, badge, KPI, empty state,
+   tabs, form fields, spinner. Shared by the dashboard, the weekly
+   schedule and the profile page. Tokens: tokens.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Page header
+   -------------------------------------------------------------------------- */
+
+.ui-page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--ui-space-4);
+    margin-block-end: var(--ui-space-6);
+}
+
+.ui-page-head__title {
+    margin: 0;
+    font-size: var(--ui-text-xl);
+    font-weight: var(--ui-weight-bold);
+    line-height: var(--ui-leading-tight);
+    color: var(--ui-text);
+}
+
+.ui-page-head__subtitle {
+    margin: var(--ui-space-1) 0 0;
+    font-size: var(--ui-text-sm);
+    color: var(--ui-text-muted);
+}
+
+.ui-page-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-2);
+}
+
+/* --------------------------------------------------------------------------
+   Card
+   -------------------------------------------------------------------------- */
+
+.ui-card {
+    min-inline-size: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-xs);
+}
+
+.ui-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ui-space-3);
+    min-block-size: 56px;
+    padding: var(--ui-space-3) var(--ui-space-5);
+    border-block-end: 1px solid var(--ui-border);
+}
+
+.ui-card__title {
+    margin: 0;
+    font-size: var(--ui-text-md);
+    font-weight: var(--ui-weight-semibold);
+    line-height: var(--ui-leading-tight);
+    color: var(--ui-text);
+}
+
+.ui-card__body {
+    padding: var(--ui-space-5);
+}
+
+.ui-card__body--flush {
+    padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Links & buttons
+   -------------------------------------------------------------------------- */
+
+.ui-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-space-1);
+    min-block-size: var(--ui-tap);
+    color: var(--ui-accent-text);
+    font-weight: var(--ui-weight-medium);
+    font-size: var(--ui-text-sm);
+    white-space: nowrap;
+}
+
+.ui-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ui-space-2);
+    min-block-size: 40px;
+    padding: 0 var(--ui-space-4);
+    border: 1px solid transparent;
+    border-radius: var(--ui-radius-sm);
+    font: inherit;
+    font-size: var(--ui-text-sm);
+    font-weight: var(--ui-weight-semibold);
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+        background-color var(--ui-duration) var(--ui-ease),
+        border-color var(--ui-duration) var(--ui-ease),
+        color var(--ui-duration) var(--ui-ease);
+}
+
+/* Touch devices: full 44px targets. */
+@media (pointer: coarse) {
+    .ui-btn {
+        min-block-size: var(--ui-tap);
+    }
+}
+
+.ui-btn--primary {
+    background: var(--ui-accent);
+    color: #fff;
+}
+
+.ui-btn--primary:hover {
+    background: var(--ui-accent-hover);
+    color: #fff;
+}
+
+.ui-btn--secondary {
+    border-color: var(--ui-border-strong);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+}
+
+.ui-btn--secondary:hover {
+    border-color: var(--ui-neutral-400);
+    background: var(--ui-neutral-50);
+}
+
+.ui-btn--ghost {
+    background: transparent;
+    color: var(--ui-text-soft);
+}
+
+.ui-btn--ghost:hover {
+    background: var(--ui-surface-muted);
+    color: var(--ui-text);
+}
+
+.ui-btn--danger {
+    border-color: var(--ui-border-strong);
+    background: var(--ui-surface);
+    color: var(--ui-danger);
+}
+
+.ui-btn--danger:hover {
+    border-color: var(--ui-danger);
+    background: var(--ui-danger-soft);
+}
+
+.ui-btn--success {
+    background: var(--ui-success-soft);
+    color: var(--ui-success);
+}
+
+.ui-btn--success:hover {
+    background: #d1fae5;
+}
+
+.ui-btn--sm {
+    min-block-size: 36px;
+    padding-inline: var(--ui-space-3);
+    font-size: var(--ui-text-xs);
+}
+
+.ui-btn[disabled],
+.ui-btn[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Spinner shown while a form submits (static/teacher/js/shell.js). */
+.ui-btn__spinner {
+    display: none;
+    inline-size: 16px;
+    block-size: 16px;
+    border: 2px solid currentColor;
+    border-inline-end-color: transparent;
+    border-radius: 50%;
+    animation: ui-spin 700ms linear infinite;
+}
+
+.ui-btn.is-busy .ui-btn__spinner {
+    display: inline-block;
+}
+
+.ui-btn.is-busy .ui-icon {
+    display: none;
+}
+
+@keyframes ui-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-btn__spinner {
+        animation-duration: 2s;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Chips & badges
+   -------------------------------------------------------------------------- */
+
+.ui-chip {
+    display: inline-block;
+    max-inline-size: 100%;
+    padding: 2px var(--ui-space-2);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-pill);
+    background: var(--ui-surface-muted);
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-xs);
+    font-weight: var(--ui-weight-medium);
+    line-height: 1.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ui-chip--accent {
+    border-color: var(--ui-orange-200);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-text);
+}
+
+.ui-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-space-1);
+    padding: 1px var(--ui-space-2);
+    border-radius: var(--ui-radius-pill);
+    font-size: var(--ui-text-xs);
+    font-weight: var(--ui-weight-semibold);
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.ui-badge--accent {
+    background: var(--ui-accent);
+    color: #fff;
+}
+
+.ui-badge--soft {
+    background: var(--ui-accent-soft-strong);
+    color: var(--ui-accent-text);
+}
+
+.ui-badge--neutral {
+    background: var(--ui-surface-muted);
+    color: var(--ui-text-soft);
+}
+
+.ui-badge--success {
+    background: var(--ui-success-soft);
+    color: var(--ui-success);
+}
+
+.ui-badge--warning {
+    background: var(--ui-warning-soft);
+    color: var(--ui-warning);
+}
+
+/* Pulsing dot for "in progress". */
+.ui-dot {
+    inline-size: 6px;
+    block-size: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   KPI
+   -------------------------------------------------------------------------- */
+
+.ui-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ui-space-3);
+    margin: 0 0 var(--ui-space-6);
+    padding: 0;
+    list-style: none;
+}
+
+/* 2 x 2 until there is room for one row (the fixed sidebar takes 256px). */
+@media (min-width: 1200px) {
+    .ui-kpis {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--ui-space-4);
+    }
+}
+
+.ui-kpi {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-4);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface);
+}
+
+.ui-kpi__icon {
+    display: grid;
+    place-items: center;
+    inline-size: 36px;
+    block-size: 36px;
+    flex-shrink: 0;
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-text);
+}
+
+.ui-kpi__text {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+    line-height: var(--ui-leading-tight);
+}
+
+.ui-kpi__value {
+    font-size: var(--ui-text-xl);
+    font-weight: var(--ui-weight-bold);
+    color: var(--ui-text);
+}
+
+.ui-kpi__label {
+    margin-block-start: 2px;
+    font-size: var(--ui-text-xs);
+    color: var(--ui-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+
+.ui-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ui-space-2);
+    padding: var(--ui-space-10) var(--ui-space-6);
+    text-align: center;
+    color: var(--ui-text-muted);
+}
+
+.ui-empty__icon {
+    display: grid;
+    place-items: center;
+    inline-size: 48px;
+    block-size: 48px;
+    margin-block-end: var(--ui-space-1);
+    border-radius: 50%;
+    background: var(--ui-surface-muted);
+    color: var(--ui-text-muted);
+}
+
+.ui-empty__title {
+    margin: 0;
+    font-size: var(--ui-text-md);
+    font-weight: var(--ui-weight-semibold);
+    color: var(--ui-text);
+}
+
+.ui-empty__text {
+    margin: 0;
+    max-inline-size: 42ch;
+    font-size: var(--ui-text-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Tabs (links or buttons; see shell.js for the keyboard handling)
+   -------------------------------------------------------------------------- */
+
+.ui-tabs {
+    display: flex;
+    gap: var(--ui-space-1);
+    overflow-x: auto;
+    border-block-end: 1px solid var(--ui-border);
+    scrollbar-width: none;
+}
+
+.ui-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.ui-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    min-block-size: var(--ui-tap);
+    padding-inline: var(--ui-space-3);
+    border: 0;
+    background: none;
+    color: var(--ui-text-muted);
+    font: inherit;
+    font-weight: var(--ui-weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.ui-tab:hover {
+    color: var(--ui-text);
+}
+
+.ui-tab[aria-selected="true"] {
+    color: var(--ui-accent-text);
+    font-weight: var(--ui-weight-semibold);
+}
+
+.ui-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--ui-space-2);
+    inset-block-end: -1px;
+    block-size: 2px;
+    border-radius: 2px;
+    background: var(--ui-orange-500);
+}
+
+.ui-tab:focus-visible {
+    outline-offset: -2px;
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+
+.ui-form {
+    display: grid;
+    gap: var(--ui-space-5);
+}
+
+.ui-form__row {
+    display: grid;
+    gap: var(--ui-space-5);
+}
+
+@media (min-width: 768px) {
+    .ui-form__row--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.ui-field {
+    display: grid;
+    gap: var(--ui-space-2);
+    align-content: start;
+}
+
+/* base.css styles every <label>; reset what matters here. */
+.ui-field .ui-label,
+.ui-label {
+    display: block;
+    margin: 0;
+    font-size: var(--ui-text-sm);
+    font-weight: var(--ui-weight-semibold);
+    line-height: var(--ui-leading-tight);
+    color: var(--ui-text-soft);
+}
+
+.ui-label__optional {
+    font-weight: var(--ui-weight-regular);
+    color: var(--ui-text-muted);
+}
+
+.ui-input {
+    inline-size: 100%;
+    min-block-size: var(--ui-tap);
+    padding: var(--ui-space-2) var(--ui-space-3);
+    border: 1px solid var(--ui-border-strong);
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-md);   /* 16px: no zoom-on-focus on iOS */
+    line-height: 1.5;
+    transition:
+        border-color var(--ui-duration) var(--ui-ease),
+        box-shadow var(--ui-duration) var(--ui-ease);
+}
+
+.ui-input:hover {
+    border-color: var(--ui-neutral-400);
+}
+
+.ui-input:focus {
+    outline: none;
+    border-color: var(--ui-orange-500);
+    box-shadow: 0 0 0 3px var(--ui-orange-100);
+}
+
+.ui-input[readonly] {
+    border-style: dashed;
+    background: var(--ui-surface-muted);
+    color: var(--ui-text-soft);
+}
+
+.ui-input[aria-invalid="true"] {
+    border-color: var(--ui-danger);
+}
+
+.ui-input[aria-invalid="true"]:focus {
+    box-shadow: 0 0 0 3px var(--ui-danger-soft);
+}
+
+.ui-input--ltr {
+    direction: ltr;
+    text-align: end;
+}
+
+.ui-help {
+    margin: 0;
+    font-size: var(--ui-text-xs);
+    color: var(--ui-text-muted);
+}
+
+.ui-error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ui-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--ui-text-xs);
+    font-weight: var(--ui-weight-medium);
+    color: var(--ui-danger);
+}
+
+.ui-error li + li {
+    margin-block-start: 2px;
+}
+
+.ui-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ui-space-2);
+    padding: var(--ui-space-3) var(--ui-space-4);
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-surface-muted);
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-sm);
+}
+
+.ui-alert--danger {
+    background: var(--ui-danger-soft);
+    color: var(--ui-danger);
+}
+
+.ui-alert--info {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-text);
+}
+
+.ui-alert--warning {
+    background: var(--ui-warning-soft);
+    color: var(--ui-warning);
+}
+
+.ui-alert .ui-icon {
+    margin-block-start: 3px;
+}
+
+/* Input with a trailing icon button (password show/hide). */
+.ui-input-group {
+    position: relative;
+}
+
+.ui-input-group .ui-input {
+    padding-inline-end: calc(var(--ui-tap) + var(--ui-space-1));
+}
+
+/* An LTR input (password, phone) in the RTL page: the button sits on the
+   left, which is that input's inline-start. */
+.ui-input-group .ui-input--ltr {
+    padding-inline-end: var(--ui-space-3);
+    padding-left: calc(var(--ui-tap) + var(--ui-space-1));
+}
+
+.ui-input-group__btn {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+}
+
+.ui-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-space-3);
+    padding-block-start: var(--ui-space-2);
+}

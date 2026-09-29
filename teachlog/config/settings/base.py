@@ -40,6 +40,11 @@ CSRF_TRUSTED_ORIGINS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# Header holding the real client IP when a reverse proxy we control sets
+# it (accounts.sessions.client_ip). None: use REMOTE_ADDR. Never point this
+# at X-Forwarded-For -- clients can forge it. production.py sets it.
+CLIENT_IP_HEADER = None
+
 # Where @login_required sends logged-out users. Django's default
 # (/accounts/login/) does not exist here: the login page is /auth/login/.
 LOGIN_URL = 'accounts:login'

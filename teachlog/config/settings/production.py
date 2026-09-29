@@ -92,3 +92,9 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # nothing but Nginx can reach it. Needed before SECURE_SSL_REDIRECT is turned
 # on, otherwise Django never sees a request as secure and redirects forever.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Client IP for the sign-in history (accounts.sessions.client_ip). Nginx
+# overwrites X-Real-IP with $remote_addr on every request (see
+# nginx/conf.d/teachlog.conf), and, as above, nothing but Nginx can reach
+# the app, so this header cannot be forged by a client.
+CLIENT_IP_HEADER = 'HTTP_X_REAL_IP'

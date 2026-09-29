@@ -1,0 +1,485 @@
+/* ==========================================================================
+   Teacher weekly schedule (scheduling/teacher-schedule.html).
+   Tokens and components: static/teacher/css/.
+   ========================================================================== */
+
+.ts .ui-tabs {
+    margin-block-end: var(--ui-space-4);
+}
+
+.ts-week__dates {
+    margin: 0 0 var(--ui-space-2);
+    font-size: var(--ui-text-xs);
+    color: var(--ui-text-muted);
+}
+
+.ts-summary {
+    margin-block-end: var(--ui-space-4);
+}
+
+.ts-summary .ui-badge {
+    padding-block: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Lesson (shared by table and list)
+   -------------------------------------------------------------------------- */
+
+.ts-lesson {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-inline-size: 0;
+}
+
+.ts-lesson__subject {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    font-size: var(--ui-text-sm);
+    font-weight: var(--ui-weight-bold);
+    line-height: var(--ui-leading-tight);
+    color: var(--ui-text);
+}
+
+/* The subject colour, as a quiet dot rather than a filled cell. */
+.ts-lesson__subject::before {
+    content: "";
+    inline-size: 8px;
+    block-size: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--subject-color, var(--ui-neutral-400));
+}
+
+.ts-lesson__class {
+    max-inline-size: 100%;
+}
+
+.ts-table .ts-lesson__class {
+    white-space: normal;
+    border-radius: var(--ui-radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Wide screens: table
+   -------------------------------------------------------------------------- */
+
+.ts-table-wrap {
+    overflow: auto;
+    max-block-size: calc(100vh - 160px);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface);
+}
+
+.ts-table {
+    inline-size: 100%;
+    /* At least ~136px per bell; below that the table scrolls sideways
+       (the day column and the header row stay put). */
+    min-inline-size: calc(108px + var(--ts-bells, 6) * 136px);
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+
+.ts-table th,
+.ts-table td {
+    border-block-end: 1px solid var(--ui-border);
+    border-inline-start: 1px solid var(--ui-border);
+    text-align: start;
+    vertical-align: top;
+}
+
+.ts-table tr > :first-child {
+    border-inline-start: 0;
+}
+
+.ts-table tbody tr:last-child > * {
+    border-block-end: 0;
+}
+
+.ts-table thead th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    padding: var(--ui-space-3);
+    background: var(--ui-neutral-50);
+    font-weight: var(--ui-weight-semibold);
+    line-height: var(--ui-leading-tight);
+}
+
+.ts-table__corner,
+.ts-table__day {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    inline-size: 108px;
+    background: var(--ui-neutral-50);
+}
+
+.ts-table thead .ts-table__corner {
+    z-index: 3;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-xs);
+    vertical-align: bottom;
+}
+
+.ts-table__bell-title {
+    display: block;
+    font-size: var(--ui-text-sm);
+    color: var(--ui-text);
+}
+
+.ts-table__bell-time {
+    display: block;
+    white-space: nowrap;
+    margin-block-start: 2px;
+    font-size: var(--ui-text-xs);
+    font-weight: var(--ui-weight-regular);
+    color: var(--ui-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.ts-table__day {
+    padding: var(--ui-space-3);
+    font-weight: var(--ui-weight-semibold);
+    color: var(--ui-text);
+    vertical-align: middle;
+}
+
+.ts-table__day .ui-badge {
+    display: flex;
+    inline-size: fit-content;
+    margin-block-start: var(--ui-space-1);
+}
+
+.ts-cell {
+    block-size: 84px;
+    padding: var(--ui-space-3);
+}
+
+.ts-cell .ts-lesson + .ts-lesson {
+    margin-block-start: var(--ui-space-2);
+    padding-block-start: var(--ui-space-2);
+    border-block-start: 1px dashed var(--ui-border-strong);
+}
+
+/* Today: a light tint across the row. */
+.ts-table tr.is-today > * {
+    background: var(--ui-accent-soft);
+}
+
+.ts-table tr.is-today .ts-table__day {
+    color: var(--ui-accent-text);
+}
+
+/* The bell in progress. */
+.ts-cell.is-now {
+    box-shadow: inset 0 0 0 2px var(--ui-orange-500);
+}
+
+.ts-cell.has-conflict {
+    background: var(--ui-warning-soft);
+}
+
+.ts-cell__conflict {
+    margin-block-end: var(--ui-space-2);
+}
+
+/* --------------------------------------------------------------------------
+   Narrow screens: day tabs + list
+   -------------------------------------------------------------------------- */
+
+.ts-mobile {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .ts-table-wrap {
+        display: none;
+    }
+
+    .ts-mobile {
+        display: block;
+    }
+}
+
+.ts-days {
+    display: flex;
+    gap: var(--ui-space-2);
+    margin-block-end: var(--ui-space-3);
+    overflow-x: auto;
+    padding-block-end: 2px;
+    scrollbar-width: none;
+}
+
+.ts-days::-webkit-scrollbar {
+    display: none;
+}
+
+.ts-day-tab {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 72px;
+    min-block-size: 52px;
+    padding: var(--ui-space-1) var(--ui-space-3);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-surface);
+    color: var(--ui-text-soft);
+    font: inherit;
+    font-weight: var(--ui-weight-medium);
+    line-height: var(--ui-leading-tight);
+    cursor: pointer;
+    transition:
+        background-color var(--ui-duration) var(--ui-ease),
+        border-color var(--ui-duration) var(--ui-ease);
+}
+
+.ts-day-tab[aria-selected="true"] {
+    border-color: var(--ui-orange-300);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-text);
+    font-weight: var(--ui-weight-semibold);
+}
+
+.ts-day-tab__today {
+    font-size: var(--ui-text-xs);
+    font-weight: var(--ui-weight-regular);
+    color: var(--ui-text-muted);
+}
+
+.ts-day-tab[aria-selected="true"] .ts-day-tab__today {
+    color: var(--ui-accent-text);
+}
+
+.ts-day {
+    margin-block-end: var(--ui-space-4);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface);
+}
+
+/* With JS only the selected day shows; without it, every day is listed. */
+.ts--js .ts-day:not(.is-selected) {
+    display: none;
+}
+
+.ts--js .ts-day__title {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.ts-day__title {
+    margin: 0;
+    padding: var(--ui-space-3) var(--ui-space-4);
+    border-block-end: 1px solid var(--ui-border);
+    font-size: var(--ui-text-md);
+    font-weight: var(--ui-weight-semibold);
+}
+
+.ts-day__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ts-row {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-3) var(--ui-space-4);
+    border-block-end: 1px solid var(--ui-border);
+}
+
+.ts-row:last-child {
+    border-block-end: 0;
+}
+
+.ts-row.is-now {
+    background: var(--ui-accent-soft);
+}
+
+.ts-row__when {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: var(--ui-leading-tight);
+}
+
+.ts-row__bell {
+    font-weight: var(--ui-weight-semibold);
+}
+
+.ts-row__time {
+    font-size: var(--ui-text-xs);
+    color: var(--ui-text-muted);
+}
+
+.ts-row__lessons {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ui-space-2);
+    min-inline-size: 0;
+}
+
+.ts-day__empty {
+    margin: 0;
+    padding: var(--ui-space-6) var(--ui-space-4);
+    text-align: center;
+    color: var(--ui-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Print: one A4 landscape page, both weeks merged, readable in grayscale
+   -------------------------------------------------------------------------- */
+
+.ts-print {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 9mm;
+    }
+
+    body.ui-body.teacher-panel {
+        background: #fff;
+        font-size: 9pt;
+    }
+
+    .ui-sidebar,
+    .ui-overlay,
+    .ui-topbar,
+    .ui-footer,
+    .ui-toasts,
+    .ui-skip-link,
+    .ts-screen {
+        display: none !important;
+    }
+
+    .ui-shell__main {
+        margin: 0 !important;
+        min-block-size: 0;
+    }
+
+    .ui-content {
+        max-inline-size: none;
+        padding: 0;
+    }
+
+    .ts-print {
+        display: block;
+    }
+
+    .ts-print__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-block-end: 4mm;
+        padding-block-end: 2.5mm;
+        border-block-end: 1.2pt solid #000;
+    }
+
+    .ts-print__school {
+        display: flex;
+        align-items: center;
+        gap: 3mm;
+        font-size: 12pt;
+    }
+
+    .ts-print__school img {
+        block-size: 12mm;
+        inline-size: auto;
+    }
+
+    .ts-print__title {
+        text-align: end;
+    }
+
+    .ts-print__title h2 {
+        margin: 0;
+        font-size: 14pt;
+    }
+
+    .ts-print__title span {
+        font-size: 8.5pt;
+        color: #333;
+    }
+
+    .tc-table {
+        inline-size: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        break-inside: avoid;
+    }
+
+    .tc-table th,
+    .tc-table td {
+        border: 0.75pt solid #555;
+        padding: 1.5mm;
+        text-align: center;
+        vertical-align: middle;
+        /* Tints are decoration; in grayscale the borders carry the grid. */
+        background: #fff !important;
+    }
+
+    .tc-table thead th {
+        background: #eee !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .tc-corner {
+        inline-size: 16mm;
+        font-size: 7.5pt;
+    }
+
+    .tc-time {
+        display: block;
+        font-size: 7.5pt;
+        font-weight: 400;
+    }
+
+    .tc-cell {
+        block-size: 19mm;
+    }
+
+    .tc-cell--empty {
+        color: #999;
+    }
+
+    .tc-lesson + .tc-lesson {
+        margin-block-start: 1mm;
+        padding-block-start: 1mm;
+        border-block-start: 0.5pt dashed #777;
+    }
+
+    .tc-subject {
+        display: block;
+        font-weight: 800;
+        font-size: 9.5pt;
+    }
+
+    .tc-class,
+    .tc-week,
+    .tc-conflict {
+        display: block;
+        font-size: 7.5pt;
+    }
+
+    .tc-week,
+    .tc-conflict {
+        font-weight: 700;
+    }
+}

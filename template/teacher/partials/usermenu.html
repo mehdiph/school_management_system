@@ -1,0 +1,42 @@
+{% comment %}
+  Avatar + name + «معلم» in the top bar, opening the account menu
+  (WAI-ARIA menu button, static/teacher/js/shell.js).
+{% endcomment %}
+<div class="ui-usermenu" data-usermenu>
+    <button
+        type="button"
+        class="ui-usermenu__trigger"
+        id="userMenuButton"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-controls="userMenu"
+    >
+        {% include "partials/avatar.html" with person=request.user size=32 decorative=True %}
+        <span class="ui-usermenu__text">
+            <strong>{{ teacher.name }}</strong>
+            <span>معلم</span>
+        </span>
+        <span class="ui-visually-hidden">منوی حساب کاربری</span>
+        <svg class="ui-icon ui-icon--sm ui-usermenu__chevron" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+    </button>
+
+    <div class="ui-usermenu__panel" id="userMenu" role="menu" aria-labelledby="userMenuButton" hidden>
+        <div class="ui-usermenu__head" role="presentation">
+            <strong>{{ teacher.name }}</strong>
+            <span>معلم · {{ site_settings.site_name|default:"مدرسه نسل قلم" }}</span>
+        </div>
+        <a class="ui-menu-item" role="menuitem" tabindex="-1" href="{% url 'accounts:profile' %}">
+            <svg class="ui-icon" aria-hidden="true"><use href="#i-settings"></use></svg>
+            پروفایل و تنظیمات
+        </a>
+        <a class="ui-menu-item" role="menuitem" tabindex="-1" href="{% url 'scheduling:teacher-schedule' %}">
+            <svg class="ui-icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+            برنامه هفتگی
+        </a>
+        <div class="ui-menu-sep" role="separator"></div>
+        <a class="ui-menu-item ui-menu-item--danger" role="menuitem" tabindex="-1" href="{% url 'accounts:logout' %}">
+            <svg class="ui-icon" aria-hidden="true"><use href="#i-logout"></use></svg>
+            خروج از حساب
+        </a>
+    </div>
+</div>
