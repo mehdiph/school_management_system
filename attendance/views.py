@@ -5,6 +5,7 @@ from django.http import Http404
 from teaching.models.school_session import SchoolSession
 from student.models.student_profile import StudentProfile
 from student.models.student_enrollment import StudentEnrollment
+from accounts.utils import role_dashboard
 from .models import Attendance
 from .permissions import can_manage_attendance, is_session_teacher
 
@@ -23,6 +24,13 @@ def manage_attendance(request, session_id):
     # own session pages: nobody learns which session ids are in use.
     if not can_manage_attendance(request.user, session, request=request):
         raise Http404
+
+    if session.is_holiday:
+        reason = session.calendar_event.title if session.calendar_event_id else 'تعطیلی'
+        messages.error(request, f'این جلسه به‌دلیل «{reason}» لغو شده است و حضور و غیاب ندارد.')
+        if is_session_teacher(request.user, session):
+            return redirect('teaching:session_list', session.class_subject_id)
+        return redirect(role_dashboard(request.user))
 
     # دریافت لیست دانش‌آموزان کلاس جلسه (مرتب بر اساس نام خانوادگی، طبق Meta.ordering)
     students = (

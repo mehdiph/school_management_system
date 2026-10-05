@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'student',
     'attendance',
     'supervisor',
+    'academic_calendar',
 ]
 
 MIDDLEWARE = [
@@ -173,7 +174,9 @@ USE_TZ = True
 # Weekly schedule (see scheduling/utils.py)
 #
 # Days the school holds classes, as ClassSchedule.DayChoices values:
-# 0=شنبه 1=یکشنبه 2=دوشنبه 3=سه‌شنبه 4=چهارشنبه 5=پنج‌شنبه.
+# 0=شنبه 1=یکشنبه 2=دوشنبه 3=سه‌شنبه 4=چهارشنبه. Thursday and Friday are
+# never working days (academic_calendar.services.is_working_day) and no
+# new timetable slot may be put on Thursday.
 SCHOOL_WORKING_DAYS = [0, 1, 2, 3, 4]
 
 # "هفته اول" / "هفته دوم" is derived from AcademicYear.start_date alone

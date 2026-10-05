@@ -65,6 +65,11 @@ class Attendance(models.Model):
     def clean(self):
         super().clean()
 
+        if self.session_id and self.session.is_holiday:
+            raise ValidationError({
+                "session": "این جلسه به‌دلیل تعطیلی لغو شده است و حضور و غیاب ندارد."
+            })
+
         if (
             self.session
             and self.student_enrollment

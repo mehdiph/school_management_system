@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 import jdatetime
 from django.test import SimpleTestCase, TestCase, override_settings
+from django.db.models import QuerySet
 from django.urls import reverse
 
 from core.testing import (
@@ -351,7 +352,10 @@ class WeeklyScheduleServiceTests(ScheduleFixtureMixin, TestCase):
         self.assertEqual(days, [0, 1, 2, 3, 4, 5])
 
     def test_day_with_classes_is_never_hidden_by_config(self):
-        self.slot(self.class_subject("ریاضی"), Day.THURSDAY, self.bell_1)
+        # A legacy Thursday row (new ones are refused): written past the
+        # model's guard, as old data would be.
+        row = self.slot(self.class_subject("ریاضی"), Day.SATURDAY, self.bell_1)
+        QuerySet.update(ClassSchedule.objects.filter(pk=row.pk), day_of_week=Day.THURSDAY)
 
         schedule = self.build()
 

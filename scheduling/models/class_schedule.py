@@ -23,6 +23,7 @@ class ClassScheduleQuerySet(models.QuerySet):
         from scheduling.conflicts import check_slots, schedules_as_slots
 
         objs = list(objs)
+        check_no_new_thursday(objs)
         with transaction.atomic(using=self.db):
             check_slots(schedules_as_slots(objs))
             return super().bulk_create(objs, *args, **kwargs)
@@ -37,6 +38,8 @@ class ClassScheduleQuerySet(models.QuerySet):
 
         objs = list(objs)
         fields = list(fields)
+        if "day_of_week" in fields:
+            check_no_new_thursday(objs)
         with transaction.atomic(using=self.db):
             if CONFLICT_FIELDS & {_field_name(name) for name in fields}:
                 check_slots(schedules_as_slots(self._as_saved_with(objs, fields)))
@@ -50,6 +53,12 @@ class ClassScheduleQuerySet(models.QuerySet):
             is_prevalidated,
             schedules_as_slots,
         )
+
+        if (
+            kwargs.get("day_of_week") == ClassSchedule.DayChoices.THURSDAY
+            and self.exclude(day_of_week=ClassSchedule.DayChoices.THURSDAY).exists()
+        ):
+            raise ValidationError({"day_of_week": THURSDAY_MESSAGE})
 
         if is_prevalidated() or not CONFLICT_FIELDS & {_field_name(k) for k in kwargs}:
             return super().update(**kwargs)
@@ -82,6 +91,31 @@ class ClassScheduleQuerySet(models.QuerySet):
         return merged
 
 
+#: Thursday and Friday are non-working days (see academic_calendar).
+THURSDAY_MESSAGE = "ثبت برنامه در روز پنج‌شنبه مجاز نیست؛ پنج‌شنبه و جمعه تعطیل هستند."
+
+
+def check_no_new_thursday(objs):
+    """
+    Raises ``ValidationError`` if any of ``objs`` would *become* a
+    Thursday slot (new, or moved to Thursday). Rows already saved on a
+    Thursday (legacy data) may still be kept or edited, so they can be
+    cleaned up without the timetable editor refusing to save.
+    """
+
+    thursday = ClassSchedule.DayChoices.THURSDAY
+    candidates = [obj for obj in objs if obj.day_of_week == thursday]
+    if not candidates:
+        return
+
+    saved_days = dict(
+        ClassSchedule.objects.filter(pk__in=[obj.pk for obj in candidates if obj.pk])
+        .values_list("pk", "day_of_week")
+    )
+    if any(saved_days.get(obj.pk) != thursday for obj in candidates):
+        raise ValidationError({"day_of_week": THURSDAY_MESSAGE})
+
+
 def _field_name(name):
     return name[:-3] if name.endswith("_id") else name
 
@@ -95,6 +129,8 @@ class ClassSchedule(models.Model):
         MONDAY = 2, "دوشنبه"
         TUESDAY = 3, "سه‌شنبه"
         WEDNESDAY = 4, "چهارشنبه"
+        #: Kept only so legacy rows still display: no new slot may be
+        #: put on Thursday (``check_no_new_thursday``).
         THURSDAY = 5, "پنج‌شنبه"
 
     class WeekTypeChoices(models.IntegerChoices):
@@ -164,6 +200,9 @@ class ClassSchedule(models.Model):
 
     def clean(self):
         super().clean()
+
+        if self.day_of_week is not None:
+            check_no_new_thursday([self])
 
         if not self.class_subject_id or not self.bell_id:
             return

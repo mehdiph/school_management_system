@@ -5,6 +5,7 @@ only ever reaches the class subjects of their own TeacherAssignment.
 """
 
 import jdatetime
+from django.core.exceptions import ValidationError
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -13,7 +14,9 @@ from django.urls import reverse
 from core.testing import (
     make_academic_year,
     make_assignment,
+    make_bell,
     make_branch,
+    make_calendar_event,
     make_class_subject,
     make_grade,
     make_school_class,
@@ -25,6 +28,7 @@ from core.testing import (
 from school.models import ClassSubject
 from teaching.forms import SchoolSessionForm, SessionContentForm
 from teaching.models import SchoolSession, SessionContent
+from teaching.models.school_session import DUPLICATE_SLOT_MESSAGE
 from teaching.views import DUPLICATE_SESSION_MESSAGE, SESSIONS_PER_PAGE, _save_session
 
 CONTENT_DATA = {
@@ -270,19 +274,15 @@ class CreateSessionViewTests(SessionViewTestCase):
         self.assertContains(response, 'id="id_title_error"')
         self.assertContains(response, 'عنوان درس را وارد کنید.')
 
-    def test_date_order_error_from_save_is_shown_on_the_date_field(self):
-        make_session(self.class_subject, jdatetime.date(1403, 9, 1))
+    def test_earlier_date_is_inserted_and_later_sessions_renumbered(self):
+        later = make_session(self.class_subject, jdatetime.date(1403, 9, 1))
 
-        # earlier than session 1, so SchoolSession.save() refuses it
         response = self.client.post(self.form_url(), post_data(self.class_subject, date='1403-08-01'))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(SchoolSession.objects.count(), 1)
-        self.assertEqual(SessionContent.objects.count(), 1)
-        self.assertEqual(
-            response.context['session_form'].errors['date'],
-            ['تاریخ این جلسه نباید قبل از جلسه 1 باشد.'],
-        )
+        self.assertEqual(response.status_code, 302)
+        earlier = SchoolSession.objects.exclude(pk=later.pk).get()
+        later.refresh_from_db()
+        self.assertEqual((earlier.session_number, later.session_number), (1, 2))
 
     def test_date_outside_class_subject_range_has_persian_message(self):
         response = self.client.post(self.form_url(), post_data(self.class_subject, date='1402-01-01'))
@@ -424,3 +424,94 @@ class SessionListViewTests(SessionViewTestCase):
         response = self.client.get(self.list_url(self.other_class_subject))
 
         self.assertEqual(response.status_code, 404)
+
+
+# ----------------------------------------------------------------------
+# Numbering and slots (SchoolSession model)
+# ----------------------------------------------------------------------
+
+class SessionNumberingTests(TestCase):
+    """Counted sessions are numbered 1..N in teaching order; holidays never are."""
+
+    def setUp(self):
+        self.class_subject = make_class_subject_for(make_teacher_profile())
+        self.bell_1, self.bell_2 = make_bell(1), make_bell(2)
+        self.event = make_calendar_event(
+            self.class_subject.school_class.year, jdatetime.date(1403, 8, 10)
+        )
+
+    def create(self, date, bell=None, **fields):
+        return SchoolSession.objects.create(
+            class_subject=self.class_subject, date=date, bell=bell, **fields
+        )
+
+    def numbers(self):
+        return list(
+            SchoolSession.objects.filter(class_subject=self.class_subject)
+            .order_by('date', 'bell__order')
+            .values_list('date', 'bell__order', 'session_number')
+        )
+
+    def test_same_day_two_bells_are_two_sessions_in_bell_order(self):
+        day = jdatetime.date(1403, 8, 1)
+        second = self.create(day, self.bell_2)
+        first = self.create(day, self.bell_1)
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual((first.session_number, second.session_number), (1, 2))
+
+    def test_holiday_has_no_number_and_numbering_stays_continuous(self):
+        self.create(jdatetime.date(1403, 8, 1), self.bell_1)
+        holiday = self.create(
+            jdatetime.date(1403, 8, 10), self.bell_1,
+            status=SchoolSession.Status.HOLIDAY, calendar_event=self.event,
+        )
+        self.create(jdatetime.date(1403, 8, 20), self.bell_1)
+
+        self.assertIsNone(holiday.session_number)
+        self.assertEqual([n for *_, n in self.numbers()], [1, None, 2])
+        self.assertEqual(SchoolSession.objects.counted().count(), 2)
+        self.assertEqual(SchoolSession.objects.holidays().count(), 1)
+
+    def test_registering_a_missed_past_session_renumbers_later_ones(self):
+        self.create(jdatetime.date(1403, 8, 1), self.bell_1)
+        self.create(jdatetime.date(1403, 8, 20), self.bell_1)
+
+        missed = self.create(jdatetime.date(1403, 8, 5), self.bell_1)
+
+        self.assertEqual(missed.session_number, 2)
+        self.assertEqual([n for *_, n in self.numbers()], [1, 2, 3])
+
+    def test_moving_and_deleting_keep_numbers_continuous(self):
+        first = self.create(jdatetime.date(1403, 8, 1), self.bell_1)
+        self.create(jdatetime.date(1403, 8, 5), self.bell_1)
+        third = self.create(jdatetime.date(1403, 8, 9), self.bell_1)
+
+        first.date = jdatetime.date(1403, 8, 30)
+        first.save()
+        self.assertEqual(first.session_number, 3)
+
+        third.delete()
+        self.assertEqual(
+            sorted(SchoolSession.objects.values_list('session_number', flat=True)), [1, 2]
+        )
+
+    def test_holiday_status_needs_a_calendar_event_and_the_reverse(self):
+        with self.assertRaises(ValidationError):
+            self.create(jdatetime.date(1403, 8, 1), status=SchoolSession.Status.HOLIDAY)
+        with self.assertRaises(ValidationError):
+            self.create(jdatetime.date(1403, 8, 1), calendar_event=self.event)
+
+    def test_one_session_per_slot(self):
+        self.create(jdatetime.date(1403, 8, 1), self.bell_1)
+
+        with self.assertRaisesMessage(ValidationError, DUPLICATE_SLOT_MESSAGE):
+            self.create(jdatetime.date(1403, 8, 1), self.bell_1)
+
+        # the same subject at another bell, and legacy rows without a bell,
+        # are not the same slot
+        self.create(jdatetime.date(1403, 8, 1), self.bell_2)
+        self.create(jdatetime.date(1403, 8, 1))
+        self.create(jdatetime.date(1403, 8, 1))
+        self.assertEqual(SchoolSession.objects.count(), 4)

@@ -35,7 +35,7 @@ from .conflicts import (
     teacher_conflict_message,
 )
 from .models.bell import Bell
-from .models.class_schedule import ClassSchedule
+from .models.class_schedule import THURSDAY_MESSAGE, ClassSchedule
 from .services import _working_days, persian_digits
 
 WeekType = ClassSchedule.WeekTypeChoices
@@ -304,7 +304,8 @@ def _save_grid(school_class, payload, can_delete_class_subjects):
     year = school_class.year
 
     # -- 1. Parse ------------------------------------------------------
-    # Days: every day the model knows; the page may show Thursday.
+    # Days: every day the model knows; a Thursday cell is only accepted
+    # when it is an unchanged legacy row (checked below).
     entries = _parse_entries(payload, set(ClassSchedule.DayChoices.values), {b.id for b in bells})
 
     # -- 2. Lock the class, then read what is saved --------------------
@@ -323,7 +324,21 @@ def _save_grid(school_class, payload, can_delete_class_subjects):
     subjects = {s.id: s for s in subject_choices(used_subjects)}
 
     errors = []
+    legacy_thursday = {
+        (row.day_of_week, row.bell_id, row.week_type,
+         row.class_subject.subject_id, row.class_subject.teacher_assignment_id)
+        for row in owned
+        if row.day_of_week == ClassSchedule.DayChoices.THURSDAY
+    }
     for (day, bell, week_type), (subject_id, assignment_id) in entries.items():
+        if (
+            day == ClassSchedule.DayChoices.THURSDAY
+            and (day, bell, week_type, subject_id, assignment_id) not in legacy_thursday
+        ):
+            # Only an unchanged legacy Thursday row may stay; see
+            # ClassSchedule.check_no_new_thursday.
+            errors.append(_error(day, bell, week_type, THURSDAY_MESSAGE))
+            continue
         if subject_id not in subjects:
             errors.append(_error(day, bell, week_type, MSG_BAD_SUBJECT))
         elif assignment_id not in assignments:

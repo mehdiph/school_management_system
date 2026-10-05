@@ -198,3 +198,63 @@ def grant_all_model_permissions(user):
     user.save()
 
     return user
+
+
+def make_bell(order, start=None, end=None, is_active=True):
+    """Bell ``order``, 45 minutes from 07:30 + an hour per order by default."""
+
+    from datetime import time
+
+    from scheduling.models.bell import Bell
+
+    hour = 6 + order
+    return Bell.objects.create(
+        title=f"زنگ {order}",
+        order=order,
+        start_time=start or time(hour, 30),
+        end_time=end or time(hour + 1, 15),
+        is_active=is_active,
+    )
+
+
+def make_schedule(class_subject, day, bell, week_type=None):
+    """A ``ClassSchedule`` slot; every week unless ``week_type`` says otherwise."""
+
+    from scheduling.models import ClassSchedule
+
+    return ClassSchedule.objects.create(
+        class_subject=class_subject,
+        day_of_week=day,
+        bell=bell,
+        week_type=week_type or ClassSchedule.WeekTypeChoices.BOTH,
+    )
+
+
+def make_calendar_event(
+    academic_year,
+    start_date,
+    end_date=None,
+    branches=(),
+    grades=(),
+    bells=(),
+    title="تعطیلی",
+    **fields,
+):
+    """
+    A ``CalendarEvent`` saved *without* syncing sessions -- tests that want
+    the sync call ``academic_calendar.services`` themselves.
+    """
+
+    from academic_calendar.models import CalendarEvent
+
+    event = CalendarEvent.objects.create(
+        academic_year=academic_year,
+        title=title,
+        start_date=start_date,
+        end_date=end_date or start_date,
+        **fields,
+    )
+    event.branches.set(branches)
+    event.grades.set(grades)
+    event.bells.set(bells)
+    return event

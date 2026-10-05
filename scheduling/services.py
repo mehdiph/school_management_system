@@ -33,9 +33,10 @@ WEEK_LABELS = {
     ClassSchedule.WeekTypeChoices.WEEK_TWO: "هفته دوم",
 }
 
-#: Saturday..Wednesday. ``settings.SCHOOL_WORKING_DAYS`` overrides it
-#: (add 5 for Thursday). A day that has slots is shown even if it is
-#: not listed, so a misconfiguration never hides real classes.
+#: Saturday..Wednesday. ``settings.SCHOOL_WORKING_DAYS`` overrides it.
+#: No new slot may be put on Thursday (``ClassSchedule``), but a day that
+#: has (legacy) slots is shown even if it is not listed, so a
+#: misconfiguration never hides real classes.
 DEFAULT_WORKING_DAYS = (0, 1, 2, 3, 4)
 
 _PERSIAN_MONTHS = (
