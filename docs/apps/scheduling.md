@@ -200,6 +200,8 @@ Implemented in `scheduling/utils.py` (`get_academic_week_number`, `get_week_cycl
 
 Example, 1405 (1 Mehr = Wednesday): 1..10 Mehr is week 1, 11..17 Mehr week 2, 18..24 Mehr week 1, and so on.
 
+`count_scheduled_occurrences(slots, start, end, academic_year)` counts how many times a class subject's `(day_of_week, week_type)` slots fall between two dates under this rotation. The supervisor's training sessions page uses it for the expected number of sessions. There is no holiday calendar, so holidays are counted.
+
 ---
 
 ## Views

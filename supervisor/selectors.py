@@ -3,13 +3,12 @@ Supervisor query/selector layer.
 
 Layering:
 
-              SupervisorScope
-             /               \\
-    SupervisorDashboardSelector   SupervisorAttendanceSelector
-            v                              v
-    Supervisor dashboard view      Supervisor attendance view
-            v                              v
-          Template                       Template
+                              SupervisorScope
+             /                  /              \\                  \\
+    Dashboard selector   Attendance selector   Sessions selector   Teachers selector
+            v                  v                    v                   v
+      dashboard view    attendance view    sessions / timeline /   teachers view
+                                             session detail views
 
 ``SupervisorScope`` is the single source of truth for "what is this
 supervisor allowed to see" (their branch, their grade, their assigned
@@ -20,18 +19,22 @@ view/template code.
 """
 
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import jdatetime
-from django.db.models import Count, Q
+from django.conf import settings
+from django.db.models import BooleanField, Count, ExpressionWrapper, F, Max, Min, Q
+from django.db.models.functions import Substr
 from django.utils import timezone
 
 from attendance.models.attendance import Attendance
-from school.models import ClassSubject, SchoolClass
+from school.models import ClassSubject, SchoolClass, Subject
 from school.models.academic_year import AcademicYear
 from scheduling.models.class_schedule import ClassSchedule
 from scheduling.utils import (
     DateBeforeAcademicYearError,
+    count_scheduled_occurrences,
     get_today_schedule_day,
     get_week_cycle,
 )
@@ -65,6 +68,49 @@ class SupervisorScope:
         return ClassSubject.objects.filter(
             school_class__in=self.classes(),
         ).distinct()
+
+    def supervised_class_subjects(self, year=None):
+        """
+        The active class subjects of the supervisor's active classes,
+        optionally in one academic year: the rows the "training sessions"
+        and "supervised teachers" pages are built from. Every detail /
+        partial view of those pages looks its object up through this (or
+        :meth:`supervised_sessions`), so anything outside it is a 404.
+
+        Not ``distinct()`` like :meth:`class_subjects`: nothing here joins
+        a multi-valued relation, and DISTINCT would get in the way of the
+        callers' GROUP BY / ORDER BY on related fields.
+        """
+
+        queryset = ClassSubject.objects.filter(
+            school_class__in=self.classes(),
+            is_active=True,
+            school_class__is_active=True,
+        )
+        if year is not None:
+            queryset = queryset.filter(school_class__year=year)
+        return queryset
+
+    def supervised_sessions(self):
+        """Sessions of :meth:`supervised_class_subjects` (any year)."""
+
+        return SchoolSession.objects.filter(
+            class_subject__in=self.supervised_class_subjects(),
+        )
+
+    def academic_years(self):
+        """
+        Years the supervisor has classes in, plus the current year (the
+        default even before any class is assigned for it), newest first.
+        """
+
+        return (
+            AcademicYear.objects.filter(
+                Q(schoolclass__in=self.classes()) | Q(is_current=True)
+            )
+            .distinct()
+            .order_by("-start_date")
+        )
 
     def sessions(self):
         return SchoolSession.objects.filter(
@@ -556,3 +602,485 @@ class SupervisorAttendanceSelector:
             "attendance_rows": self.attendance_rows(session),
             "summary": self.summary(session),
         }
+
+
+# ----------------------------------------------------------------------
+# Training sessions ("جلسات آموزشی") and supervised teachers pages
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SessionFilters:
+    """
+    The validated filters of the training sessions page (see
+    ``supervisor.forms.SessionFilterForm.filters``). Every value is
+    already an in-scope object or a parsed value; ``None`` / ``""``
+    means "not filtered".
+    """
+
+    academic_year: AcademicYear = None
+    teacher: TeacherProfile = None
+    subject: Subject = None
+    school_class: SchoolClass = None
+    date_from: jdatetime.date = None
+    date_to: jdatetime.date = None
+    status: str = ""
+    sort: str = ""
+
+
+def _no_content_q(prefix=""):
+    """
+    Sessions with no ``SessionContent`` row. Cancelled sessions are left
+    out: nothing was taught, so a missing content is expected there.
+    """
+
+    return (
+        Q(**{f"{prefix}session_contents__isnull": True})
+        & ~Q(**{f"{prefix}status": SchoolSession.Status.CANCELED})
+    )
+
+
+def _ordering(sort, fields, default):
+    """``"-name"`` -> the ``order_by()`` terms of ``fields["name"]``, descending."""
+
+    key = sort.lstrip("-")
+    if key not in fields:
+        key, sort = default, default
+
+    descending = sort.startswith("-")
+    terms = []
+    for name in fields[key]:
+        expression = F(name)
+        terms.append(
+            expression.desc(nulls_last=True) if descending
+            else expression.asc(nulls_last=True)
+        )
+    return [*terms, "pk"]
+
+
+class SupervisorSessionsSelector:
+    """
+    Data of the training sessions page: one summary row per supervised
+    ``ClassSubject`` (teacher x subject x class), the KPIs above it, the
+    session timeline of one row and the details of one session.
+
+    Everything starts from ``SupervisorScope.supervised_class_subjects``,
+    so neither the filters nor a tampered URL can reach anything outside
+    the supervisor's classes.
+    """
+
+    PAGE_SIZE = 20
+
+    #: Two consecutive sessions further apart than this are marked as a
+    #: long gap on the timeline.
+    GAP_WARNING_DAYS = getattr(settings, "SUPERVISOR_SESSION_GAP_WARNING_DAYS", 14)
+
+    #: Coverage (delivered / expected sessions, %) under these is shown
+    #: as a problem / a warning.
+    COVERAGE_LOW = 60
+    COVERAGE_WARNING = 85
+
+    #: How much of a session's content the timeline loads (it only shows
+    #: two lines; the full text is in the session detail).
+    EXCERPT_LENGTH = 240
+
+    SORT_FIELDS = {
+        "teacher": (
+            "teacher_assignment__teacher__staff__user__last_name",
+            "teacher_assignment__teacher__staff__user__first_name",
+        ),
+        "subject": ("subject__name",),
+        "class": ("school_class__grade__level", "school_class__section"),
+        "sessions": ("session_count",),
+        "empty": ("empty_count",),
+        "first_date": ("first_date",),
+        "last_date": ("last_date",),
+    }
+    DEFAULT_SORT = "teacher"
+
+    def __init__(self, supervisor, today=None):
+        self.supervisor = supervisor
+        self.scope = SupervisorScope(supervisor)
+        self.today = today or timezone.localdate()
+
+    # ------------------------------------------------------------------
+    # Filter options (all from the supervisor's scope)
+    # ------------------------------------------------------------------
+
+    def academic_years(self):
+        return self.scope.academic_years()
+
+    def teacher_options(self, year, class_subjects=None):
+        if class_subjects is None:
+            class_subjects = self.scope.supervised_class_subjects(year)
+        return (
+            TeacherProfile.objects.filter(
+                pk__in=class_subjects.values("teacher_assignment__teacher")
+            )
+            .select_related("staff__user")
+            .order_by("staff__user__last_name", "staff__user__first_name", "pk")
+        )
+
+    def subject_options(self, year):
+        return Subject.objects.filter(
+            pk__in=self.scope.supervised_class_subjects(year).values("subject")
+        ).order_by("name", "pk")
+
+    def class_options(self, year):
+        return (
+            SchoolClass.objects.filter(
+                pk__in=self.scope.supervised_class_subjects(year).values("school_class")
+            )
+            .select_related("grade", "branch")
+            .order_by("grade__level", "section", "pk")
+        )
+
+    # ------------------------------------------------------------------
+    # Summary table + KPIs
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _session_q(filters, prefix="", with_status=True):
+        conditions = {}
+        if filters.date_from:
+            conditions[f"{prefix}date__gte"] = filters.date_from
+        if filters.date_to:
+            conditions[f"{prefix}date__lte"] = filters.date_to
+        if with_status and filters.status:
+            conditions[f"{prefix}status"] = filters.status
+        return Q(**conditions)
+
+    def class_subjects(self, filters):
+        """The supervised class subjects the filters select (no annotations)."""
+
+        queryset = self.scope.supervised_class_subjects(filters.academic_year)
+        if filters.teacher:
+            queryset = queryset.filter(teacher_assignment__teacher=filters.teacher)
+        if filters.subject:
+            queryset = queryset.filter(subject=filters.subject)
+        if filters.school_class:
+            queryset = queryset.filter(school_class=filters.school_class)
+        return queryset
+
+    def summary_rows(self, filters):
+        """
+        One row per class subject with, for the sessions in the filtered
+        date range / status: ``session_count``, ``empty_count`` (no
+        content), ``first_date`` and ``last_date``. ``delivered_count``
+        (held + compensatory, date range only) feeds the coverage column
+        (see :meth:`attach_coverage`). Class subjects without any matching
+        session are kept -- a teacher who records nothing is exactly what
+        the supervisor needs to see.
+        """
+
+        in_range = self._session_q(filters, "sessions__")
+        delivered = (
+            self._session_q(filters, "sessions__", with_status=False)
+            & ~Q(sessions__status=SchoolSession.Status.CANCELED)
+        )
+
+        return (
+            self.class_subjects(filters)
+            .select_related(
+                "subject",
+                "school_class__grade",
+                "school_class__branch",
+                "school_class__year",
+                "teacher_assignment__teacher__staff__user",
+            )
+            .annotate(
+                session_count=Count("sessions", filter=in_range or None),
+                empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
+                delivered_count=Count("sessions", filter=delivered),
+                first_date=Min("sessions__date", filter=in_range or None),
+                last_date=Max("sessions__date", filter=in_range or None),
+            )
+            .order_by(*_ordering(filters.sort, self.SORT_FIELDS, self.DEFAULT_SORT))
+        )
+
+    def kpis(self, filters):
+        """The KPI cards, for every row the filters select (one query)."""
+
+        in_range = self._session_q(filters, "sessions__")
+
+        return self.class_subjects(filters).aggregate(
+            session_count=Count("sessions", filter=in_range or None),
+            empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
+            teacher_count=Count("teacher_assignment__teacher", distinct=True),
+            last_date=Max("sessions__date", filter=in_range or None),
+        )
+
+    def attach_coverage(self, rows, filters):
+        """
+        ``rows`` (a page of :meth:`summary_rows`) as a list, each with:
+
+        * ``expected_count`` -- sessions the weekly timetable (both weeks of
+          the rotation) planned from the class subject's start, or the
+          filter's ``date_from``, up to today / ``date_to``; ``None`` when
+          the class subject has no timetable slot.
+        * ``coverage`` -- ``delivered_count`` as a % of it (``None`` when
+          nothing was expected yet), ``coverage_bar`` (the same, capped at
+          100 for the progress bar) and ``coverage_level``.
+
+        Holidays are not modelled, so the expected count includes them.
+        One query (the timetable slots of the whole page).
+        """
+
+        rows = list(rows)
+        if not rows:
+            return rows
+
+        slots = defaultdict(list)
+        for class_subject_id, day, week_type in ClassSchedule.objects.filter(
+            class_subject__in=[row.pk for row in rows]
+        ).values_list("class_subject_id", "day_of_week", "week_type"):
+            slots[class_subject_id].append((day, week_type))
+
+        today = jdatetime.date.fromgregorian(date=self.today)
+
+        for row in rows:
+            row.expected_count = None
+            row.coverage = None
+            row.coverage_level = ""
+
+            row_slots = slots.get(row.pk)
+            if not row_slots:
+                continue
+
+            year = row.school_class.year
+            start = max(
+                d for d in (row.start_date, year.start_date, filters.date_from) if d
+            )
+            end = min(
+                d for d in (today, row.end_date, year.end_date, filters.date_to) if d
+            )
+
+            row.expected_count = (
+                count_scheduled_occurrences(row_slots, start, end, year)
+                if start <= end else 0
+            )
+
+            if row.expected_count:
+                row.coverage = round(row.delivered_count * 100 / row.expected_count)
+                row.coverage_bar = min(row.coverage, 100)
+                if row.coverage < self.COVERAGE_LOW:
+                    row.coverage_level = "low"
+                elif row.coverage < self.COVERAGE_WARNING:
+                    row.coverage_level = "warning"
+                else:
+                    row.coverage_level = "ok"
+
+        return rows
+
+    # ------------------------------------------------------------------
+    # Timeline of one class subject
+    # ------------------------------------------------------------------
+
+    def timeline_class_subjects(self):
+        """What the timeline view may look its class subject up in."""
+
+        return self.scope.supervised_class_subjects().select_related(
+            "subject",
+            "school_class__grade",
+            "school_class__branch",
+            "school_class__year",
+            "teacher_assignment__teacher__staff__user",
+        )
+
+    def timeline(self, class_subject, filters):
+        """
+        ``class_subject``'s sessions in the filtered range, in teaching
+        order, with only what the timeline shows: the title, the start of
+        the content (``excerpt``) and whether homework / activity / notes
+        exist -- never the full texts. Each session also gets ``gap_days``
+        (days since the previous one shown), ``is_long_gap`` and
+        ``is_missing_content``.
+        """
+
+        def present(field):
+            return ExpressionWrapper(
+                Q(**{f"session_contents__{field}__gt": ""}),
+                output_field=BooleanField(),
+            )
+
+        sessions = list(
+            SchoolSession.objects.filter(class_subject=class_subject)
+            .filter(self._session_q(filters))
+            .only("id", "class_subject_id", "date", "session_number", "status")
+            .annotate(
+                title=F("session_contents__title"),
+                excerpt=Substr("session_contents__content", 1, self.EXCERPT_LENGTH),
+                has_content=ExpressionWrapper(
+                    Q(session_contents__isnull=False), output_field=BooleanField()
+                ),
+                has_homework=present("homework"),
+                has_activity=present("activity"),
+                has_notes=present("notes"),
+            )
+            .order_by("session_number", "date")
+        )
+
+        previous = None
+        for session in sessions:
+            session.gap_days = (session.date - previous.date).days if previous else None
+            session.is_long_gap = (
+                session.gap_days is not None and session.gap_days > self.GAP_WARNING_DAYS
+            )
+            session.is_missing_content = (
+                not session.has_content
+                and session.status != SchoolSession.Status.CANCELED
+            )
+            previous = session
+
+        return sessions
+
+    # ------------------------------------------------------------------
+    # One session
+    # ------------------------------------------------------------------
+
+    def detail_sessions(self):
+        """What the session detail view may look its session up in."""
+
+        return self.scope.supervised_sessions().select_related(
+            "session_contents",
+            "class_subject__subject",
+            "class_subject__school_class__grade",
+            "class_subject__school_class__branch",
+            "class_subject__teacher_assignment__teacher__staff__user",
+        )
+
+    def attendance_summary(self, session):
+        """Attendance counts per status for ``session`` (one query)."""
+
+        return Attendance.objects.filter(session=session).aggregate(
+            total=Count("id"),
+            present=Count("id", filter=Q(status=Attendance.AttendanceStatus.PRESENT)),
+            absent=Count("id", filter=Q(status=Attendance.AttendanceStatus.ABSENT)),
+            late=Count("id", filter=Q(status=Attendance.AttendanceStatus.LATE)),
+        )
+
+
+class SupervisorTeachersSelector:
+    """
+    Data of the supervised teachers page.
+
+    A supervised teacher is a ``TeacherProfile`` with at least one active
+    class subject in the supervisor's (active) classes in the selected
+    academic year. Their session statistics only count those class
+    subjects -- what the teacher does in other classes is not this
+    supervisor's business.
+    """
+
+    PAGE_SIZE = 12
+
+    #: A teacher whose last recorded session is older than this (in the
+    #: current academic year) is highlighted.
+    INACTIVITY_WARNING_DAYS = getattr(settings, "SUPERVISOR_INACTIVITY_WARNING_DAYS", 7)
+
+    SORT_FIELDS = {
+        "name": ("staff__user__last_name", "staff__user__first_name"),
+        "sessions": ("session_count",),
+        "last_activity": ("last_session_date",),
+    }
+    DEFAULT_SORT = "name"
+
+    def __init__(self, supervisor, today=None):
+        self.supervisor = supervisor
+        self.scope = SupervisorScope(supervisor)
+        self.today = today or timezone.localdate()
+
+    def academic_years(self):
+        return self.scope.academic_years()
+
+    def subject_options(self, year):
+        return Subject.objects.filter(
+            pk__in=self.scope.supervised_class_subjects(year).values("subject")
+        ).order_by("name", "pk")
+
+    def _class_subjects(self, year, subject=None):
+        queryset = self.scope.supervised_class_subjects(year)
+        if subject is not None:
+            queryset = queryset.filter(subject=subject)
+        return queryset
+
+    def teachers(self, year, subject=None, search="", sort=""):
+        """
+        The supervised teachers, with ``session_count``, ``empty_count``
+        and ``last_session_date`` over their in-scope class subjects.
+
+        The scope is applied in a single ``filter()`` *before* the
+        ``annotate()``, so the aggregates run over exactly the class
+        subjects that filter joined (Django reuses that join) -- not over
+        every class the teacher has.
+        """
+
+        teachers = TeacherProfile.objects.filter(
+            assignments__class_subjects__in=self._class_subjects(year, subject),
+        )
+
+        for word in search.split():
+            teachers = teachers.filter(
+                Q(staff__user__first_name__icontains=word)
+                | Q(staff__user__last_name__icontains=word)
+                | Q(staff__personnel_code__icontains=word)
+            )
+
+        sessions = "assignments__class_subjects__sessions"
+
+        return (
+            teachers.select_related("staff__user")
+            .annotate(
+                session_count=Count(sessions),
+                empty_count=Count(sessions, filter=_no_content_q(f"{sessions}__")),
+                last_session_date=Max(f"{sessions}__date"),
+            )
+            .order_by(*_ordering(sort, self.SORT_FIELDS, self.DEFAULT_SORT))
+        )
+
+    def decorate(self, teachers, year, subject=None):
+        """
+        ``teachers`` (a page of :meth:`teachers`) as a list, each with
+        ``subject_chips`` / ``class_chips`` (what they teach in scope),
+        ``days_since_last_session`` and ``is_inactive``. One query.
+        """
+
+        teachers = list(teachers)
+        if not teachers:
+            return teachers
+
+        subjects = defaultdict(dict)
+        classes = defaultdict(dict)
+
+        rows = (
+            self._class_subjects(year, subject)
+            .filter(teacher_assignment__teacher__in=[t.pk for t in teachers])
+            .order_by("subject__name", "school_class__grade__level", "school_class__section")
+            .values_list(
+                "teacher_assignment__teacher_id",
+                "subject_id",
+                "subject__name",
+                "school_class_id",
+                "school_class__grade__name",
+                "school_class__section",
+            )
+        )
+        for teacher_id, subject_id, subject_name, class_id, grade_name, section in rows:
+            subjects[teacher_id][subject_id] = subject_name
+            classes[teacher_id][class_id] = f"{grade_name} {section}"
+
+        today = jdatetime.date.fromgregorian(date=self.today)
+        is_current_year = bool(year and year.is_current)
+
+        for teacher in teachers:
+            teacher.subject_chips = list(subjects[teacher.pk].values())
+            teacher.class_chips = list(classes[teacher.pk].values())
+
+            last = teacher.last_session_date
+            teacher.days_since_last_session = (today - last).days if last else None
+            # "Inactive" only means something for the year in progress.
+            teacher.is_inactive = is_current_year and (
+                last is None
+                or teacher.days_since_last_session > self.INACTIVITY_WARNING_DAYS
+            )
+
+        return teachers

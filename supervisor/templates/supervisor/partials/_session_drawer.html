@@ -1,0 +1,34 @@
+{% comment %}
+  The (initially empty) drawer session details are loaded into -- see
+  supervisor/js/session_drawer.js. It opens from the left (the end side
+  in RTL). Without JS it is never shown: the links it intercepts lead to
+  the full session detail page.
+{% endcomment %}
+<div class="sv-drawer" id="sessionDrawer" hidden>
+  <div class="sv-drawer__backdrop" data-drawer-close></div>
+  <div class="sv-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="sessionDrawerTitle" tabindex="-1">
+    <div class="sv-drawer__header">
+      <h2 id="sessionDrawerTitle">جزئیات جلسه</h2>
+      <a class="link-action" href="#" data-drawer-full-page>صفحه‌ی کامل</a>
+      <button type="button" class="modal__close" data-drawer-close aria-label="بستن">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="sv-drawer__body" data-drawer-body aria-live="polite"></div>
+  </div>
+</div>
+
+{# Loading / error states the scripts copy into a drawer or an expanded row. #}
+<template id="svLoadingTemplate">
+  <div class="sv-loading" role="status">
+    <span class="sv-spinner" aria-hidden="true"></span>
+    <span>در حال بارگذاری...</span>
+  </div>
+</template>
+<template id="svErrorTemplate">
+  <div class="sv-load-error" role="alert">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+    <span>بارگذاری انجام نشد. اتصال اینترنت را بررسی کنید.</span>
+    <button type="button" class="btn btn--outline btn--small" data-retry>تلاش دوباره</button>
+  </div>
+</template>

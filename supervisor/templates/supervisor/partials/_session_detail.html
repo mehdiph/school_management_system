@@ -1,0 +1,60 @@
+{% load report_tags jalali_tags %}
+{% comment %}
+  Everything recorded for one session: rendered in the drawer
+  (?partial=1) and inside the full session detail page.
+  Context: session, content (SessionContent or None), attendance.
+{% endcomment %}
+{% with class_subject=session.class_subject %}
+<article class="sv-detail">
+  <header class="sv-detail__header">
+    <p class="sv-detail__eyebrow">
+      {{ class_subject.subject.name }} · {{ class_subject.school_class.grade.name }} {{ class_subject.school_class.section }}
+      · {{ class_subject.teacher_assignment.teacher.staff.user.get_full_name }}
+    </p>
+    <h3 class="sv-detail__title">{% if content %}{{ content.title }}{% else %}جلسه‌ی {{ session.session_number|to_persian }}{% endif %}</h3>
+    <dl class="sv-detail__meta">
+      <div><dt>شماره‌ی جلسه</dt><dd>{{ session.session_number|to_persian }}</dd></div>
+      <div><dt>تاریخ</dt><dd>{{ session.date|jalali_date:"weekday" }}</dd></div>
+      <div><dt>وضعیت</dt><dd>{% include "supervisor/partials/_session_status_badge.html" %}</dd></div>
+    </dl>
+  </header>
+
+  {% if content %}
+    <section class="sv-detail__section">
+      <h4>مطالب تدریس‌شده</h4>
+      <p>{{ content.content|linebreaksbr }}</p>
+    </section>
+    <section class="sv-detail__section">
+      <h4>تکالیف منزل</h4>
+      {% if content.homework %}<p>{{ content.homework|linebreaksbr }}</p>{% else %}<p class="sv-detail__empty">ثبت نشده</p>{% endif %}
+    </section>
+    <section class="sv-detail__section">
+      <h4>فعالیت‌های کلاسی</h4>
+      {% if content.activity %}<p>{{ content.activity|linebreaksbr }}</p>{% else %}<p class="sv-detail__empty">ثبت نشده</p>{% endif %}
+    </section>
+    <section class="sv-detail__section">
+      <h4>یادداشت‌ها</h4>
+      {% if content.notes %}<p>{{ content.notes|linebreaksbr }}</p>{% else %}<p class="sv-detail__empty">ثبت نشده</p>{% endif %}
+    </section>
+  {% else %}
+    <p class="sv-tl-item__missing">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+      <span>محتوایی برای این جلسه ثبت نشده است.</span>
+    </p>
+  {% endif %}
+
+  <section class="sv-detail__section">
+    <h4>حضور و غیاب</h4>
+    {% if attendance.total %}
+      <ul class="sv-attendance">
+        <li><span class="badge badge--gray">کل</span> {{ attendance.total|to_persian }} نفر</li>
+        <li><span class="badge badge--success">حاضر</span> {{ attendance.present|to_persian }} نفر</li>
+        <li><span class="badge badge--danger">غایب</span> {{ attendance.absent|to_persian }} نفر</li>
+        <li><span class="badge badge--warning">تأخیر</span> {{ attendance.late|to_persian }} نفر</li>
+      </ul>
+    {% else %}
+      <p class="sv-detail__empty">برای این جلسه حضور و غیابی ثبت نشده است.</p>
+    {% endif %}
+  </section>
+</article>
+{% endwith %}

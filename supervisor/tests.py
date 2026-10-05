@@ -631,10 +631,14 @@ class SupervisorDashboardViewTests(TestCase):
         self.supervisor = make_supervisor(self.branch, self.grade)
         self.url = reverse("supervisor:dashboard")
 
-    def test_anonymous_user_is_rejected(self):
+    def test_anonymous_user_is_sent_to_login(self):
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={self.url}",
+            fetch_redirect_response=False,
+        )
 
     def test_non_supervisor_user_is_rejected(self):
         teacher_user = make_user(User.Roles.TEACHER)
@@ -721,10 +725,14 @@ class SupervisorAttentionListViewTests(TestCase):
         with patch("supervisor.selectors.timezone.now", return_value=frozen_now):
             return self.client.get(self.url, query)
 
-    def test_anonymous_user_is_rejected(self):
+    def test_anonymous_user_is_sent_to_login(self):
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={self.url}",
+            fetch_redirect_response=False,
+        )
 
     def test_non_supervisor_user_is_rejected(self):
         teacher_user = make_user(User.Roles.TEACHER)
@@ -815,10 +823,14 @@ class SupervisorAttendanceViewTests(TestCase):
     # Access control
     # ------------------------------------------------------------------
 
-    def test_anonymous_user_is_rejected(self):
+    def test_anonymous_user_is_sent_to_login(self):
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={self.url}",
+            fetch_redirect_response=False,
+        )
 
     def test_non_supervisor_user_is_rejected(self):
         teacher_user = make_user(User.Roles.TEACHER)

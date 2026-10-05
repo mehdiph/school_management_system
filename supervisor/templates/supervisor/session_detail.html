@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static report_tags %}
+
+{% block title %}جزئیات جلسه | سامانه مدیریت مدرسه{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/panel.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/sessions.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+  {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>جزئیات جلسه</h1>
+    <p>جلسه‌ی {{ session.session_number|to_persian }} درس {{ session.class_subject.subject.name }}</p>
+  </div>
+  <a class="btn btn--outline btn--small" href="{% url 'supervisor:class_subject_timeline' session.class_subject_id %}">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+    <span>همه‌ی جلسات این درس</span>
+  </a>
+</header>
+
+<section class="sv-card sv-card--narrow">
+  {% include "supervisor/partials/_session_detail.html" %}
+</section>
+
+</div>
+{% endblock %}

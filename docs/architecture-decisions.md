@@ -354,6 +354,35 @@ Benefits:
 
 ---
 
+# ADR-014: Supervisor Data Is Scoped Through SupervisorScope
+
+## Decision
+
+Every supervisor query starts from `SupervisorScope` (`supervisor/selectors.py`): the classes assigned through `SupervisorClass` in the supervisor's branch and grade. The training sessions and supervised teachers pages use `supervised_class_subjects()`, the active class subjects of active classes.
+
+## Rationale
+
+* One place defines what a supervisor may see, so a view or template cannot bypass it.
+* Filters only narrow an already scoped queryset; user input never widens it.
+* Detail and fragment views use `get_object_or_404` on the scoped queryset, so records outside the scope are a 404 and their existence is not leaked.
+* Filter options come from the same scope, so a foreign id is just an invalid choice.
+
+---
+
+# ADR-015: HTML Fragments for Progressive Enhancement
+
+## Decision
+
+Panels stay server-rendered (MVT). When JavaScript needs to load content (an expanded timeline row, the session drawer), it fetches the same URL with `?partial=1` and the view renders only the fragment template; without the parameter the view renders a full page that includes that fragment.
+
+## Rationale
+
+* Rendering logic stays in Django templates; there is no JSON API or client-side templating to keep in sync.
+* Every enhanced link still works without JS, and can be opened in a new tab or shared.
+* A query parameter (rather than a request header) keeps full-page and fragment responses on different URLs, so caches never mix them up.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:
@@ -365,6 +394,7 @@ Planned modules:
 * Messaging System
 * Financial Management
 * School Analytics
+* Curriculum Plan (بودجه‌بندی): planned lessons per subject, grade and year, so supervisors can compare recorded sessions with the plan automatically (proposal in `docs/apps/supervisor.md`)
 
 Future development should follow the same principles:
 

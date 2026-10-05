@@ -1,0 +1,53 @@
+{% load report_tags %}
+{% comment %}
+  One supervised teacher as a card (supervisor/teachers.html, cards view).
+  Context: teacher (see SupervisorTeachersSelector.decorate),
+  sessions_query (year / subject for the "view sessions" link),
+  inactivity_warning_days.
+{% endcomment %}
+{% with user=teacher.staff.user %}
+<article class="sv-teacher{% if teacher.is_inactive %} is-inactive{% endif %}" aria-labelledby="teacher-{{ teacher.pk }}-name">
+  <header class="sv-teacher__head">
+    {% include "partials/avatar.html" with person=user size=48 decorative=True %}
+    <div class="sv-teacher__id">
+      <h3 id="teacher-{{ teacher.pk }}-name">{{ user.get_full_name|default:user.username }}</h3>
+      <p>
+        {% if teacher.staff.personnel_code %}کد پرسنلی {{ teacher.staff.personnel_code|to_persian }}{% endif %}
+        {% if teacher.field_of_study or teacher.education %}
+          <span class="sv-sub">{{ teacher.education|default:"" }}{% if teacher.education and teacher.field_of_study %} · {% endif %}{{ teacher.field_of_study|default:"" }}</span>
+        {% endif %}
+      </p>
+    </div>
+  </header>
+
+  <div class="sv-teacher__chips">
+    <ul class="sv-chips" aria-label="دروس">
+      {% for name in teacher.subject_chips %}<li class="sv-chip">{{ name }}</li>{% endfor %}
+    </ul>
+    <ul class="sv-chips sv-chips--classes" aria-label="کلاس‌ها">
+      {% for name in teacher.class_chips %}<li class="sv-chip sv-chip--muted">{{ name }}</li>{% endfor %}
+    </ul>
+  </div>
+
+  <dl class="sv-teacher__stats">
+    <div>
+      <dt>جلسات ثبت‌شده</dt>
+      <dd>{{ teacher.session_count|to_persian }}</dd>
+    </div>
+    <div>
+      <dt>بدون محتوا</dt>
+      <dd>{% if teacher.empty_count %}<span class="badge badge--warning">{{ teacher.empty_count|to_persian }}</span>{% else %}۰{% endif %}</dd>
+    </div>
+    <div class="sv-teacher__stat--wide">
+      <dt>آخرین جلسه</dt>
+      <dd>{% include "supervisor/partials/_teacher_activity.html" %}</dd>
+    </div>
+  </dl>
+
+  <a class="btn btn--outline btn--small sv-teacher__action" href="{% url 'supervisor:sessions' %}?teacher={{ teacher.pk }}{% if sessions_query %}&amp;{{ sessions_query }}{% endif %}">
+    <span>مشاهده‌ی جلسات</span>
+    <span class="visually-hidden">{{ user.get_full_name }}</span>
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+  </a>
+</article>
+{% endwith %}

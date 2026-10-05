@@ -31,6 +31,7 @@ Documents an individual class meeting occurrence.
 *   `HD`: Held ("برگزار شده") - *Default*
 
 *   **Ordering:** Ordered descending by date (`-date`) and session number (`-session_number`).
+*   **Indexes:** `school_session_cs_date_idx` on `(class_subject, date)`, for the supervisor pages' per-class-subject date-range reads (migration `0003`).
 *   **String Representation:** Returns `"{class_subject} - جلسه {session_number}"`.
 
 ---

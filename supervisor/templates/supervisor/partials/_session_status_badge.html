@@ -1,0 +1,22 @@
+{% comment %}
+  A SchoolSession status as a badge: colour + icon + text, so it never
+  relies on colour alone.
+
+    {% include "supervisor/partials/_session_status_badge.html" with session=session %}
+{% endcomment %}
+{% if session.status == "HD" %}
+  <span class="badge badge--success">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+    {{ session.get_status_display }}
+  </span>
+{% elif session.status == "CD" %}
+  <span class="badge badge--danger">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+    {{ session.get_status_display }}
+  </span>
+{% else %}
+  <span class="badge badge--info">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.36"></path><path d="M21 4v5h-5"></path></svg>
+    {{ session.get_status_display }}
+  </span>
+{% endif %}

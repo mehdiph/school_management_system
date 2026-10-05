@@ -1,0 +1,17 @@
+{% load report_tags jalali_tags supervisor_tags %}
+{% comment %}
+  A teacher's last recorded session as relative time, flagged (colour +
+  icon + text) when SupervisorTeachersSelector marked them inactive.
+{% endcomment %}
+<span class="sv-activity{% if teacher.is_inactive %} sv-activity--stale{% endif %}"
+      {% if teacher.last_session_date %}title="{{ teacher.last_session_date|jalali_date }}"{% endif %}>
+  {% if teacher.is_inactive %}
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+  {% endif %}
+  {% if teacher.last_session_date %}
+    {{ teacher.days_since_last_session|relative_days }}
+  {% else %}
+    هنوز جلسه‌ای ثبت نشده
+  {% endif %}
+  {% if teacher.is_inactive %}<span class="visually-hidden">(بیش از {{ inactivity_warning_days|to_persian }} روز بدون ثبت جلسه)</span>{% endif %}
+</span>

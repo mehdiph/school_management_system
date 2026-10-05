@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% load static report_tags jalali_tags %}
+
+{% block title %}جلسات آموزشی | سامانه مدیریت مدرسه{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'teaching/js/datepicker/package/dist/css/persian-datepicker.min.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/attendance.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/panel.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/sessions.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+  {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>جلسات آموزشی</h1>
+    <p>جلسات ثبت‌شده‌ی هر معلم در هر درس و کلاس، برای مقایسه با بودجه‌بندی</p>
+  </div>
+</header>
+
+<!-- Filters: a plain GET form, so the URL is the shareable state -->
+<form method="get" action="{% url 'supervisor:sessions' %}" class="sv-filters" id="sessionFilters" role="search" aria-label="فیلتر جلسات" novalidate>
+  {% if form.errors %}
+  <div class="sv-filters__errors" role="alert">
+    <strong>برخی فیلترها اعمال نشدند:</strong>
+    <ul>
+      {% for field in form %}{% for error in field.errors %}
+      <li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ error }}</a></li>
+      {% endfor %}{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="sv-filters__grid">
+    {% include "supervisor/partials/_filter_field.html" with field=form.academic_year %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.teacher %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.subject %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.school_class %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.date_from %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.date_to %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.status %}
+  </div>
+
+  <div class="sv-filters__footer">
+    <div class="sv-shortcuts" role="group" aria-label="بازه‌های آماده">
+      {% for key, label in range_choices %}
+        <a class="status-pill{% if form.active_range == key %} is-active{% endif %}"
+           href="{% querystring range=key date_from=None date_to=None page=None %}"
+           {% if form.active_range == key %}aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </div>
+    <div class="sv-filters__actions">
+      <input type="hidden" name="sort" value="{{ filters.sort }}">
+      <button type="submit" class="btn btn--primary btn--small">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z"></path></svg>
+        <span>اعمال فیلتر</span>
+      </button>
+      <a href="{% url 'supervisor:sessions' %}" class="link-action">حذف فیلترها</a>
+    </div>
+  </div>
+</form>
+
+<!-- KPIs (for the current filters) -->
+<section class="summary-cards summary-cards--four" aria-label="خلاصه‌ی جلسات">
+  <article class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11.5 11 13.5 15.5 9"></path><rect x="3" y="4" width="18" height="16" rx="2"></rect></svg>
+    </div>
+    <div class="stat-card__body">
+      <span class="stat-card__title">جلسات ثبت‌شده</span>
+      <span class="stat-card__value">{{ kpis.session_count|to_persian }}</span>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"></path><circle cx="9.5" cy="8" r="3.5"></circle><path d="M19 20v-1.5a3.5 3.5 0 0 0-2.5-3.36"></path><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8"></path></svg>
+    </div>
+    <div class="stat-card__body">
+      <span class="stat-card__title">معلمان</span>
+      <span class="stat-card__value">{{ kpis.teacher_count|to_persian }}</span>
+    </div>
+  </article>
+
+  <article class="stat-card{% if kpis.empty_count %} stat-card--alert{% endif %}">
+    <div class="stat-card__icon stat-card__icon--warning">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+    </div>
+    <div class="stat-card__body">
+      <span class="stat-card__title">جلسات بدون محتوا</span>
+      <span class="stat-card__value">{{ kpis.empty_count|to_persian }}</span>
+      <span class="stat-card__desc">به‌جز جلسات کنسل‌شده</span>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-card__icon stat-card__icon--success">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9.5h18"></path><path d="M8 3v3M16 3v3"></path></svg>
+    </div>
+    <div class="stat-card__body">
+      <span class="stat-card__title">آخرین جلسه‌ی ثبت‌شده</span>
+      <span class="stat-card__value stat-card__value--text">{{ kpis.last_date|jalali_date|default:"—" }}</span>
+    </div>
+  </article>
+</section>
+
+<!-- Summary: one row per teacher x subject x class -->
+<section class="sv-card" aria-labelledby="summaryTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="summaryTitle">به تفکیک معلم، درس و کلاس</h2>
+      <p>{{ page_obj.paginator.count|to_persian }} درس · برای دیدن جلسات هر درس به ترتیب، دکمه‌ی «جلسات» را بزنید</p>
+    </div>
+  </div>
+
+  {% if rows %}
+  <div class="sv-table-wrap">
+    <table class="sv-table sv-summary" id="summaryTable">
+      <thead>
+        <tr>
+          {% for column in columns %}
+          <th scope="col"{% if column.state %} aria-sort="{{ column.state }}"{% endif %}>
+            <a class="sv-sort{% if column.state %} is-active{% endif %}" href="{% querystring sort=column.next page=None %}">
+              <span>{{ column.label }}</span>
+              {% if column.state == "ascending" %}
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
+                <span class="visually-hidden">(صعودی)</span>
+              {% elif column.state == "descending" %}
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                <span class="visually-hidden">(نزولی)</span>
+              {% else %}
+                <svg class="sv-sort__idle" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+              {% endif %}
+            </a>
+          </th>
+          {% endfor %}
+          <th scope="col">
+            <span class="sv-th-help" title="جلسات برگزارشده یا جبرانی در برابر جلسات برنامه‌ی هفتگی تا امروز (تعطیلات در نظر گرفته نشده است)">پیشرفت نسبت به برنامه</span>
+          </th>
+          <th scope="col"><span class="visually-hidden">جلسات</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% with user=row.teacher_assignment.teacher.staff.user school_class=row.school_class %}
+        <tr class="sv-row">
+          <td data-label="معلم">
+            <span class="sv-person">
+              {% include "partials/avatar.html" with person=user size=32 decorative=True %}
+              <span>{{ user.get_full_name|default:user.username }}</span>
+            </span>
+          </td>
+          <td data-label="درس">{{ row.subject.name }}</td>
+          <td data-label="کلاس">
+            {{ school_class.grade.name }} {{ school_class.section }}
+            <span class="sv-sub">{{ school_class.branch.name }}</span>
+          </td>
+          <td data-label="جلسات ثبت‌شده" class="sv-num">
+            {% if row.session_count %}{{ row.session_count|to_persian }}{% else %}<span class="badge badge--danger">بدون جلسه</span>{% endif %}
+          </td>
+          <td data-label="بدون محتوا" class="sv-num">
+            {% if row.empty_count %}
+              <span class="badge badge--warning">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+                {{ row.empty_count|to_persian }}
+              </span>
+            {% else %}
+              <span class="sv-muted">۰</span>
+            {% endif %}
+          </td>
+          <td data-label="اولین جلسه">{{ row.first_date|jalali_date|default:"—" }}</td>
+          <td data-label="آخرین جلسه">{{ row.last_date|jalali_date|default:"—" }}</td>
+          <td data-label="پیشرفت نسبت به برنامه">
+            {% if row.expected_count is None %}
+              <span class="sv-muted">برنامه‌ی هفتگی ندارد</span>
+            {% elif not row.expected_count %}
+              <span class="sv-muted">هنوز جلسه‌ای در برنامه نبوده</span>
+            {% else %}
+              <span class="sv-coverage sv-coverage--{{ row.coverage_level }}">
+                <span class="sv-coverage__text">
+                  {% if row.coverage_level == "low" %}<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>{% endif %}
+                  {{ row.delivered_count|to_persian }} از {{ row.expected_count|to_persian }} · {{ row.coverage|to_persian }}٪
+                </span>
+                <span class="sv-coverage__bar" aria-hidden="true"><span style="width: {{ row.coverage_bar }}%"></span></span>
+              </span>
+            {% endif %}
+          </td>
+          <td class="sv-row__action">
+            <a class="btn btn--outline btn--small sv-row__toggle"
+               href="{% url 'supervisor:class_subject_timeline' row.pk %}{% if period_query %}?{{ period_query }}{% endif %}"
+               data-timeline-toggle
+               aria-controls="timeline-{{ row.pk }}"
+               aria-expanded="false">
+              <span>جلسات</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+            </a>
+          </td>
+        </tr>
+        <tr class="sv-timeline-row" id="timeline-{{ row.pk }}" hidden>
+          <td colspan="{{ columns|length|add:2 }}">
+            <div class="sv-timeline-host" data-timeline-host aria-live="polite"></div>
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "supervisor/partials/_pagination.html" with label="صفحه‌بندی دروس" %}
+
+  {% elif not form.has_classes %}
+    <div class="empty-state">
+      <p>هنوز کلاسی{% if filters.academic_year %} در سال تحصیلی {{ filters.academic_year.title|fa_digits }}{% endif %} به شما واگذار نشده است.</p>
+      <p class="sv-muted">پس از واگذاری کلاس توسط مدیر، جلسات معلمان آن کلاس‌ها اینجا نمایش داده می‌شود.</p>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p>با این فیلترها درسی پیدا نشد.</p>
+      <a href="{% url 'supervisor:sessions' %}" class="link-action">حذف فیلترها</a>
+    </div>
+  {% endif %}
+</section>
+
+<p class="sv-footnote">
+  فاصله‌ی بیش از {{ gap_warning_days|to_persian }} روز بین دو جلسه‌ی پیاپی در خط زمانی علامت‌گذاری می‌شود.
+  «پیشرفت نسبت به برنامه» از روی برنامه‌ی هفتگی محاسبه می‌شود و تعطیلات را در نظر نمی‌گیرد.
+</p>
+
+</div>
+
+{% include "supervisor/partials/_session_drawer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'teaching/js/datepicker/persian-date.min.js' %}"></script>
+<script src="{% static 'teaching/js/datepicker/package/dist/js/persian-datepicker.min.js' %}"></script>
+<script src="{% static 'supervisor/js/session_drawer.js' %}"></script>
+<script src="{% static 'supervisor/js/sessions.js' %}"></script>
+{% endblock %}

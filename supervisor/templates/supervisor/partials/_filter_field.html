@@ -1,0 +1,13 @@
+{% comment %}
+  One labelled field of a supervisor filter bar (supervisor/css/panel.css).
+
+    {% include "supervisor/partials/_filter_field.html" with field=form.teacher %}
+
+  Django marks a field with errors aria-invalid and points its
+  aria-describedby at the error list rendered here.
+{% endcomment %}
+<div class="sv-field{% if field.errors %} has-error{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {{ field }}
+  {{ field.errors }}
+</div>

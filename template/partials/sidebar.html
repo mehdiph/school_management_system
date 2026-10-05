@@ -76,11 +76,11 @@
         <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
         <span>داشبورد</span>
       </a>
-      <a href="#" class="sidebar-nav__item">
+      <a href="{% url 'supervisor:teachers' %}" class="sidebar-nav__item{% if request.resolver_match.url_name == 'teachers' and request.resolver_match.app_name == 'supervisor' %} is-active{% endif %}">
         <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"></path><circle cx="9.5" cy="8" r="3.5"></circle><path d="M19 20v-1.5a3.5 3.5 0 0 0-2.5-3.36"></path><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8"></path></svg>
         <span>معلمان من</span>
       </a>
-      <a href="#" class="sidebar-nav__item">
+      <a href="{% url 'supervisor:sessions' %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'supervisor' and 'supervisor/sessions/' in request.resolver_match.route %} is-active{% endif %}">
         <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 3.2"></path></svg>
         <span>جلسات آموزشی</span>
       </a>

@@ -321,6 +321,11 @@ Stores each conducted class session.
 * Belongs to one ClassSubject.
 * Has one SessionContent.
 
+### Constraints and Indexes
+
+* `session_number` is unique per ClassSubject.
+* Index `school_session_cs_date_idx` on `(class_subject, date)`: the supervisor pages read one ClassSubject's sessions in a date range and its first/last session date, which the unique constraint (`class_subject, session_number`) does not cover.
+
 ---
 
 ## SessionContent
@@ -369,6 +374,37 @@ Extends User with educational data.
 
 * One-to-One with User.
 * Belongs to one SchoolClass.
+
+---
+
+# Supervision
+
+## SupervisorProfile
+
+Represents a supervisor (پشتیبان).
+
+### Key Fields
+
+| Field  | Description                          |
+| ------ | ------------------------------------ |
+| user   | One-to-one with User                 |
+| branch | Branch the supervisor works in       |
+| grade  | Grade the supervisor oversees        |
+
+## SupervisorClass
+
+Assigns a SchoolClass to a supervisor.
+
+### Rules
+
+* Unique per supervisor and class.
+* The class must belong to the supervisor's grade and branch.
+
+### Relationships
+
+* Belongs to one SupervisorProfile.
+* Belongs to one SchoolClass.
+* Defines everything a supervisor may see (see `docs/apps/supervisor.md`).
 
 ---
 

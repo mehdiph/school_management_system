@@ -29,10 +29,11 @@ The project focuses on providing a centralized platform for teachers, supervisor
 
 ## Supervisor Portal
 
-* Monitor teaching activities
-* Review recorded sessions
-* Track class progress
-* Generate educational reports
+* Dashboard of the supervised classes and a "needs attention" list
+* Per-class attendance review
+* Training sessions: sessions recorded per teacher, subject and class, with filters, KPIs, progress against the weekly timetable, a session timeline and session details
+* Supervised teachers: each teacher's subjects, classes and session-recording activity, as cards or a table
+* Everything is limited to the classes assigned to the supervisor
 
 ## Scheduling System
 
@@ -141,6 +142,15 @@ Responsible for:
 * Student dashboard
 * Academic information
 
+## Supervisor
+
+Responsible for:
+
+* Supervisor profiles and their assigned classes
+* Supervisor dashboard and attendance review
+* Training sessions and supervised teachers pages
+* Scoping every supervisor query to the assigned classes
+
 ---
 
 # Technology Stack
@@ -168,6 +178,7 @@ Implemented modules:
 * Teaching Reports
 * Scheduling System
 * Student Dashboard
+* Supervisor Panel
 
 Planned modules:
 

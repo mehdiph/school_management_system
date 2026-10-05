@@ -111,3 +111,38 @@ def get_today_schedule_day(current_date=None):
     if day in ClassSchedule.DayChoices.values:
         return ClassSchedule.DayChoices(day)
     return None
+
+
+def count_scheduled_occurrences(slots, start, end, academic_year):
+    """
+    How many times the weekly ``slots`` take place from ``start`` to ``end``
+    (both inclusive; Gregorian or Jalali dates) in ``academic_year``.
+
+    ``slots`` are ``(day_of_week, week_type)`` pairs, as stored on
+    ``ClassSchedule``. Each day is matched against the two-week rotation
+    (``get_week_cycle``); days before the year's ``start_date`` count for
+    nothing. There is no holiday calendar, so holidays are counted too.
+    """
+
+    if not slots:
+        return 0
+
+    start = max(_to_gregorian(start), _to_gregorian(academic_year.start_date))
+    end = _to_gregorian(end)
+
+    both = ClassSchedule.WeekTypeChoices.BOTH
+    days = {day for day, _ in slots}
+    count = 0
+    day = start
+
+    while day <= end:
+        weekday = persian_weekday(day)
+        if weekday in days:
+            cycle = get_week_cycle(day, academic_year)
+            count += sum(
+                1 for slot_day, week_type in slots
+                if slot_day == weekday and week_type in (cycle, both)
+            )
+        day += timedelta(days=1)
+
+    return count

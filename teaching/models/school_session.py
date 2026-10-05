@@ -56,6 +56,16 @@ class SchoolSession(models.Model):
             )
         ]
 
+        indexes = [
+            # The supervisor pages read one class subject's sessions in a
+            # date range (and its first/last date); the unique constraint
+            # above only covers (class_subject, session_number).
+            models.Index(
+                fields=["class_subject", "date"],
+                name="school_session_cs_date_idx",
+            )
+        ]
+
     def clean(self):
         super().clean()
 

@@ -1,5 +1,6 @@
 from functools import wraps
 
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 
 from core.services import access
@@ -8,11 +9,16 @@ from .models import SupervisorProfile
 
 
 def require_supervisor(view_func):
+    """
+    For supervisor-panel pages: logged-out users go to the login page
+    (like ``teacher_required`` / ``student_required``), anyone else who is
+    not a supervisor of the selected branch gets 403, and the view gets
+    ``request.supervisor``.
+    """
+
+    @login_required
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-
-        if not request.user.is_authenticated:
-            raise PermissionDenied
 
         try:
             supervisor = request.user.supervisor_profile
