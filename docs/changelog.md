@@ -34,6 +34,10 @@
 - Supervised teachers page (معلمان من): cards or table, search, subject / year filters, sorting, session statistics and an inactivity marker, linking to the teacher's sessions
 - Database index on `SchoolSession(class_subject, date)`
 
+## Fixed
+
+- The attendance page (`/attendance/<session id>/`) required no login and no ownership: it now needs a login and is limited to the session's teacher, a supervisor of its class, a superuser, or a staff admin with `attendance.change_attendance` on the class's branch (`attendance/permissions.py`); anyone else gets 404
+
 ## Changed
 
 - Supervisor pages redirect logged-out users to the login page instead of returning 403

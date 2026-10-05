@@ -1,13 +1,28 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from teaching.models.school_session import SchoolSession
 from student.models.student_profile import StudentProfile
 from student.models.student_enrollment import StudentEnrollment
 from .models import Attendance
+from .permissions import can_manage_attendance, is_session_teacher
 
+
+@login_required
 def manage_attendance(request, session_id):
     # دریافت جلسه مربوطه
-    session = get_object_or_404(SchoolSession, pk=session_id)
+    session = get_object_or_404(
+        SchoolSession.objects.select_related(
+            'class_subject__school_class',
+            'class_subject__teacher_assignment',
+        ),
+        pk=session_id,
+    )
+    # Same answer as for a session that does not exist, like the teacher's
+    # own session pages: nobody learns which session ids are in use.
+    if not can_manage_attendance(request.user, session, request=request):
+        raise Http404
 
     # دریافت لیست دانش‌آموزان کلاس جلسه (مرتب بر اساس نام خانوادگی، طبق Meta.ordering)
     students = (
@@ -35,7 +50,10 @@ def manage_attendance(request, session_id):
                 )
 
         messages.success(request, "حضور و غیاب با موفقیت ثبت شد.")
-        return redirect('teaching:session_list', session.class_subject.id)  # نام روت بعدی خود را وارد کنید
+        if is_session_teacher(request.user, session):
+            return redirect('teaching:session_list', session.class_subject.id)
+        # supervisors and admins have no teacher session list: stay here
+        return redirect('attendance:attendance_form', session.id)
 
     # در درخواست GET: دریافت وضعیت‌های ثبت‌شده قبلی برای این جلسه
     existing_attendances = Attendance.objects.filter(session=session).values('student_enrollment', 'status', 'description')

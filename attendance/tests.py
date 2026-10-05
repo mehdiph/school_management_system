@@ -11,17 +11,23 @@ from django.urls import reverse
 
 from attendance.models import Attendance
 from core.testing import (
+    grant_all_model_permissions,
     make_academic_year,
     make_assignment,
     make_branch,
+    make_branch_access,
     make_class_subject,
     make_enrollment,
     make_grade,
     make_school_class,
+    make_staff,
     make_student,
     make_subject,
+    make_superuser,
+    make_supervisor,
     make_teacher_profile,
 )
+from supervisor.models import SupervisorClass
 from teaching.models import SchoolSession
 
 
@@ -52,6 +58,7 @@ class AttendanceViewTestCase(TestCase):
 
         self.client.force_login(self.teacher.staff.user)
         self.url = reverse('attendance:attendance_form', args=[self.session.pk])
+        self.branch = branch
 
 
 class AttendancePageTests(AttendanceViewTestCase):
@@ -169,3 +176,76 @@ class AttendanceSubmitTests(AttendanceViewTestCase):
         self.post({f'status-{self.first.pk}': 'excused'})
 
         self.assertFalse(Attendance.objects.exists())
+
+
+class AttendanceAccessTests(AttendanceViewTestCase):
+    """Only the session's teacher, its class's supervisor or an admin of its branch."""
+
+    def post_absent(self):
+        return self.client.post(self.url, {f'status-{self.first.pk}': 'absent'})
+
+    def assert_denied(self):
+        self.assertEqual(self.client.get(self.url).status_code, 404)
+        self.assertEqual(self.post_absent().status_code, 404)
+        self.assertFalse(Attendance.objects.exists())
+
+    def test_logged_out_user_is_sent_to_login(self):
+        self.client.logout()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('accounts:login'), response['Location'])
+        self.post_absent()
+        self.assertFalse(Attendance.objects.exists())
+
+    def test_another_teacher_gets_404(self):
+        self.client.force_login(make_teacher_profile().staff.user)
+
+        self.assert_denied()
+
+    def test_student_gets_404(self):
+        self.client.force_login(self.first.student.user)
+
+        self.assert_denied()
+
+    def test_supervisor_of_the_class_may_save_and_stays_on_the_page(self):
+        supervisor = make_supervisor(self.branch, self.school_class.grade)
+        SupervisorClass.objects.create(supervisor=supervisor, school_class=self.school_class)
+        self.client.force_login(supervisor.user)
+
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+        response = self.post_absent()
+
+        self.assertRedirects(response, self.url, fetch_redirect_response=False)
+        self.assertTrue(Attendance.objects.filter(status='absent').exists())
+
+    def test_supervisor_of_another_class_gets_404(self):
+        supervisor = make_supervisor(self.branch, self.school_class.grade)
+        self.client.force_login(supervisor.user)
+
+        self.assert_denied()
+
+    def test_superuser_may_save(self):
+        self.client.force_login(make_superuser())
+
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+        self.post_absent()
+        self.assertTrue(Attendance.objects.exists())
+
+    def test_staff_admin_needs_the_permission_and_the_branch(self):
+        staff = make_staff(is_staff=True)
+        self.client.force_login(staff.user)
+        make_branch_access(staff, self.branch)
+        self.assert_denied()  # no permission yet
+
+        grant_all_model_permissions(staff.user)
+        self.assertEqual(self.client.get(self.url).status_code, 200)
+
+    def test_staff_admin_of_another_branch_gets_404(self):
+        staff = make_staff(is_staff=True)
+        grant_all_model_permissions(staff.user)
+        make_branch_access(staff, make_branch())
+        self.client.force_login(staff.user)
+
+        self.assert_denied()
