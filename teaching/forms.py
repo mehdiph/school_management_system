@@ -4,6 +4,7 @@ from django_jalali.admin.widgets import AdminjDateWidget
 from .models import SchoolSession, SessionContent
 from .services import slot_errors
 from scheduling.models.bell import Bell
+from scheduling.services import persian_digits
 from school.models import ClassSubject
 
 #: Fields whose change re-runs the slot rules (teaching.services) on edit.
@@ -145,8 +146,8 @@ class SchoolSessionForm(forms.ModelForm):
         self.fields["bell"].required = not (self.instance.pk and self.instance.bell_id is None)
         self.fields["bell"].queryset = Bell.objects.filter(is_active=True).order_by("order")
         self.fields["bell"].empty_label = "انتخاب زنگ"
-        self.fields["bell"].label_from_instance = (
-            lambda bell: f"{bell.title} ({bell.start_time:%H:%M}–{bell.end_time:%H:%M})"
+        self.fields["bell"].label_from_instance = lambda bell: persian_digits(
+            f"{bell.title} ({bell.start_time:%H:%M}–{bell.end_time:%H:%M})"
         )
         self.fields["status"].choices = [
             choice for choice in self.fields["status"].choices
@@ -182,8 +183,10 @@ class SchoolSessionForm(forms.ModelForm):
 
         queryset = self.fields["class_subject"].queryset
 
+        # holidays have no number: a class subject with only holidays
+        # must not get a NULL "last number"
         last_numbers = dict(
-            SchoolSession.objects
+            SchoolSession.objects.counted()
             .filter(class_subject__in=queryset.values("pk"))
             .values("class_subject")
             .annotate(last=Max("session_number"))
@@ -191,7 +194,7 @@ class SchoolSessionForm(forms.ModelForm):
         )
 
         return {
-            pk: last_numbers.get(pk, 0) + 1
+            pk: (last_numbers.get(pk) or 0) + 1
             for pk in queryset.values_list("pk", flat=True)
         }
 

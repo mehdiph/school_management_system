@@ -709,6 +709,13 @@ body.teacher-panel.is-scroll-locked {
     flex: 1;
 }
 
+/* e.g. «مشاهده‌ی جلسه‌ی ثبت‌شده» after an "already recorded" error */
+.ui-toast__text a {
+    color: var(--ui-accent-text);
+    font-weight: var(--ui-weight-bold);
+    text-decoration: underline;
+}
+
 .ui-toast--success { --ui-toast-accent: var(--ui-success); }
 .ui-toast--error { --ui-toast-accent: var(--ui-danger); }
 .ui-toast--warning { --ui-toast-accent: var(--ui-warning); }

@@ -174,6 +174,17 @@ class SchoolSessionFormTests(TestCase):
         self.assertEqual(numbers[first.pk], 3)
         self.assertEqual(numbers[second.pk], 1)
 
+    def test_next_session_number_ignores_holidays(self):
+        class_subject = make_class_subject_for(make_teacher_profile())
+        event = make_calendar_event(class_subject.school_class.year, jdatetime.date(1403, 8, 1))
+        # only a holiday so far: its NULL number must not break the form
+        SchoolSession.objects.create(
+            class_subject=class_subject, date=jdatetime.date(1403, 8, 1), bell=slot_bell(),
+            status=SchoolSession.Status.HOLIDAY, calendar_event=event, is_auto_created=True,
+        )
+
+        self.assertEqual(SchoolSessionForm().next_session_numbers()[class_subject.pk], 1)
+
 
 # ----------------------------------------------------------------------
 # Views

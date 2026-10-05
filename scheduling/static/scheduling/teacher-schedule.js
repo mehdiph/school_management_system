@@ -95,11 +95,16 @@
         }
         item.appendChild(text);
 
+        // Same markup as the server-rendered toasts (teacher/base.html).
+        var icon = level === "error" ? "i-alert" : "i-info";
+        item.insertAdjacentHTML("afterbegin",
+            '<svg class="ui-icon" aria-hidden="true"><use href="#' + icon + '"></use></svg>');
+
         var close = document.createElement("button");
         close.type = "button";
         close.className = "ui-icon-btn ui-toast__close";
         close.setAttribute("aria-label", "بستن پیام");
-        close.textContent = "×";
+        close.innerHTML = '<svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-x"></use></svg>';
         item.appendChild(close);
 
         function dismiss() {
