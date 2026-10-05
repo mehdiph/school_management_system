@@ -24,6 +24,7 @@ from teaching.models import SchoolSession
 #: Everything a report row needs from a session, joined in one query.
 SESSION_RELATED = (
     "session_contents",
+    "calendar_event",
     "class_subject__subject",
     "class_subject__teacher_assignment__teacher__staff__user",
 )
@@ -151,7 +152,20 @@ class ReportScope:
 # Report builders
 # ----------------------------------------------------------------------
 
+#: How a holiday (closed by the academic calendar) reads in a report:
+#: no number, the event as the reason; it is never counted.
+HOLIDAY_NUMBER = "تعطیل"
+
+
+def _holiday_summary(session):
+    title = session.calendar_event.title if session.calendar_event_id else ""
+    return f"تعطیل: {title}" if title else "تعطیل"
+
+
 def _content_summary(session, limit=None):
+    if session.status == SchoolSession.Status.HOLIDAY:
+        return _holiday_summary(session)
+
     content = getattr(session, "session_contents", None)
 
     if content is None:
@@ -183,8 +197,8 @@ def build_class_report(scope, school_class):
                 "sessions",
                 queryset=(
                     SchoolSession.objects
-                    .select_related("session_contents")
-                    .order_by("date", "session_number")
+                    .select_related("session_contents", "calendar_event")
+                    .order_by("date", "bell__order", "session_number")
                 ),
             )
         )
@@ -202,10 +216,14 @@ def build_class_report(scope, school_class):
         counted = [s for s in sessions if s.status != SchoolSession.Status.HOLIDAY]
         session_list = [
             {
-                "number": session.session_number,
+                "number": (
+                    HOLIDAY_NUMBER if session.status == SchoolSession.Status.HOLIDAY
+                    else session.session_number
+                ),
                 "date": session.date,
                 "content": _content_summary(session),
                 "status": session.status,
+                "is_holiday": session.status == SchoolSession.Status.HOLIDAY,
             }
             for session in sessions
         ]
@@ -272,7 +290,7 @@ def build_grade_report(scope, year, grade=None):
             )
         )
         .select_related(*SESSION_RELATED)
-        .order_by("date", "session_number")
+        .order_by("date", "bell__order", "session_number")
     )
 
     for session in sessions:
@@ -282,6 +300,7 @@ def build_grade_report(scope, year, grade=None):
             "subject_name": class_subject.subject.name,
             "teacher_name": teacher_display_name(class_subject),
             "content_summary": _content_summary(session, limit=50),
+            "is_holiday": session.status == SchoolSession.Status.HOLIDAY,
         })
 
     grades = OrderedDict()

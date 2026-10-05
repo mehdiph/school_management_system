@@ -28,7 +28,7 @@ from core.testing import (
     make_supervisor,
     make_teacher_profile,
 )
-from report.selectors import ReportScope, build_class_report
+from report.selectors import ReportScope, build_class_report, build_grade_report
 from supervisor.models import SupervisorClass
 from supervisor.selectors import (
     SessionFilters,
@@ -132,3 +132,16 @@ class ExcludedCountTests(TestCase):
         self.assertEqual(subject['session_count'], 2)
         self.assertEqual(report['total_sessions'], 2)
         self.assertEqual(subject['last_date'], J(1405, 7, 19))
+
+    def test_reports_list_the_holiday_with_its_reason(self):
+        scope = ReportScope(self.teacher.staff.user)
+
+        rows = build_class_report(scope, self.school_class)['subjects'][0]['sessions']
+        holiday = [row for row in rows if row['is_holiday']]
+        self.assertEqual(len(holiday), 1)
+        self.assertEqual(holiday[0]['number'], 'تعطیل')
+        self.assertTrue(holiday[0]['content'].startswith('تعطیل: '))
+
+        grade = build_grade_report(scope, self.year)
+        sessions = grade['grades_data'][0]['classes'][0]['sessions']
+        self.assertEqual(sum(1 for row in sessions if row['is_holiday']), 1)

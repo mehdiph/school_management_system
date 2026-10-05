@@ -210,7 +210,7 @@
             </thead>
             <tbody>
                 {% for session in subject.sessions %}
-                <tr {% if session.status == 'CD' %} style="background-color: #808080;" {% endif %}>
+                <tr {% if session.status == 'CD' %} style="background-color: #808080;" {% elif session.is_holiday %} style="background-color: #eeeeee; color: #555555;" {% endif %}>
                     <td>{{ session.number|to_persian }}</td>
                     <td>{{ session.date|date:"Y/m/d"|to_persian }}</td>
                     <td class="text-right">{{ session.content }}</td>
@@ -255,7 +255,7 @@
                 </thead>
                 <tbody>
                     {% for session in klass.sessions %}
-                    <tr>
+                    <tr{% if session.is_holiday %} style="background-color: #eeeeee; color: #555555;"{% endif %}>
                         <td>{{ session.date|date:"Y/m/d"|to_persian }}</td>
                         <td>{{ session.subject_name }}</td>
                         <td>{{ session.teacher_name }}</td>

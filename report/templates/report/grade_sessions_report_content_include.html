@@ -43,7 +43,7 @@
                 </thead>
                 <tbody>
                     {% for session in class_data.sessions %}
-                    <tr>
+                    <tr{% if session.is_holiday %} class="row-holiday" style="background-color: #eeeeee; color: #555555;"{% endif %}>
                         {% if is_pdf %}
                         <!-- Reverse Order for PDF -->
                         <td style="text-align: right;">{{ session.content_summary|truncatechars:100|reshape }}</td>

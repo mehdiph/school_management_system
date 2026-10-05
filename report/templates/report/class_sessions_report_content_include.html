@@ -142,11 +142,12 @@
                 </thead>
                 <tbody>
                     {% for session in subject.sessions %}
-                    <tr>
+                    {# a holiday: no number, the event as the reason, not counted #}
+                    <tr{% if session.is_holiday %} class="row-holiday" style="background-color: #eeeeee; color: #555555;"{% endif %}>
                         {% if is_pdf %}
                         <td style="text-align: right;">{{ session.content|truncatewords:30|reshape }}</td>
                         <td style="text-align: right;">{{ session.date }}</td>
-                        <td style="text-align: center;">{{ session.number }}</td>
+                        <td style="text-align: center;">{% if session.is_holiday %}{{ session.number|reshape }}{% else %}{{ session.number }}{% endif %}</td>
                         {% else %}
                         <td data-label="جلسه" class="cell-index">{{ session.number }}</td>
                         <td data-label="تاریخ جلسه" class="cell-nowrap">{{ session.date }}</td>

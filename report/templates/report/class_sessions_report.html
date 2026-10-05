@@ -125,7 +125,7 @@
                 </thead>
                 <tbody>
                     {% for session in subject.sessions %}
-                    <tr>
+                    <tr{% if session.is_holiday %} class="row-holiday" style="background-color: #eeeeee; color: #555555;"{% endif %}>
                         <td>{{ session.number }}</td>
                         <td>{{ session.date }}</td>
                         <td>{{ session.content|truncatewords:30 }}</td>
