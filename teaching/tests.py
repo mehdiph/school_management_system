@@ -18,6 +18,7 @@ from core.testing import (
     make_branch,
     make_calendar_event,
     make_class_subject,
+    make_schedule,
     make_grade,
     make_school_class,
     make_subject,
@@ -25,6 +26,8 @@ from core.testing import (
     make_teacher_profile,
     make_user,
 )
+from scheduling.models import ClassSchedule
+from scheduling.models.bell import Bell
 from school.models import ClassSubject
 from teaching.forms import SchoolSessionForm, SessionContentForm
 from teaching.models import SchoolSession, SessionContent
@@ -38,13 +41,20 @@ CONTENT_DATA = {
 }
 
 
+def slot_bell():
+    return Bell.objects.filter(order=1).first() or make_bell(1)
+
+
 def make_class_subject_for(teacher):
     branch = make_branch()
     year = make_academic_year()
     school_class = make_school_class(branch, make_grade(), year)
     assignment = make_assignment(teacher, branch, year)
     # runs from 1403-07-01 to 1404-03-31
-    return make_class_subject(school_class, make_subject(), assignment)
+    class_subject = make_class_subject(school_class, make_subject(), assignment)
+    # every Tuesday (1403-08-01 is one) at bell 1
+    make_schedule(class_subject, ClassSchedule.DayChoices.TUESDAY, slot_bell())
+    return class_subject
 
 
 def make_session(class_subject, date, with_content=True, **content):
@@ -58,6 +68,7 @@ def post_data(class_subject, date='1403-08-01', **overrides):
     return {
         'class_subject': class_subject.pk,
         'date': date,
+        'bell': slot_bell().pk,
         'status': SchoolSession.Status.HELD,
         **CONTENT_DATA,
         **overrides,
@@ -131,6 +142,7 @@ class SchoolSessionFormTests(TestCase):
         form = SchoolSessionForm(data={
             'class_subject': class_subject.pk,
             'date': '۱۴۰۳-۰۸-۰۱',
+            'bell': slot_bell().pk,
             'status': 'HD',
         })
 
@@ -289,7 +301,7 @@ class CreateSessionViewTests(SessionViewTestCase):
 
         self.assertEqual(
             response.context['session_form'].errors['date'],
-            ['تاریخ جلسه قبل از تاریخ شروع درس است.'],
+            ['تاریخ جلسه بیرون از سال تحصیلی این کلاس است.'],
         )
 
     def test_duplicate_session_number_race_has_persian_message(self):
@@ -435,7 +447,7 @@ class SessionNumberingTests(TestCase):
 
     def setUp(self):
         self.class_subject = make_class_subject_for(make_teacher_profile())
-        self.bell_1, self.bell_2 = make_bell(1), make_bell(2)
+        self.bell_1, self.bell_2 = slot_bell(), make_bell(2)
         self.event = make_calendar_event(
             self.class_subject.school_class.year, jdatetime.date(1403, 8, 10)
         )

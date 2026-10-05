@@ -84,6 +84,7 @@ other pages are not affected (see teaching/css/session_form.css).
                     <div class="sf-grid">
                         {% include "teaching/partials/field.html" with field=session_form.class_subject icon="fa-book" wide=True %}
                         {% include "teaching/partials/field.html" with field=session_form.date icon="fa-calendar-alt" %}
+                        {% include "teaching/partials/field.html" with field=session_form.bell icon="fa-bell" %}
 
                         <!-- Session number: assigned automatically on save, so shown read-only -->
                         <div class="sf-field">
@@ -95,7 +96,7 @@ other pages are not affected (see teaching/css/session_form.css).
                                 {% if session_number %}جلسه شماره {{ session_number|to_persian }}{% else %}—{% endif %}
                             </output>
                             <p class="sf-help" id="sessionNumberHelp">
-                                {% if session %}شماره‌ی این جلسه تغییر نمی‌کند{% else %}به‌صورت خودکار تعیین می‌شود{% endif %}
+                                به ترتیب تاریخ و زنگ تعیین می‌شود؛ ثبت جلسه‌ای با تاریخ قدیمی‌تر شماره‌ی جلسه‌های بعدی را یکی جلو می‌برد
                             </p>
                         </div>
 

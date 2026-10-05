@@ -5,8 +5,16 @@ from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
+from academic_calendar.services import parse_jalali_date, to_gregorian, to_jalali
+from scheduling.models.bell import Bell
+from scheduling.utils import week_start
 from .forms import SchoolSessionForm, SessionContentForm, active_class_subjects
 from .models import SchoolSession
+from .models.school_session import DUPLICATE_SLOT_MESSAGE
+from .services import BELL_REQUIRED_MESSAGE, existing_session, slot_errors
 from school.models import ClassSubject
 
 SESSIONS_PER_PAGE = 12
@@ -103,10 +111,69 @@ def _render_session_form(request, session_form, content_form, **extra):
     return render(request, 'teaching/session_form.html', context)
 
 
+def _back(request, date=None):
+    """
+    Where a refused prefill sends the teacher: ``?next=`` when it is a
+    local URL, else the weekly schedule at that date's week.
+    """
+
+    target = request.GET.get('next', '')
+    if target and url_has_allowed_host_and_scheme(
+        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(target)
+    url = reverse('scheduling:teacher-schedule')
+    if date is not None:
+        url += f"?week={to_jalali(week_start(to_gregorian(date))).strftime('%Y-%m-%d')}"
+    return redirect(url)
+
+
+def _prefill(request, class_subject):
+    """
+    ``?date=1405-07-12&bell=<id>`` (the weekly schedule's links) ->
+    ``(initial, None)``, or ``(None, redirect)`` after a Persian error
+    message when that slot cannot take a session (future date, Friday,
+    closed, already recorded, outside the teaching window). The form
+    checks all of it again on POST, with the chosen status.
+    """
+
+    raw_date, raw_bell = request.GET.get('date'), request.GET.get('bell')
+    if not raw_date and not raw_bell:
+        return {}, None
+
+    try:
+        date = parse_jalali_date(raw_date)
+        bell = Bell.objects.get(pk=int(raw_bell)) if raw_bell else None
+    except (ValueError, TypeError, Bell.DoesNotExist):
+        messages.error(request, 'تاریخ یا زنگ انتخاب‌شده معتبر نیست.')
+        return None, _back(request)
+
+    # Without a bell only the date rules apply; the form asks for the bell.
+    errors = [
+        error for error in slot_errors(class_subject, date, bell)
+        if error[1] != BELL_REQUIRED_MESSAGE
+    ]
+    if errors:
+        message = errors[0][1]
+        existing = existing_session(class_subject, date, bell)
+        if message == DUPLICATE_SLOT_MESSAGE and existing is not None:
+            message = format_html(
+                '{} <a href="{}">مشاهده‌ی جلسه‌ی ثبت‌شده</a>',
+                message, reverse('teaching:update_session', args=[existing.pk]),
+            )
+        messages.error(request, message)
+        return None, _back(request, date)
+
+    return {'date': date, 'bell': bell}, None
+
+
 @login_required(login_url='accounts:login')
 def school_session_form(request, class_subject_id):
     """
     ویو برای ایجاد جلسه درسی جدید همراه با محتوای آن
+
+    The weekly schedule links here with the slot prefilled
+    (``?date=<Jalali>&bell=<id>``); see ``_prefill``.
     """
     class_subjects = active_class_subjects(_own_class_subjects(request.user))
     class_subject = get_object_or_404(class_subjects, id=class_subject_id)
@@ -128,8 +195,11 @@ def school_session_form(request, class_subject_id):
         # Invalid forms are re-rendered with their errors (and with every
         # value the teacher typed); the page shows an error summary.
     else:
+        initial, refused = _prefill(request, class_subject)
+        if refused is not None:
+            return refused
         session_form = SchoolSessionForm(
-            initial={'class_subject': class_subject},
+            initial={'class_subject': class_subject, **initial},
             class_subjects=class_subjects,
         )
         content_form = SessionContentForm()
@@ -166,6 +236,12 @@ def update_session(request, session_id):
     class_subjects = own_class_subjects.filter(
         Q(pk__in=active_class_subjects().values('pk')) | Q(pk=session.class_subject_id)
     )
+    if session.is_holiday:
+        # the academic calendar's row: nothing for a teacher to edit
+        reason = session.calendar_event.title if session.calendar_event_id else 'تعطیلی'
+        messages.error(request, f'این جلسه به‌دلیل «{reason}» لغو شده است و قابل ویرایش نیست.')
+        return redirect('teaching:session_list', session.class_subject_id)
+
     # older sessions may have been saved without content
     content = getattr(session, 'session_contents', None)
 

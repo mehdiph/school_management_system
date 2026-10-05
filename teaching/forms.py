@@ -2,7 +2,12 @@ from django import forms
 from django.db.models import Max
 from django_jalali.admin.widgets import AdminjDateWidget
 from .models import SchoolSession, SessionContent
+from .services import slot_errors
+from scheduling.models.bell import Bell
 from school.models import ClassSubject
+
+#: Fields whose change re-runs the slot rules (teaching.services) on edit.
+SLOT_FIELDS = {"class_subject", "date", "bell", "status"}
 
 
 def active_class_subjects(queryset=None):
@@ -25,6 +30,13 @@ class SchoolSessionForm(forms.ModelForm):
     ``session_number`` is not a form field on purpose: it is assigned in
     ``SchoolSession.save()`` (see ``next_session_numbers`` for the value
     shown to the teacher before saving).
+
+    The slot rules (``teaching.services.slot_errors``: not in the future,
+    not on Friday, Thursday only for a compensatory session, not in a
+    closed or already recorded slot, a held session only in a timetable
+    slot) run on every new session, and on an edit that changes the
+    class subject, date, bell or status. The «تعطیل» status is never
+    offered: only the academic calendar sets it.
     """
 
     class Meta:
@@ -32,12 +44,14 @@ class SchoolSessionForm(forms.ModelForm):
         fields = [
             "class_subject",
             "date",
+            "bell",
             "status",
         ]
 
         labels = {
             "class_subject": "درس کلاس",
             "date": "تاریخ جلسه",
+            "bell": "زنگ",
             "status": "وضعیت",
         }
 
@@ -46,6 +60,7 @@ class SchoolSessionForm(forms.ModelForm):
         help_texts = {
             "class_subject": "کلاس و درسی که این جلسه برای آن برگزار شد",
             "date": "روی کادر بزنید تا تقویم باز شود",
+            "bell": "زنگی که این جلسه در آن برگزار شد",
             "status": "برگزار شده، کنسل شده یا جبرانی",
         }
 
@@ -57,6 +72,10 @@ class SchoolSessionForm(forms.ModelForm):
             "date": {
                 "required": "تاریخ جلسه را وارد کنید.",
                 "invalid": "تاریخ جلسه معتبر نیست؛ آن را از تقویم انتخاب کنید.",
+            },
+            "bell": {
+                "required": "زنگ جلسه را انتخاب کنید.",
+                "invalid_choice": "زنگ انتخاب‌شده معتبر نیست.",
             },
             "status": {
                 "required": "وضعیت جلسه را انتخاب کنید.",
@@ -76,6 +95,11 @@ class SchoolSessionForm(forms.ModelForm):
                     "autocomplete": "off",
                 }
             ),
+            "bell": forms.Select(
+                attrs={
+                    "class": "form-control",
+                }
+            ),
             "status": forms.Select(
                 attrs={
                     "class": "form-control",
@@ -83,7 +107,7 @@ class SchoolSessionForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, class_subjects=None, **kwargs):
+    def __init__(self, *args, class_subjects=None, today=None, **kwargs):
         """
         ``class_subjects`` limits the dropdown (and therefore what the
         form accepts) -- the views pass the current teacher's own class
@@ -115,6 +139,39 @@ class SchoolSessionForm(forms.ModelForm):
 
         self.fields["class_subject"].required = True
         self.fields["date"].required = True
+
+        # A session recorded before sessions had a bell may be edited
+        # without picking one (unless it is moved: see clean()).
+        self.fields["bell"].required = not (self.instance.pk and self.instance.bell_id is None)
+        self.fields["bell"].queryset = Bell.objects.filter(is_active=True).order_by("order")
+        self.fields["bell"].empty_label = "انتخاب زنگ"
+        self.fields["bell"].label_from_instance = (
+            lambda bell: f"{bell.title} ({bell.start_time:%H:%M}–{bell.end_time:%H:%M})"
+        )
+        self.fields["status"].choices = [
+            choice for choice in self.fields["status"].choices
+            if choice[0] != SchoolSession.Status.HOLIDAY
+        ]
+        self.today = today
+
+    def clean(self):
+        cleaned = super().clean()
+        class_subject, date = cleaned.get("class_subject"), cleaned.get("date")
+        if class_subject is None or date is None or "status" not in cleaned:
+            return cleaned
+        if self.instance.pk and not SLOT_FIELDS & set(self.changed_data):
+            return cleaned  # only the content changed: the slot was accepted before
+
+        for field, message in slot_errors(
+            class_subject,
+            date,
+            cleaned.get("bell"),
+            cleaned["status"],
+            exclude_pk=self.instance.pk,
+            today=self.today,
+        ):
+            self.add_error(field, message)
+        return cleaned
 
     def next_session_numbers(self):
         """
