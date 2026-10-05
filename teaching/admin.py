@@ -14,10 +14,12 @@ class SchoolSessionAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
         "class_subject": "school_class__branch",
     }
 
-    list_display = ('get_session_name', 'class_subject', 'date', 'session_number', 'status', 'created_at')
+    list_display = ('get_session_name', 'class_subject', 'date', 'bell', 'session_number', 'status', 'calendar_event', 'created_at')
     list_filter = (
         ('date', JDateFieldListFilter),
         'status',
+        'is_auto_created',
+        'bell',
         'class_subject__subject',
         'class_subject__school_class__grade'
     )
@@ -31,18 +33,26 @@ class SchoolSessionAdmin(BranchScopedAdminMixin, admin.ModelAdmin):
     list_editable = ('status',)
     ordering = ('-date', '-session_number')
     date_hierarchy = 'date'
-    
+    # Holiday rows belong to the academic calendar: their event and the
+    # auto-created flag are never edited by hand (SchoolSession.clean()
+    # also refuses «تعطیل» without an event).
+    readonly_fields = ('session_number', 'calendar_event', 'is_auto_created')
+    list_select_related = ('class_subject__school_class__grade', 'class_subject__school_class__branch',
+                           'class_subject__subject', 'class_subject__teacher_assignment__teacher__staff__user',
+                           'bell', 'calendar_event')
+
     fieldsets = (
         ('اطلاعات اصلی', {
-            'fields': ('class_subject', 'date', 'session_number')
+            'fields': ('class_subject', 'date', 'bell', 'session_number')
         }),
         ('وضعیت', {
-            'fields': ('status',)
+            'fields': ('status', 'calendar_event', 'is_auto_created')
         }),
     )
     
     def get_session_name(self, obj):
-        return f"{obj.class_subject.school_class} - {obj.class_subject.subject.name} - جلسه {obj.session_number}"
+        number = 'تعطیل' if obj.is_holiday else f'جلسه {obj.session_number}'
+        return f"{obj.class_subject.school_class} - {obj.class_subject.subject.name} - {number}"
     get_session_name.short_description = 'جلسه'
 
 

@@ -1,0 +1,53 @@
+{% extends "admin/base_site.html" %}
+{% load static jalali_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'academic_calendar/admin/calendar.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}{% include "admin/academic_calendar/calendarevent/_breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="calendar-admin">
+  <p class="help">
+    جلسه‌هایی که پیش از اعلام تعطیلی برای زنگی ثبت شده‌اند که حالا تعطیل است. سامانه این جلسه‌ها را تغییر نمی‌دهد و حذف نمی‌کند؛
+    اگر جلسه واقعاً برگزار نشده، آن را اصلاح یا حذف کنید، یا دامنه‌ی رویداد را تغییر دهید.
+  </p>
+
+  <form method="get" class="calendar-admin__filter">
+    {{ form.year.label_tag }} {{ form.year }}
+    <input type="submit" value="نمایش">
+  </form>
+
+  {% if conflicts %}
+  <table class="calendar-admin__table">
+    <thead>
+      <tr>
+        <th>تاریخ</th><th>زنگ</th><th>کلاس</th><th>درس</th><th>معلم</th>
+        <th>شماره جلسه</th><th>وضعیت</th><th>رویداد تعطیلی</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for conflict in conflicts %}
+      {% with session=conflict.session cs=conflict.session.class_subject %}
+      <tr>
+        <td>{{ conflict.date|jalali_date:"weekday" }}</td>
+        <td>{% if conflict.bell %}{{ conflict.bell.title }}{% else %}—{% endif %}{% if not session.bell_id %} <span class="calendar-admin__muted">(جلسه‌ی بدون زنگ)</span>{% endif %}</td>
+        <td>{{ cs.school_class }}</td>
+        <td>{{ cs.subject.name }}</td>
+        <td>{{ cs.teacher_assignment.teacher }}</td>
+        <td>{{ session.session_number|fa_digits }}</td>
+        <td>{{ session.get_status_display }}</td>
+        <td><a href="{% url 'admin:academic_calendar_calendarevent_change' conflict.event.pk %}">{{ conflict.event.title }}</a></td>
+        <td><a href="{% url 'admin:teaching_schoolsession_change' session.pk %}">مشاهده‌ی جلسه</a></td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="calendar-admin__empty">{% if year %}در سال تحصیلی {{ year.title }} تداخلی وجود ندارد.{% else %}سال تحصیلی جاری تعریف نشده است.{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

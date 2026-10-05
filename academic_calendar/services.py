@@ -433,7 +433,14 @@ def _plan(start, end, class_subject_ids=None, academic_year=None):
 
     sessions = SchoolSession.objects.filter(
         date__gte=to_jalali(start), date__lte=to_jalali(end)
-    ).select_related("bell", "calendar_event")
+    ).select_related(
+        "bell",
+        "calendar_event",
+        "class_subject__subject",
+        "class_subject__school_class__grade",
+        "class_subject__school_class__branch",
+        "class_subject__teacher_assignment__teacher__staff__user",
+    )
     filters = {}
     if class_subject_ids is not None:
         sessions = sessions.filter(class_subject_id__in=class_subject_ids)
@@ -678,6 +685,43 @@ def create_closure(*, academic_year, title, start_date, end_date=None, event_typ
         event.grades.set(grades)
         event.bells.set(bells)
         return event, sync_event(event)
+
+
+def import_events(plan, created_by=None):
+    """
+    Creates every row of a valid ``importer.ImportPlan`` and syncs the
+    sessions of the whole imported range, in one transaction: if anything
+    fails, nothing is saved. Returns ``(events, SyncResult)``.
+    """
+
+    if not plan.is_valid:
+        raise ValueError("Only a plan without errors can be imported.")
+
+    with transaction.atomic():
+        events = []
+        for row in plan.rows:
+            event = CalendarEvent(
+                academic_year=plan.academic_year,
+                title=row.title,
+                event_type=row.event_type,
+                start_date=row.start_date,
+                end_date=row.end_date,
+                description=row.description,
+                created_by=created_by,
+            )
+            event.full_clean()
+            event.save()
+            event.branches.set(row.branches)
+            event.grades.set(row.grades)
+            event.bells.set(row.bells)
+            events.append(event)
+
+        result = sync_cancelled_sessions(
+            min(row.start_date for row in plan.rows),
+            max(row.end_date for row in plan.rows),
+            academic_year=plan.academic_year,
+        )
+    return events, result
 
 
 def sync_class_subjects(class_subject_ids):

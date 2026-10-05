@@ -1,0 +1,14 @@
+/* Academic calendar admin pages (conflicts, quick closure, import). */
+.calendar-admin__table { width: 100%; margin: 1em 0; }
+.calendar-admin__table td, .calendar-admin__table th { vertical-align: top; }
+.calendar-admin__row--error td { background: var(--message-error-bg, #ffefef); }
+.calendar-admin__row--error .errorlist { margin: 0; }
+.calendar-admin__filter { margin: 1em 0; display: flex; gap: .5em; align-items: center; }
+.calendar-admin__muted { color: var(--body-quiet-color, #666); font-size: .9em; }
+.calendar-admin__ok { padding: .75em 1em; background: var(--message-success-bg, #dfd); border-radius: 4px; }
+.calendar-admin__empty { padding: 1em 0; color: var(--body-quiet-color, #666); }
+.calendar-admin__guide { margin-top: 2em; padding: 0 1em 1em; }
+.calendar-admin .help { margin-bottom: 1em; }
+.calendar-admin ul[id$="branches"], .calendar-admin ul[id$="grades"], .calendar-admin ul[id$="bells"] {
+    display: flex; flex-wrap: wrap; gap: .25em 1.25em; list-style: none; padding: 0; margin: 0;
+}

@@ -1,0 +1,82 @@
+{% extends "admin/base_site.html" %}
+{% load static jalali_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'academic_calendar/admin/calendar.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}{% include "admin/academic_calendar/calendarevent/_breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="calendar-admin">
+
+  {% if file_error %}<p class="errornote">{{ file_error }}</p>{% endif %}
+
+  {% if plan %}
+    <h2>پیش‌نمایش «{{ filename }}» · سال تحصیلی {{ plan.academic_year.title }}</h2>
+    {% if plan.is_valid %}
+      <p class="calendar-admin__ok">همه‌ی {{ plan.rows|length|fa_digits }} ردیف معتبر است. با تأیید، همه با هم ثبت می‌شوند و جلسه‌های زنگ‌های تعطیل لغو می‌شوند.</p>
+    {% else %}
+      <p class="errornote">{{ plan.errors|length|fa_digits }} ردیف خطا دارد. تا همه‌ی خطاها برطرف نشود هیچ رویدادی ثبت نمی‌شود؛ فایل را اصلاح کنید و دوباره بفرستید.</p>
+    {% endif %}
+    <table class="calendar-admin__table">
+      <thead>
+        <tr><th>ردیف</th><th>عنوان</th><th>نوع</th><th>از</th><th>تا</th><th>شعبه‌ها</th><th>پایه‌ها</th><th>زنگ‌ها</th><th>خطا</th></tr>
+      </thead>
+      <tbody>
+        {% for row in plan.rows %}
+        <tr class="{% if row.errors %}calendar-admin__row--error{% endif %}">
+          <td>{{ row.number|fa_digits }}</td>
+          <td>{{ row.title }}</td>
+          <td>{{ row.type_display }}</td>
+          <td>{{ row.start_display|jalali_date:"weekday" }}</td>
+          <td>{{ row.end_display|jalali_date:"weekday" }}</td>
+          <td>{{ row.branches|join:"، "|default:"همه" }}</td>
+          <td>{{ row.grades|join:"، "|default:"همه" }}</td>
+          <td>{{ row.bells|join:"، "|default:"کل روز" }}</td>
+          <td>{% if row.errors %}<ul class="errorlist">{% for error in row.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% else %}✓{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if plan.is_valid %}
+    <form method="post" class="submit-row">
+      {% csrf_token %}
+      <input type="submit" name="confirm" class="default" value="تأیید و ثبت همه">
+      <a href="{% url 'admin:academic_calendar_calendarevent_import' %}" class="button cancel-link">انصراف</a>
+    </form>
+    {% endif %}
+    <hr>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      {% for field in form %}
+      <div class="form-row{% if field.errors %} errors{% endif %}">
+        {{ field.errors }}
+        <div class="flex-container">{{ field.label_tag }} {{ field }}</div>
+        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </fieldset>
+    <div class="submit-row"><input type="submit" class="default" value="بررسی فایل"></div>
+  </form>
+
+  <div class="module calendar-admin__guide">
+    <h2>راهنمای فایل</h2>
+    <p><a href="{% url 'admin:academic_calendar_calendarevent_import_template' %}">دانلود قالب اکسل</a> (برگه‌ی «راهنما» کدهای شعبه، شماره‌ی پایه‌ها و زنگ‌ها را دارد).</p>
+    <p>ستون‌ها به همین ترتیب: {{ columns|join:"، " }}.</p>
+    <ul>
+      <li>«نوع»: {{ type_values|join:" یا " }}.</li>
+      <li>تاریخ‌ها شمسی به شکل ۱۴۰۵/۰۷/۱۲؛ تاریخ پایان اختیاری است و خالی یعنی همان روز. هر دو باید داخل سال تحصیلی جاری باشند.</li>
+      <li>کد شعبه‌ها، شماره‌ی پایه‌ها و ترتیب زنگ‌ها با ویرگول جدا می‌شوند؛ خالی یعنی «همه».</li>
+      <li>پنج‌شنبه و جمعه همیشه تعطیل‌اند و اگر در بازه باشند نادیده گرفته می‌شوند.</li>
+      <li>رویدادی با همان عنوان و همان تاریخ‌ها که از قبل فعال است، تکراری حساب می‌شود.</li>
+      <li>اگر حتی یک ردیف خطا داشته باشد، هیچ رویدادی ثبت نمی‌شود.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

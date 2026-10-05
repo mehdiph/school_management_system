@@ -1,0 +1,38 @@
+{% extends "admin/base_site.html" %}
+{% load static jalali_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'academic_calendar/admin/calendar.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}{% include "admin/academic_calendar/calendarevent/_breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="calendar-admin">
+  <p class="calendar-admin__ok">
+    {{ events|length|fa_digits }} رویداد از «{{ filename }}» ثبت شد؛
+    {{ result.created|fa_digits }} جلسه به‌دلیل تعطیلی لغو شد{% if result.updated %} و {{ result.updated|fa_digits }} جلسه‌ی لغوشده به رویداد دیگری منتقل شد{% endif %}.
+  </p>
+  {% if result.conflicts %}
+  <p class="errornote">
+    {{ result.conflicts|length|fa_digits }} جلسه پیش‌تر برای زنگ‌هایی ثبت شده که حالا تعطیل‌اند و دست‌نخورده ماندند.
+    <a href="{% url 'admin:academic_calendar_calendarevent_conflicts' %}">مشاهده‌ی تداخل‌ها</a>
+  </p>
+  {% endif %}
+  <table class="calendar-admin__table">
+    <thead><tr><th>عنوان</th><th>نوع</th><th>از</th><th>تا</th></tr></thead>
+    <tbody>
+      {% for event in events %}
+      <tr>
+        <td><a href="{% url 'admin:academic_calendar_calendarevent_change' event.pk %}">{{ event.title }}</a></td>
+        <td>{{ event.get_event_type_display }}</td>
+        <td>{{ event.start_date|jalali_date }}</td>
+        <td>{{ event.end_date|jalali_date }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="{% url 'admin:academic_calendar_calendarevent_changelist' %}">بازگشت به فهرست رویدادها</a></p>
+</div>
+{% endblock %}
