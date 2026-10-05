@@ -26,6 +26,18 @@
 
 ## Added
 
+### Academic Calendar (holidays and closures)
+
+- `academic_calendar` app with `CalendarEvent`: official holidays and unplanned closures, scoped by branches, grades and bells (empty = all), soft-deleted with `is_active`
+- Automatic «تعطیل» (`HL`) sessions for every closed timetable slot (class subject + date + bell), linked to the event; never numbered, excluded from every session count (`SchoolSession.objects.counted()`); idempotent sync (`academic_calendar.services.sync_cancelled_sessions`) after event, import and timetable changes; held sessions in closed slots are reported as conflicts, never overwritten
+- System admin: event list with cancelled-session counts and deactivate/activate actions, impact message after saving, «تعطیلی اضطراری» quick form, «تداخل‌ها» conflicts page, Excel import with a downloadable template, per-row validation preview and all-or-nothing confirmation
+- Management commands `sync_calendar_sessions` (`--from/--to`, `--year`, `--dry-run`) and `backfill_session_bells` (dry run by default, per-session report, `--csv`, `--apply`)
+- `SchoolSession.bell`, `calendar_event`, `is_auto_created`; unique `(class_subject, date, bell)`; migration `teaching/0004_session_slot_and_holiday`
+- Teacher weekly schedule shows one dated week with previous/next navigation; every lesson links to the session form for that slot, and future, already recorded and holiday slots say why they cannot be recorded (works without JavaScript)
+- Session form: required bell, prefill from `?date=&bell=`, and server-side slot rules (not in the future, no Friday, Thursday only for compensatory sessions, not closed, not already recorded, held sessions only in timetable slots)
+- Supervisor training sessions page: per-class-subject «تعطیل» column and KPI note
+- Documentation: `docs/apps/academic_calendar.md`, `docs/database-mermaid.md` (ER diagram), ADR-016 to ADR-018
+
 ### Supervisor Panel
 
 - Training sessions page (جلسات آموزشی): sessions per teacher, subject and class, with GET filters (academic year, teacher, subject, class, Jalali date range with week / month / year shortcuts, status), KPI cards, sorting, pagination and progress against the weekly timetable
@@ -36,10 +48,17 @@
 
 ## Fixed
 
+- The student session list JSON no longer fails on sessions without content
+
 - The attendance page (`/attendance/<session id>/`) required no login and no ownership: it now needs a login and is limited to the session's teacher, a supervisor of its class, a superuser, or a staff admin with `attendance.change_attendance` on the class's branch (`attendance/permissions.py`); anyone else gets 404
 
 ## Changed
 
+- Session numbers follow teaching order (date, then bell) and are renumbered on every save/delete: recording a missed past session shifts the later numbers
+- Teacher dashboard: each bell is its own session (a double period is recorded when both bells are); closed lessons are shown and are not pending
+- Supervisor «نیازمند پیگیری» matches sessions per bell and never reports closed slots; coverage leaves closed slots, Thursdays and Fridays out; the timeline orders by date and bell and shows holidays without counting them
+- Student and teacher session lists, supervisor timeline/detail and reports show holiday sessions with their reason and no number
+- No new timetable slot may be put on Thursday (model, bulk writes and the admin timetable editor)
 - Supervisor pages redirect logged-out users to the login page instead of returning 403
 
 ### Documentation

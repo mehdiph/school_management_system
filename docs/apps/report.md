@@ -257,6 +257,12 @@ Class reports are intended for operational review and teaching analysis.
 
 ---
 
+### Rule 4b: Holidays Are Listed, Not Counted
+
+Sessions the academic calendar cancelled (status `HL`) appear in class and grade reports, page and PDF, greyed, with «تعطیل» instead of a number and «تعطیل: <event>» as their content. They are excluded from the per-subject session count, the first/last session dates and the held total (`SchoolSession.objects.counted()`; see [academic_calendar.md](academic_calendar.md)).
+
+---
+
 ### Rule 5: Grade Reports Are Aggregated
 
 Grade reports should focus on educational summaries rather than individual session details.

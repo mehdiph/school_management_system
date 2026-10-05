@@ -383,6 +383,62 @@ Panels stay server-rendered (MVT). When JavaScript needs to load content (an exp
 
 ---
 
+# ADR-016: A Session Is Identified by Class Subject, Date and Bell
+
+## Decision
+
+`SchoolSession` has a nullable `bell` foreign key, and `(class_subject, date, bell)` is unique when the bell is set. It does not point at the `ClassSchedule` row it was recorded for.
+
+## Rationale
+
+* The same subject can be taught at two bells on one day; `(class_subject, date)` cannot tell those two sessions apart.
+* Timetable rows are edited, moved and deleted during the year. A foreign key to them would either block those edits (`PROTECT`) or lose the session's slot (`SET_NULL`), while past sessions must stay intact.
+* The date already gives the weekday and the rotation week, so date + bell is the slot. Bells are stable and soft-deactivated.
+
+## Consequences
+
+* Sessions recorded before the field existed have no bell. `backfill_session_bells` matches the unambiguous ones (dry run first); the rest count against their day's slots in bell order.
+* Two bells of one subject on one day are two expected sessions everywhere (teacher week, supervisor "missing" list, coverage).
+
+---
+
+# ADR-017: Holidays Are Sessions With Their Own Status, From One Calendar Service
+
+## Decision
+
+A slot closed by a `CalendarEvent` gets a `SchoolSession` with the dedicated status `HL` (not `CD`), no session number, a link to the event and `is_auto_created = True`. All holiday logic lives in `academic_calendar.services`; panels only ask it (`Closures`, `get_slots`, `is_working_day`, ...). `SchoolSession.objects.counted()` (`status != HL`) is the single exclusion rule for counts.
+
+## Rationale
+
+* Teacher-entered `CD` sessions are numbered and counted; mixing the two would turn every count into a two-column condition that one query would eventually forget.
+* A row per closed slot shows the reason wherever sessions are listed, without each page re-deriving the calendar.
+* `is_auto_created` keeps cleanup away from anything a person created; held sessions found in closed slots are reported as conflicts, never overwritten.
+* One service keeps the teacher page, the session form and the supervisor pages from ever disagreeing about a closure.
+
+## Consequences
+
+* Every write that can change which slots are closed (event save/deactivate/import, timetable and class subject changes) must re-sync; the admin, the import and `academic_calendar.signals` do.
+* The sync is idempotent and can be re-run any time (`sync_calendar_sessions`).
+
+---
+
+# ADR-018: Session Numbers Follow Teaching Order
+
+## Decision
+
+Counted sessions of a class subject are renumbered 1..N in teaching order (date, then bell) on every save and delete, under a row lock on the class subject, in two phases so the unique `(class_subject, session_number)` constraint holds after each statement.
+
+## Rationale
+
+* Teachers record missed sessions from earlier days (the weekly schedule makes past slots clickable); refusing them, or numbering them out of order, would make numbers meaningless.
+* Holidays take no number, so numbering stays continuous.
+
+## Consequences
+
+* A session number shown in the past can change when an earlier session is recorded or one is removed. Anything that needs a stable reference uses the session's id, not its number.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:

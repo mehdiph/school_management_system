@@ -61,7 +61,9 @@ Supported teaching days.
 | 2     | Monday    |
 | 3     | Tuesday   |
 | 4     | Wednesday |
-| 5     | Thursday  |
+| 5     | Thursday (legacy rows only) |
+
+Thursday and Friday are never school days. **No new slot may be put on Thursday**: `ClassSchedule.clean()`, `bulk_create`, `bulk_update`, `update` and the admin timetable editor all refuse it (`check_no_new_thursday`, message «ثبت برنامه در روز پنج‌شنبه مجاز نیست؛ …»). An existing Thursday row can still be kept or edited so it can be cleaned up. Thursday slots are never auto-cancelled or counted as expected (see [academic_calendar.md](academic_calendar.md)).
 
 ---
 
@@ -207,6 +209,7 @@ Example, 1405 (1 Mehr = Wednesday): 1..10 Mehr is week 1, 11..17 Mehr week 2, 18
 ## Views
 
 * Student weekly schedule page and its PDF (`scheduling/views.py`).
+* Teacher weekly schedule (`/scheduling/teacher/`): **one dated week** at a time (`?week=<Jalali date>`, previous/next navigation, clamped to the academic year), built by `services.build_teacher_week`. Every lesson is a slot (class subject + date + bell) rendered with its state — open (a link to the session form with the slot prefilled), registered, future, holiday — from `academic_calendar.services` (`get_slots`, `Closures`) with a fixed number of queries. The print layout and the teacher PDF still merge both rotation weeks (`build_teacher_weekly_schedule`). Details: [academic_calendar.md §9](academic_calendar.md#9-clickable-weekly-schedule-teacher-panel).
 * Admin timetable grid: the "برنامه هفتگی" button on a class's admin page opens one grid (days x active bells) where subjects and teachers are set per cell, "every week" or split into week 1 / week 2. `ClassSubject` rows are created or reused behind the scenes. Saving is one transaction that only writes the changed rows (`scheduling/timetable.py`). A class subject that loses its last slot is deactivated if it has sessions, and deleted otherwise.
 
 The Scheduling app otherwise acts as a domain module and provides scheduling data to other applications.
@@ -428,7 +431,7 @@ Week-Specific Classes
 
 * Weekly timetable view
 * Monthly calendar view
-* Academic calendar integration
+* ~~Academic calendar integration~~ — done: see [academic_calendar.md](academic_calendar.md)
 
 ### Schedule Management
 
@@ -458,7 +461,7 @@ Week-Specific Classes
 * Special event schedules
 * Exam schedules
 * Temporary timetable overrides
-* Holiday-aware scheduling
+* ~~Holiday-aware scheduling~~ — done: timetable changes re-sync holiday sessions (`academic_calendar/signals.py`)
 
 ### Analytics
 

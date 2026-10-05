@@ -69,6 +69,16 @@ Rules:
 
 The sidebar items «جلسات آموزشی» and «معلمان من» (`template/partials/sidebar.html`) link to the last two pages. «جلسات آموزشی» stays active on the timeline and session detail pages.
 
+### Academic calendar (holidays)
+
+Holiday sessions (status `HL`, created by the academic calendar for closed slots) are **never counted** here and closed slots are **never expected** (all through `academic_calendar.services`; see [academic_calendar.md §8.3](academic_calendar.md#83-supervisor)):
+
+* **Dashboard / «نیازمند پیگیری»**: a scheduled slot is matched to a session by class subject + date + **bell**, so two bells of one subject are two expected sessions; a legacy session without a bell covers the day's first uncovered bell. Closed slots, Thursdays and Fridays are never reported missing nor counted in «امروز». Statistics, recent sessions and the attendance page's latest session skip holidays.
+* **Training sessions**: counts, KPIs, first/last dates and coverage exclude holidays; a sortable «تعطیل» column shows each class subject's sessions cancelled by closures. The timeline shows holidays in place (no number, the event as the reason) and measures gaps between counted sessions only.
+* **Teachers**: session count and last activity ignore holidays.
+
+There is no consecutive-absence feature in this panel yet (follow-up: it must ignore holiday sessions).
+
 ---
 
 ### Training Sessions — جلسات آموزشی (`sessions/`)
@@ -84,8 +94,8 @@ Shows how many sessions each teacher recorded for each subject in each class, wh
 | `subject`, `school_class` | Narrow the rows                                                       |
 | `date_from`, `date_to`    | Jalali dates, `1405/07/01` or `1405-07-01`, Persian or ASCII digits   |
 | `range`                   | Shortcut links: `week` (Saturday..Friday), `month` (Jalali month), `year` (the academic year). Turned into `date_from`/`date_to` by the form |
-| `status`                  | `HD` / `CD` / `JB`                                                    |
-| `sort`                    | `teacher`, `subject`, `class`, `sessions`, `empty`, `first_date`, `last_date`; prefix `-` for descending |
+| `status`                  | `HD` / `CD` / `JB` (holidays are not a status filter: they have their own column) |
+| `sort`                    | `teacher`, `subject`, `class`, `sessions`, `empty`, `holidays`, `first_date`, `last_date`; prefix `-` for descending |
 | `page`                    | 20 rows per page                                                      |
 
 Invalid values never break the page: the field shows its error and is ignored.
@@ -94,12 +104,12 @@ Invalid values never break the page: the field shows its error and is ignored.
 
 **Summary table**: one row per supervised `ClassSubject` (teacher × subject × class), including class subjects with no session at all:
 
-* recorded sessions, sessions without content, first and last session date;
-* **progress against the timetable**: held + compensatory sessions compared with the slots the weekly timetable planned (both weeks of the rotation) from the class subject's start, or `date_from`, up to today or `date_to`. Shown as "n از m · x٪" with a bar: under 60% is red, under 85% amber. Rows without timetable slots show «برنامه‌ی هفتگی ندارد».
+* recorded sessions, sessions without content, **holidays** («تعطیل»: sessions the academic calendar cancelled), first and last session date;
+* **progress against the timetable**: held + compensatory sessions compared with the slots the weekly timetable planned (both weeks of the rotation, one per bell) from the class subject's start, or `date_from`, up to today or `date_to`, **without slots an active calendar event closed and without Thursdays/Fridays** (`academic_calendar.services.count_open_slots`). Shown as "n از m · x٪" with a bar: under 60% is red, under 85% amber. Rows without timetable slots show «برنامه‌ی هفتگی ندارد».
 
-"Without content" means a session with no `SessionContent` row, **excluding cancelled sessions**.
+"Without content" means a session with no `SessionContent` row, **excluding cancelled and holiday sessions**. Holiday sessions are never counted as recorded sessions.
 
-**Timeline**: «جلسات» on a row expands it and loads the class subject's sessions (with the active date range and status) as a vertical timeline, in session-number order. Each item shows the number, Jalali date and weekday, status badge, title, the start of the content (two lines), and markers for homework / activity / notes. Sessions without content and gaps longer than `SUPERVISOR_SESSION_GAP_WARNING_DAYS` (default 14) between consecutive sessions are highlighted. Without JS the button is a link to the full timeline page.
+**Timeline**: «جلسات» on a row expands it and loads the class subject's sessions (with the active date range and status) as a vertical timeline, in teaching order (date, then bell). Holidays appear in place with «بدون شماره» and their reason; gaps are measured between counted sessions only. Each item shows the number, Jalali date and weekday, status badge, title, the start of the content (two lines), and markers for homework / activity / notes. Sessions without content and gaps longer than `SUPERVISOR_SESSION_GAP_WARNING_DAYS` (default 14) between consecutive sessions are highlighted. Without JS the button is a link to the full timeline page.
 
 **Session detail**: a session title opens a drawer from the left with the full content, homework, activity, notes and attendance counts (total / present / absent / late, no student list). Without JS it is a full page.
 
@@ -199,12 +209,13 @@ Both are optional and read with `getattr(settings, ...)`.
 
 * `supervisor/tests.py`: dashboard, attention list and attendance pages, `SupervisorScope`.
 * `supervisor/test_training_sessions.py`: access (login redirect, 403), scoping (404 outside the scope, filter options), counts, filters (dates, Persian digits, invalid input, range shortcuts, academic year, `?teacher=`), sorting and paging, partial vs full rendering, query counts.
+* `supervisor/test_calendar.py`: missing sessions per bell (and the legacy fallback), closed slots never missing or scheduled, coverage without holidays, the holiday column and KPI, the timeline with holidays.
 
 ---
 
 ## Known Limitations
 
-* There is no holiday calendar, so the expected session count includes holidays.
+* Coverage uses the current timetable for the whole range; a timetable changed mid-year is applied retroactively to the expected count.
 * Inactive class subjects and classes are hidden. When a subject is reassigned mid-year (the old class subject is deactivated), the previous teacher's sessions no longer appear.
 * There is no curriculum-plan model yet, so the comparison with بودجه‌بندی is manual (see below).
 

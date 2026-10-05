@@ -16,6 +16,9 @@ The database is divided into the following domains:
 * Academic Structure
 * Scheduling
 * Teaching Sessions
+* Academic Calendar
+
+The full entity relationship diagram (Mermaid) is in [database-mermaid.md](database-mermaid.md).
 
 ---
 
@@ -26,9 +29,12 @@ AcademicYear
     └── SchoolClass
             ├── StudentProfile
             └── ClassSubject
-                    ├── ClassSchedule
-                    └── SchoolSession
+                    ├── ClassSchedule ── Bell
+                    └── SchoolSession ── Bell (slot), CalendarEvent (holiday reason)
                             └── SessionContent
+
+AcademicYear
+    └── CalendarEvent ── Branches / Grades / Bells (scope; empty = all)
 
 User
  ├── Staff
@@ -298,15 +304,18 @@ Represents a teaching session.
 
 ### Purpose
 
-Stores each conducted class session.
+Stores each lesson of a ClassSubject in one **slot**: a date and a bell. The same subject can be taught twice on one day (two bells), and each is its own session.
 
 ### Key Fields
 
-| Field          | Description               |
-| -------------- | ------------------------- |
-| date           | Session date              |
-| session_number | Sequential session number |
-| status         | Session status            |
+| Field           | Description |
+| --------------- | ----------- |
+| date            | Session date |
+| bell            | The slot's bell (nullable: only sessions recorded before the field existed have none; see `backfill_session_bells`) |
+| session_number  | Number in teaching order (date, then bell); NULL for holidays |
+| status          | Session status |
+| calendar_event  | For a holiday: the CalendarEvent that closed the slot |
+| is_auto_created | Created by the calendar sync, not by a teacher |
 
 ### Status Values
 
@@ -315,16 +324,58 @@ Stores each conducted class session.
 | HD    | Held         |
 | JB    | Compensatory |
 | CD    | Cancelled    |
+| HL    | Holiday (تعطیل): created by the academic calendar, never numbered or counted |
 
 ### Relationships
 
 * Belongs to one ClassSubject.
+* Belongs to one Bell (optional).
+* Belongs to one CalendarEvent (holidays only).
 * Has one SessionContent.
 
 ### Constraints and Indexes
 
-* `session_number` is unique per ClassSubject.
+* `session_number` is unique per ClassSubject (NULLs never collide).
+* `unique_session_per_slot`: one session per `(class_subject, date, bell)` when the bell is set.
+* `session_number_only_when_counted` (check): `status = 'HL'` if and only if `session_number` is NULL.
 * Index `school_session_cs_date_idx` on `(class_subject, date)`: the supervisor pages read one ClassSubject's sessions in a date range and its first/last session date, which the unique constraint (`class_subject, session_number`) does not cover.
+
+### Numbering
+
+Counted sessions are renumbered 1..N in teaching order on every save/delete, so recording a missed past session shifts the later numbers. Use `SchoolSession.objects.counted()` for anything that counts sessions. See [apps/academic_calendar.md](apps/academic_calendar.md).
+
+---
+
+# Academic Calendar
+
+## CalendarEvent
+
+A closure of (part of) the school: an official holiday or an unplanned closure.
+
+### Key Fields
+
+| Field        | Description |
+| ------------ | ----------- |
+| academic_year | The year it belongs to |
+| title        | Shown as the reason everywhere |
+| event_type   | `official` (تعطیل رسمی) / `unplanned` (تعطیلی غیرمنتظره) |
+| start_date, end_date | Range (Thursday/Friday inside it have no effect) |
+| branches, grades, bells | Scope; empty = all (bells empty = the whole day) |
+| created_by   | The admin who entered it |
+| is_active    | Soft delete: events are never deleted |
+
+### Relationships
+
+* Belongs to one AcademicYear.
+* Many-to-many with Branch, Grade and Bell (scope).
+* Has many holiday SchoolSessions (`sessions`).
+
+### Constraints
+
+* `calendar_event_end_after_start`: `end_date >= start_date`.
+* Index `calendar_event_range_idx` on `(academic_year, is_active, start_date, end_date)`.
+
+Rules, sync and admin: [apps/academic_calendar.md](apps/academic_calendar.md).
 
 ---
 

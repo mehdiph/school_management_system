@@ -182,6 +182,8 @@ Supported week types:
 
 This ensures teachers only see classes that are actually scheduled for the current day.
 
+**Bells and holidays.** Each bell is its own session: a run of consecutive bells (a double period) is one row, but it counts as recorded only when every bell has a session, and «ثبت جلسه» opens the session form with today and the row's next open bell prefilled (`?date=…&bell=…`). Bells the academic calendar closed today are not pending: a fully closed row shows «تعطیل: <event>», a partly closed one «بخشی تعطیل». The total sessions KPI, recent sessions and "last session" ignore holiday sessions (`SchoolSession.objects.counted()`). See [academic_calendar.md](academic_calendar.md).
+
 ---
 
 ### Rule 4: Dashboard Should Prioritize Actionable Information

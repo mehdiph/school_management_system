@@ -11,7 +11,8 @@ The project focuses on providing a centralized platform for teachers, supervisor
 ## Teacher Portal
 
 * View assigned classes
-* Record teaching sessions
+* Record teaching sessions (one per subject, date and bell)
+* Weekly schedule by dated week: click a lesson to record that session; future, already-recorded and holiday slots say why they cannot be recorded
 * Register session content
 * Add homework assignments
 * View teaching history
@@ -41,6 +42,14 @@ The project focuses on providing a centralized platform for teachers, supervisor
 * Support for Week 1 and Week 2 rotation schedules
 * Daily timetable management
 * Teacher and class schedule tracking
+
+## Academic Calendar
+
+* Official holidays and unplanned closures (snow, air pollution), per branch, grade and bell
+* Closed lessons become «تعطیل» sessions automatically: shown in every panel with their reason, never numbered or counted
+* Quick closure form, conflicts page and Excel bulk import for the system admin
+* Thursday and Friday are always non-working days
+* Details: [docs/apps/academic_calendar.md](docs/apps/academic_calendar.md)
 
 ## Reporting System
 
@@ -196,8 +205,9 @@ Additional documentation can be found in the `docs/` directory.
 
 Recommended documents:
 
-* database.md
+* database.md and database-mermaid.md (ER diagram)
 * architecture-decisions.md
+* apps/academic_calendar.md (holidays, closures, the clickable weekly schedule)
 * changelog.md
 * apps/*.md
 

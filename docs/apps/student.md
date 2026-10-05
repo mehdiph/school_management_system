@@ -74,20 +74,23 @@ Renders the primary landing portal for authenticated students. It performs the f
 *   **Schedule Query:** Dynamically queries `ClassSchedule` for active classes scheduled for the current day. The query helper `get_today_schedule_day(date.today())` retrieves classes matching the correct day of the week, ordered by start time.
 
 ### 4.2 `sessions_list` View
-Lists class subjects assigned to the student's standard school class. It uses `prefetch_related` on `'sessions'` and `'sessions__session_contents'` to optimize performance when rendering timeline structures.
+Lists class subjects assigned to the student's standard school class. It uses `prefetch_related` on `'sessions'` and `'sessions__session_contents'` to optimize performance when rendering timeline structures. Each class subject is annotated with `session_count`, which **excludes holiday sessions** (status `HL`, see [academic_calendar.md](academic_calendar.md)).
 
 ### 4.3 `session_list_json` API Endpoint
 A localized API view that returns JSON formatted list data for a specific subject. 
 *   Filters `ClassSubject` matching the student's class and selected subject slug.
-*   Iterates over the related sessions to build a standardized dictionary:
+*   Iterates over the related sessions (newest first, by date then bell) and builds one dictionary per session with `_session_json`:
     ```python
     {
         'id': session.id,
-        'label': f'جلسه {persian_filters.persian_ordinal(session.session_number)} - {persian_filters.persian_date(session.date)}',
-        'title': session.session_contents.title,
-        'content': session.session_contents.content
+        'label': 'جلسه سوم - ۱۲ مهر ۱۴۰۵ · زنگ ۲',   # «تعطیل - <date> · <bell>» for a holiday
+        'title': '<content title>',                  # «تعطیل: <event>» for a holiday
+        'content': '<content text>',
+        'is_holiday': False,                         # True: the page shows it hatched, with no number
+        'reason': '',                                # the calendar event's title for a holiday
     }
     ```
+*   Sessions without content no longer raise: they get «بدون عنوان» and an empty content.
 *   Returns a `JsonResponse` payload, enabling the frontend to fetch session timelines via asynchronous AJAX calls.
 
 ---
