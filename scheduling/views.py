@@ -2,13 +2,16 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 
 from staff.decorators import teacher_required
 
 from .pdf import render_schedule_pdf, render_teacher_schedule_pdf
 from .services import (
+    build_teacher_week,
     get_student_weekly_schedule,
     get_teacher_weekly_schedule,
+    parse_week,
     schedule_pdf_filename,
     teacher_schedule_pdf_filename,
 )
@@ -64,12 +67,25 @@ def weekly_schedule_pdf(request):
 
 @teacher_required
 def teacher_schedule(request):
+    """
+    One dated week (``?week=<Jalali date>``, default this week) whose cells
+    link to the session form for that slot -- or say why they cannot:
+    future, already recorded, holiday. The print layout below it is the
+    two rotation weeks merged, like the PDF.
+    """
+
     schedule = get_teacher_weekly_schedule(request.teacher_profile)
 
     context = {"schedule": schedule}
     if schedule is not None and schedule.has_entries:
-        context["selected_week"] = _selected_week(request, schedule)
-        context["weeks"] = [(week, schedule.summary(week)) for week in schedule.weeks]
+        week = build_teacher_week(
+            request.teacher_profile,
+            schedule.academic_year,
+            week_of=parse_week(request.GET.get("week", "")),
+        )
+        context["week"] = week
+        # where the session form sends the teacher back when it refuses a slot
+        context["schedule_next"] = f"{reverse('scheduling:teacher-schedule')}?week={week.query}"
 
     return render(request, "scheduling/teacher-schedule.html", context)
 

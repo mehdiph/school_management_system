@@ -46,29 +46,41 @@ cards once there is room -- never a table that scrolls sideways.
     <ul class="sl-grid">
         {% for session in sessions %}
         {% with content=session.session_contents %}
-        <li class="sl-card" data-collapsible>
+        <li class="sl-card{% if session.is_holiday %} sl-card--holiday{% endif %}" data-collapsible>
             <article aria-labelledby="session-{{ session.id }}-title">
                 <div class="sl-card__top">
+                    {% if session.is_holiday %}
+                    {# a holiday takes no number and is not counted #}
+                    <span class="sl-number sl-number--none">بدون شماره</span>
+                    {% else %}
                     <span class="sl-number">جلسه {{ session.session_number|to_persian }}</span>
+                    {% endif %}
                     <span class="sl-status sl-status--{{ session.status|lower }}">
                         {% if session.status == 'HD' %}<i class="fas fa-check" aria-hidden="true"></i>
                         {% elif session.status == 'CD' %}<i class="fas fa-times" aria-hidden="true"></i>
-                        {% elif session.status == 'JB' %}<i class="fas fa-redo" aria-hidden="true"></i>{% endif %}
+                        {% elif session.status == 'JB' %}<i class="fas fa-redo" aria-hidden="true"></i>
+                        {% elif session.status == 'HL' %}<i class="fas fa-calendar-times" aria-hidden="true"></i>{% endif %}
                         {{ session.get_status_display }}
                     </span>
                 </div>
 
                 <p class="sl-date">
                     <i class="far fa-calendar" aria-hidden="true"></i>
-                    {{ session.date|jalali_long_date }}
+                    {{ session.date|jalali_long_date }}{% if session.bell %} · {{ session.bell.title }}{% endif %}
                 </p>
                 <p class="sl-class">{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
 
                 <h2 class="sl-card__title" id="session-{{ session.id }}-title">
-                    {% if content %}{{ content.title }}{% else %}جلسه {{ session.session_number|to_persian }}{% endif %}
+                    {% if session.is_holiday %}تعطیل: {{ session.calendar_event.title }}
+                    {% elif content %}{{ content.title }}{% else %}جلسه {{ session.session_number|to_persian }}{% endif %}
                 </h2>
 
-                {% if content %}
+                {% if session.is_holiday %}
+                <p class="sl-holiday">
+                    <i class="fas fa-info-circle" aria-hidden="true"></i>
+                    این زنگ به‌دلیل «{{ session.calendar_event.title }}» تعطیل است؛ جزو جلسات شمرده نمی‌شود و شماره نمی‌گیرد.
+                </p>
+                {% elif content %}
                 <div class="sl-details" id="session-{{ session.id }}-details">
                     <div class="sl-block">
                         <h3 class="sl-block__label">مطالب تدریس شده</h3>
@@ -113,6 +125,7 @@ cards once there is room -- never a table that scrolls sideways.
                 </p>
                 {% endif %}
 
+                {% if not session.is_holiday %}
                 <div class="sl-actions">
                     <a class="sl-btn sl-btn--outline" href="{% url 'teaching:update_session' session.id %}">
                         <i class="fas fa-pen" aria-hidden="true"></i>
@@ -123,6 +136,7 @@ cards once there is room -- never a table that scrolls sideways.
                         حضور و غیاب
                     </a>
                 </div>
+                {% endif %}
             </article>
         </li>
         {% endwith %}

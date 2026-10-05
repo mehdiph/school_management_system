@@ -290,8 +290,10 @@ def session_list(request, class_subject_id):
         'class_subject__school_class__grade',
         'class_subject__school_class__branch',
         'class_subject__subject',
-        'session_contents'  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
-    ).order_by('-date', '-session_number')
+        'session_contents',  # جلوگیری از N+1 و خطای RelatedObjectDoesNotExist
+        'bell',
+        'calendar_event',
+    ).order_by('-date', '-bell__order', '-session_number')
 
     page_obj = Paginator(sessions, SESSIONS_PER_PAGE).get_page(request.GET.get('page'))
 

@@ -2,13 +2,18 @@
 {% load static jalali_tags %}
 
 {% comment %}
-  The teacher's weekly schedule: same days (from Saturday), bells and
-  two-week rotation as the student page (scheduling/weekly-schedule.html),
-  built by scheduling.services.build_teacher_weekly_schedule.
+  The teacher's weekly schedule, one dated week at a time (?week=<Jalali
+  date>; scheduling.services.build_teacher_week). Every lesson is a slot
+  (class subject + date + bell) rendered with its state
+  (partials/slot-lesson.html): open slots link to the session form with
+  the slot prefilled; registered ones link there too (the server answers
+  with "already recorded"); future and holiday ones are not links.
+  Works without JS; teacher-schedule.js only adds toasts and day tabs.
 
-  Wide screens: a days x bells table per rotation week (sticky header
-  row and day column when it scrolls). Narrow: day tabs + that day's
-  lessons. Print: .ts-print, one page with both weeks merged (like the PDF).
+  Wide screens: a days x bells table (sticky header row and day column
+  when it scrolls). Narrow: day tabs + that day's lessons. Print:
+  .ts-print, one page with both rotation weeks merged (like the PDF,
+  built by build_teacher_weekly_schedule).
 {% endcomment %}
 
 {% block title %}برنامه هفتگی | پنل معلم{% endblock %}
@@ -54,53 +59,56 @@
     </section>
     {% else %}
 
-    <div class="ui-tabs ts-screen" role="tablist" aria-label="هفته‌های برنامه">
-        {% for week, summary in weeks %}
-        <a
-            class="ui-tab"
-            role="tab"
-            id="ts-tab-{{ week.number }}"
-            href="?week={{ week.number }}"
-            data-week="{{ week.number }}"
-            aria-controls="ts-week-{{ week.number }}"
-            {% if week.number == selected_week.number %}aria-selected="true" tabindex="0"{% else %}aria-selected="false" tabindex="-1"{% endif %}
-        >
-            {{ week.label }}
-            {% if week.is_current %}<span class="ui-badge ui-badge--soft">این هفته</span>{% endif %}
+    {# ---- Screen: one dated week; every lesson is a slot with a state ---- #}
+    <nav class="ts-weeknav ts-screen" aria-label="هفته‌ها">
+        {% if week.previous_start %}
+        <a class="ui-btn ui-btn--secondary ui-btn--sm" href="?week={{ week.previous_query }}" rel="prev">
+            <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+            هفته‌ی قبل
         </a>
-        {% endfor %}
-    </div>
+        {% else %}<span></span>{% endif %}
 
-    {% for week, summary in weeks %}
-    <section
-        class="ts-week ts-screen"
-        role="tabpanel"
-        id="ts-week-{{ week.number }}"
-        aria-labelledby="ts-tab-{{ week.number }}"
-        {% if week.number != selected_week.number %}hidden{% endif %}
-    >
-        <p class="ts-week__dates">{{ week.start|jalali_date }} تا {{ week.end|jalali_date }}</p>
-
-        <ul class="ui-chip-list ts-summary" aria-label="خلاصه‌ی {{ week.label }}">
-            <li class="ui-chip">{{ summary.periods|fa_digits }} زنگ در هفته</li>
-            <li class="ui-chip">{{ summary.classes|fa_digits }} کلاس</li>
-            <li class="ui-chip">{{ summary.subjects|fa_digits }} درس</li>
-            {% if summary.conflicts %}
-            <li class="ui-badge ui-badge--warning">
-                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
-                {{ summary.conflicts|fa_digits }} تداخل در برنامه
-            </li>
+        <div class="ts-weeknav__current">
+            <strong class="ts-week__dates">{{ week.start|jalali_date }} تا {{ week.last_school_day|jalali_date }}</strong>
+            {% if week.label %}<span class="ui-badge ui-badge--soft">{{ week.label }}</span>{% endif %}
+            {% if week.is_current %}
+            <span class="ui-badge ui-badge--accent">این هفته</span>
+            {% else %}
+            <a class="ts-weeknav__today" href="{% url 'scheduling:teacher-schedule' %}">برو به این هفته</a>
             {% endif %}
+        </div>
+
+        {% if week.next_start %}
+        <a class="ui-btn ui-btn--secondary ui-btn--sm" href="?week={{ week.next_query }}" rel="next">
+            هفته‌ی بعد
+            <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+        </a>
+        {% else %}<span></span>{% endif %}
+    </nav>
+
+    <section class="ts-week ts-screen" aria-label="برنامه‌ی هفته‌ی {{ week.start|jalali_date }}">
+        <ul class="ui-chip-list ts-summary" aria-label="خلاصه‌ی هفته">
+            <li class="ui-chip">{{ week.summary.periods|fa_digits }} زنگ</li>
+            <li class="ui-chip">{{ week.summary.registered|fa_digits }} جلسه‌ی ثبت‌شده</li>
+            {% if week.summary.open %}<li class="ui-chip">{{ week.summary.open|fa_digits }} زنگ منتظر ثبت</li>{% endif %}
+            {% if week.summary.holidays %}<li class="ui-badge ui-badge--warning">{{ week.summary.holidays|fa_digits }} زنگ تعطیل</li>{% endif %}
+        </ul>
+
+        <ul class="ts-legend" aria-label="راهنما">
+            <li><span class="ts-legend__swatch ts-slot--open" aria-hidden="true"></span>قابل ثبت (روی درس بزنید)</li>
+            <li><span class="ts-legend__swatch ts-slot--registered" aria-hidden="true"></span>ثبت‌شده</li>
+            <li><span class="ts-legend__swatch ts-slot--future" aria-hidden="true"></span>آینده</li>
+            <li><span class="ts-legend__swatch ts-slot--holiday" aria-hidden="true"></span>تعطیل</li>
         </ul>
 
         {# ---- Wide screens: days x bells ---- #}
-        <div class="ts-table-wrap" tabindex="0" role="region" aria-label="جدول {{ week.label }}">
-            <table class="ts-table" style="--ts-bells: {{ schedule.bells|length }}">
-                <caption class="ui-visually-hidden">برنامه‌ی {{ week.label }}</caption>
+        <div class="ts-table-wrap" tabindex="0" role="region" aria-label="جدول هفته">
+            <table class="ts-table" style="--ts-bells: {{ week.bells|length }}">
+                <caption class="ui-visually-hidden">برنامه‌ی هفته‌ی {{ week.start|jalali_date }}</caption>
                 <thead>
                     <tr>
                         <th scope="col" class="ts-table__corner">روز</th>
-                        {% for bell in schedule.bells %}
+                        {% for bell in week.bells %}
                         <th scope="col" class="ts-table__bell">
                             <span class="ts-table__bell-title">{{ bell.title }}</span>
                             <span class="ts-table__bell-time">{{ bell.start_time|fa_time }}–{{ bell.end_time|fa_time }}</span>
@@ -113,22 +121,20 @@
                     <tr class="{% if day.is_today %}is-today{% endif %}">
                         <th scope="row" class="ts-table__day">
                             {{ day.label }}
+                            <span class="ts-table__date">{{ day.date|jalali_date }}</span>
                             {% if day.is_today %}<span class="ui-badge ui-badge--soft">امروز</span>{% endif %}
                         </th>
-                        {% for slot in day.slots %}
-                        <td class="ts-cell{% if slot.entries %} has-lesson{% endif %}{% if slot.is_now %} is-now{% endif %}{% if slot.has_conflict %} has-conflict{% endif %}">
-                            {% if slot.is_now %}<span class="ui-visually-hidden">(زنگ در حال برگزاری)</span>{% endif %}
-                            {% if slot.has_conflict %}
+                        {% for cell in day.cells %}
+                        <td class="ts-cell{% if cell.lessons %} has-lesson{% endif %}{% if cell.is_now %} is-now{% endif %}{% if cell.has_conflict %} has-conflict{% endif %}">
+                            {% if cell.is_now %}<span class="ui-visually-hidden">(زنگ در حال برگزاری)</span>{% endif %}
+                            {% if cell.has_conflict %}
                             <span class="ui-badge ui-badge--warning ts-cell__conflict" title="دو درس در یک زنگ ثبت شده است">
                                 <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
                                 تداخل
                             </span>
                             {% endif %}
-                            {% for entry in slot.entries %}
-                            <div class="ts-lesson" style="{{ entry.style }}">
-                                <strong class="ts-lesson__subject">{{ entry.subject }}</strong>
-                                <span class="ui-chip ts-lesson__class">{{ entry.class_label }} · {{ entry.branch }}</span>
-                            </div>
+                            {% for lesson in cell.lessons %}
+                            {% include "scheduling/partials/slot-lesson.html" %}
                             {% empty %}
                             <span class="ui-visually-hidden">بدون کلاس</span>
                             {% endfor %}
@@ -142,16 +148,16 @@
 
         {# ---- Narrow screens: day tabs + a list ---- #}
         <div class="ts-mobile">
-            <div class="ts-days" role="tablist" aria-label="روزهای {{ week.label }}">
+            <div class="ts-days" role="tablist" aria-label="روزهای هفته">
                 {% for day in week.days %}
                 <button
                     type="button"
                     class="ts-day-tab{% if day.is_today %} is-today{% endif %}"
                     role="tab"
-                    id="ts-w{{ week.number }}-d{{ day.value }}-tab"
+                    id="ts-d{{ day.value }}-tab"
                     data-day="{{ day.value }}"
-                    aria-controls="ts-w{{ week.number }}-d{{ day.value }}"
-                    {% if day.value == schedule.default_day %}aria-selected="true" tabindex="0"{% else %}aria-selected="false" tabindex="-1"{% endif %}
+                    aria-controls="ts-d{{ day.value }}"
+                    {% if day.value == week.default_day %}aria-selected="true" tabindex="0"{% else %}aria-selected="false" tabindex="-1"{% endif %}
                 >
                     {{ day.label }}
                     {% if day.is_today %}<span class="ts-day-tab__today">امروز</span>{% endif %}
@@ -161,31 +167,28 @@
 
             {% for day in week.days %}
             <section
-                class="ts-day{% if day.value == schedule.default_day %} is-selected{% endif %}"
+                class="ts-day{% if day.value == week.default_day %} is-selected{% endif %}"
                 role="tabpanel"
-                id="ts-w{{ week.number }}-d{{ day.value }}"
+                id="ts-d{{ day.value }}"
                 data-day="{{ day.value }}"
-                aria-labelledby="ts-w{{ week.number }}-d{{ day.value }}-tab"
+                aria-labelledby="ts-d{{ day.value }}-tab"
             >
-                <h2 class="ts-day__title">{{ day.label }}</h2>
-                {% if day.has_entries %}
+                <h2 class="ts-day__title">{{ day.label }} {{ day.date|jalali_date }}</h2>
+                {% if day.has_lessons %}
                 <ol class="ts-day__list">
-                    {% for slot in day.slots %}
-                    {% if slot.entries %}
-                    <li class="ts-row{% if slot.is_now %} is-now{% endif %}">
+                    {% for cell in day.cells %}
+                    {% if cell.lessons %}
+                    <li class="ts-row{% if cell.is_now %} is-now{% endif %}">
                         <span class="ts-row__when">
-                            <span class="ts-row__bell">زنگ {{ slot.bell.order|fa_digits }}</span>
-                            <span class="ts-row__time">{{ slot.bell.start_time|fa_time }}–{{ slot.bell.end_time|fa_time }}</span>
+                            <span class="ts-row__bell">زنگ {{ cell.bell.order|fa_digits }}</span>
+                            <span class="ts-row__time">{{ cell.bell.start_time|fa_time }}–{{ cell.bell.end_time|fa_time }}</span>
                         </span>
                         <span class="ts-row__lessons">
-                            {% for entry in slot.entries %}
-                            <span class="ts-lesson" style="{{ entry.style }}">
-                                <strong class="ts-lesson__subject">{{ entry.subject }}</strong>
-                                <span class="ui-chip ts-lesson__class">{{ entry.class_label }} · {{ entry.branch }}</span>
-                            </span>
+                            {% for lesson in cell.lessons %}
+                            {% include "scheduling/partials/slot-lesson.html" %}
                             {% endfor %}
-                            {% if slot.is_now %}<span class="ui-badge ui-badge--accent"><span class="ui-dot" aria-hidden="true"></span>در حال برگزاری</span>{% endif %}
-                            {% if slot.has_conflict %}<span class="ui-badge ui-badge--warning"><svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>تداخل</span>{% endif %}
+                            {% if cell.is_now %}<span class="ui-badge ui-badge--accent"><span class="ui-dot" aria-hidden="true"></span>در حال برگزاری</span>{% endif %}
+                            {% if cell.has_conflict %}<span class="ui-badge ui-badge--warning"><svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>تداخل</span>{% endif %}
                         </span>
                     </li>
                     {% endif %}
@@ -198,7 +201,6 @@
             {% endfor %}
         </div>
     </section>
-    {% endfor %}
 
     {# ---- Print: one page, both weeks merged ---- #}
     <div class="ts-print" aria-hidden="true">

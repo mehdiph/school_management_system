@@ -1,9 +1,11 @@
 /*
- * Teacher weekly schedule: week tabs, day tabs (narrow screens), print.
+ * Teacher weekly schedule: day tabs (narrow screens), in-place messages
+ * for slots that cannot be recorded, print.
  *
- * Both weeks and every day are already in the page, so switching is only
- * showing/hiding. Without JS the week tabs are plain ?week=N links and
- * every day is listed.
+ * Everything works without JS: the week navigation and the slots are
+ * plain links rendered with their state by the server, and every day is
+ * listed. This only adds day tabs and toasts (why a registered, future
+ * or holiday slot cannot be recorded).
  */
 (function () {
     "use strict";
@@ -40,7 +42,7 @@
         });
     }
 
-    // ---------- Day tabs: the chosen day is shared by both weeks ----------
+    // ---------- Day tabs (narrow screens) ----------
 
     var dayTabs = Array.prototype.slice.call(root.querySelectorAll(".ts-day-tab"));
 
@@ -58,31 +60,81 @@
         tab.scrollIntoView({ block: "nearest", inline: "center" });
     }
 
-    // Each week has its own tab row; keyboard moves stay within one row.
-    root.querySelectorAll(".ts-days").forEach(function (row) {
-        tabList(Array.prototype.slice.call(row.querySelectorAll(".ts-day-tab")), selectDay);
-    });
+    tabList(dayTabs, selectDay);
 
-    // ---------- Week tabs ----------
+    // ---------- Slots: say why a cell cannot be recorded, in place ----------
+    // Without JS a registered slot is still a link: the session form then
+    // redirects back with the same error (and a link to the session).
 
-    var weekTabs = Array.prototype.slice.call(root.querySelectorAll('.ui-tabs [role="tab"]'));
-
-    function selectWeek(tab, moveFocus) {
-        weekTabs.forEach(function (other) {
-            var selected = other === tab;
-            other.setAttribute("aria-selected", selected ? "true" : "false");
-            other.tabIndex = selected ? 0 : -1;
-            document.getElementById(other.getAttribute("aria-controls")).hidden = !selected;
-        });
-        if (moveFocus) tab.focus();
-
-        // Keep the URL shareable, and the choice across a reload.
-        var url = new URL(window.location.href);
-        url.searchParams.set("week", tab.dataset.week);
-        window.history.replaceState(null, "", url);
+    function toastList() {
+        var list = document.querySelector("[data-toasts]");
+        if (!list) {
+            list = document.createElement("ul");
+            list.className = "ui-toasts";
+            list.setAttribute("aria-live", "polite");
+            list.setAttribute("data-toasts", "");
+            document.body.appendChild(list);
+        }
+        return list;
     }
 
-    tabList(weekTabs, selectWeek);
+    function toast(message, level, link) {
+        var item = document.createElement("li");
+        item.className = "ui-toast ui-toast--" + level;
+        item.setAttribute("role", level === "error" ? "alert" : "status");
+
+        var text = document.createElement("span");
+        text.className = "ui-toast__text";
+        text.textContent = message;
+        if (link) {
+            var anchor = document.createElement("a");
+            anchor.href = link.href;
+            anchor.textContent = link.label;
+            text.appendChild(document.createTextNode(" "));
+            text.appendChild(anchor);
+        }
+        item.appendChild(text);
+
+        var close = document.createElement("button");
+        close.type = "button";
+        close.className = "ui-icon-btn ui-toast__close";
+        close.setAttribute("aria-label", "بستن پیام");
+        close.textContent = "×";
+        item.appendChild(close);
+
+        function dismiss() {
+            if (item.parentNode) item.parentNode.removeChild(item);
+        }
+        close.addEventListener("click", dismiss);
+        var timer = window.setTimeout(dismiss, 6000);
+        item.addEventListener("mouseenter", function () { window.clearTimeout(timer); });
+        item.addEventListener("focusin", function () { window.clearTimeout(timer); });
+
+        var list = toastList();
+        // One message at a time: a new click replaces the previous one.
+        Array.prototype.slice.call(list.querySelectorAll(".ui-toast[data-ts-toast]")).forEach(function (old) {
+            old.parentNode.removeChild(old);
+        });
+        item.setAttribute("data-ts-toast", "");
+        list.appendChild(item);
+    }
+
+    root.addEventListener("click", function (event) {
+        var registered = event.target.closest("[data-ts-registered]");
+        if (registered) {
+            event.preventDefault();
+            toast(registered.dataset.message, "error", {
+                href: registered.dataset.sessionUrl,
+                label: "مشاهده‌ی جلسه‌ی ثبت‌شده",
+            });
+            return;
+        }
+        var disabled = event.target.closest("[data-ts-disabled]");
+        if (disabled) {
+            // Touch screens have no hover tooltip: show the reason on tap.
+            toast(disabled.dataset.message, "info");
+        }
+    });
 
     // ---------- Print ----------
 

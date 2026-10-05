@@ -80,6 +80,9 @@
                         {% elif lesson.state == 'next' %}
                         <span class="ui-badge ui-badge--soft">بعدی</span>
                         {% endif %}
+                        {% if lesson.closed_title and not lesson.is_closed %}
+                        <span class="ui-badge ui-badge--warning">بخشی تعطیل: {{ lesson.closed_title }}</span>
+                        {% endif %}
                     </div>
                     <span class="ui-chip db-lesson__class">{{ lesson.class_name }}</span>
                     <p class="db-lesson__summary">{{ lesson.last_summary|default:"بدون گزارش قبلی"|truncatechars:140 }}</p>
@@ -89,14 +92,18 @@
                 </div>
 
                 <div class="db-lesson__action">
-                    {% if lesson.is_recorded %}
+                    {% if lesson.is_closed %}
+                    <span class="ui-badge ui-badge--warning" title="این زنگ‌ها در تقویم آموزشی تعطیل است">
+                        تعطیل: {{ lesson.closed_title }}
+                    </span>
+                    {% elif lesson.is_recorded %}
                     <a class="ui-btn ui-btn--success ui-btn--sm" href="{% url 'teaching:update_session' lesson.recorded_session_id %}">
                         <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-check"></use></svg>
                         ثبت‌شده
                         <span class="ui-visually-hidden">(مشاهده جلسه امروز {{ lesson.subject }})</span>
                     </a>
                     {% else %}
-                    <a class="ui-btn {% if lesson.is_focus %}ui-btn--primary{% else %}ui-btn--secondary{% endif %} ui-btn--sm" href="{% url 'teaching:session_form' lesson.class_subject_id %}?class={{ lesson.class_subject_id }}">
+                    <a class="ui-btn {% if lesson.is_focus %}ui-btn--primary{% else %}ui-btn--secondary{% endif %} ui-btn--sm" href="{% url 'teaching:session_form' lesson.class_subject_id %}?date={{ lesson.date }}&amp;bell={{ lesson.next_bell.pk }}">
                         <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-plus"></use></svg>
                         ثبت جلسه
                         <span class="ui-visually-hidden">{{ lesson.subject }}، {{ lesson.class_name }}</span>

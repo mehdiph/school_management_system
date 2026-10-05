@@ -164,3 +164,40 @@ class DashboardViewTests(ScheduleFixtureMixin, TestCase):
         self.client.force_login(admin)
         response = self.client.get(reverse("report:reports_page"))
         self.assertTemplateNotUsed(response, "teacher/base.html")
+
+
+class DashboardCalendarTests(ScheduleFixtureMixin, TestCase):
+    """Each bell is its own session; closed bells are neither pending nor clickable."""
+
+    def build(self, now=NOW):
+        return build_teacher_dashboard(self.teacher, now=now)
+
+    def setUp(self):
+        self.math = self.class_subject("ریاضی")
+        self.slot(self.math, Day.SATURDAY, self.bell_1)
+        self.slot(self.math, Day.SATURDAY, self.bell_2)
+        self.today = jdatetime.date.fromgregorian(date=NOW.date())
+
+    def test_a_double_period_is_recorded_only_when_both_bells_are(self):
+        SchoolSession.objects.create(class_subject=self.math, date=self.today, bell=self.bell_1)
+
+        row = self.build()["today_lessons"][0]
+
+        self.assertFalse(row.is_recorded)
+        self.assertEqual(row.next_bell, self.bell_2)
+
+        SchoolSession.objects.create(class_subject=self.math, date=self.today, bell=self.bell_2)
+        self.assertTrue(self.build()["today_lessons"][0].is_recorded)
+
+    def test_closed_lesson_is_not_pending(self):
+        from core.testing import make_calendar_event
+
+        make_calendar_event(self.year, self.today, title="آلودگی هوا")
+
+        data = self.build()
+
+        row = data["today_lessons"][0]
+        self.assertTrue(row.is_closed)
+        self.assertEqual(row.closed_title, "آلودگی هوا")
+        self.assertEqual(data["pending_today_count"], 0)
+        self.assertFalse(row.is_focus)

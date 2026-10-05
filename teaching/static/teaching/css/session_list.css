@@ -199,6 +199,30 @@
     color: #92400e;
 }
 
+/* Holiday (closed by the academic calendar): no number, not counted. */
+.sl-status--hl {
+    background: #e7e5e4;
+    color: #44403c;
+}
+
+.sl-number--none {
+    color: #57534e;
+    font-weight: 600;
+}
+
+.sl-card--holiday {
+    background: repeating-linear-gradient(-45deg, #fafaf9, #fafaf9 8px, #f5f5f4 8px, #f5f5f4 16px);
+}
+
+.sl-holiday {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    color: #44403c;
+    font-size: 0.9rem;
+}
+
 .sl-date {
     display: flex;
     align-items: center;

@@ -11,12 +11,14 @@ A fixed number of queries whatever the number of lessons: the
 last-session lookups used to run once per row.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 import jdatetime
 from django.db.models import OuterRef, Prefetch, Q, Subquery
 from django.utils import timezone
 
+from academic_calendar import services as calendar
 from scheduling.models.class_schedule import ClassSchedule
 from scheduling.utils import DateBeforeAcademicYearError, get_today_schedule_day, get_week_cycle
 from school.models import AcademicYear, ClassSubject
@@ -42,6 +44,12 @@ class TodayLesson:
     recorded_session_id: int | None = None
     state: str | None = None        # "now" | "next" | None
     is_focus: bool = False          # the one row with the filled button
+    #: Each bell is its own session (a double period is two). Bells the
+    #: academic calendar closed today, and bells already recorded.
+    closed_bell_ids: set = field(default_factory=set)
+    recorded_bell_ids: set = field(default_factory=set)
+    closed_title: str = ""
+    date: str = ""                  # today, Jalali "1405-07-12" (the form's ?date=)
 
     @property
     def first_bell(self):
@@ -60,8 +68,28 @@ class TodayLesson:
         return [bell.order for bell in self.bells]
 
     @property
+    def open_bells(self):
+        return [bell for bell in self.bells if bell.pk not in self.closed_bell_ids]
+
+    @property
+    def is_closed(self):
+        """Every bell of the row is closed by the academic calendar."""
+
+        return bool(self.bells) and not self.open_bells
+
+    @property
+    def next_bell(self):
+        """The first open bell without a session: what «ثبت جلسه» prefills."""
+
+        return next(
+            (bell for bell in self.open_bells if bell.pk not in self.recorded_bell_ids), None
+        )
+
+    @property
     def is_recorded(self):
-        return self.recorded_session_id is not None
+        if not self.bells:
+            return self.recorded_session_id is not None
+        return not self.is_closed and self.next_bell is None
 
 
 def current_academic_year():
@@ -142,17 +170,24 @@ def _today_lessons(teacher_profile, academic_year, now):
         .select_related("session_contents")
     }
 
-    recorded_today = {}
-    for session_id, class_subject_id in (
+    recorded_bells = defaultdict(dict)       # class subject -> {bell id: session id}
+    legacy_today = defaultdict(list)         # sessions recorded without a bell
+    for session_id, class_subject_id, bell_id in (
         SchoolSession.objects.counted()
         .filter(
             class_subject__in=[cs.pk for cs in class_subjects],
             date=jdatetime.date.fromgregorian(date=today),
         )
         .order_by("session_number")
-        .values_list("pk", "class_subject_id")
+        .values_list("pk", "class_subject_id", "bell_id")
     ):
-        recorded_today[class_subject_id] = session_id  # the latest one wins
+        if bell_id is None:
+            legacy_today[class_subject_id].append(session_id)
+        else:
+            recorded_bells[class_subject_id][bell_id] = session_id
+
+    closures = calendar.Closures.between(today, today, academic_year=academic_year)
+    today_jalali = jdatetime.date.fromgregorian(date=today).strftime("%Y-%m-%d")
 
     lessons = []
     for cs in class_subjects:
@@ -164,7 +199,16 @@ def _today_lessons(teacher_profile, academic_year, now):
             if content is not None:
                 last_summary = content.content
 
+        # A session without a bell counts against the day's bells in order.
+        recorded = dict(recorded_bells[cs.pk])
+        free = [s.bell for s in cs.todays_schedules if s.bell.pk not in recorded]
+        for bell, session_id in zip(free, legacy_today[cs.pk]):
+            recorded[bell.pk] = session_id
+
         for bells in _consecutive_runs([schedule.bell for schedule in cs.todays_schedules]):
+            events = {bell.pk: closures.event_for(today, cs.school_class, bell) for bell in bells}
+            closed = {pk for pk, event in events.items() if event is not None}
+            lesson_sessions = [recorded[b.pk] for b in bells if b.pk in recorded]
             lessons.append(TodayLesson(
                 class_subject_id=cs.pk,
                 subject=cs.subject.name,
@@ -172,7 +216,11 @@ def _today_lessons(teacher_profile, academic_year, now):
                 bells=bells,
                 last_session_number=last_number,
                 last_summary=last_summary,
-                recorded_session_id=recorded_today.get(cs.pk),
+                recorded_session_id=lesson_sessions[-1] if lesson_sessions else None,
+                closed_bell_ids=closed,
+                recorded_bell_ids=set(recorded) & {b.pk for b in bells},
+                closed_title=next((e.title for e in events.values() if e is not None), ""),
+                date=today_jalali,
             ))
 
     lessons.sort(key=lambda lesson: (not lesson.bells, lesson.bell_orders))
@@ -221,7 +269,7 @@ def _mark_now_and_next(lessons, now_time):
         upcoming.state = "next"
 
     focus = current or upcoming
-    if focus is not None and not focus.is_recorded:
+    if focus is not None and not focus.is_recorded and not focus.is_closed:
         focus.is_focus = True
 
 
@@ -256,7 +304,9 @@ def build_teacher_dashboard(teacher_profile, now=None):
         ),
         "total_sessions": teacher_sessions.count(),
         "today_lessons_count": len(lessons),
-        "pending_today_count": sum(1 for lesson in lessons if not lesson.is_recorded),
+        "pending_today_count": sum(
+            1 for lesson in lessons if not lesson.is_recorded and not lesson.is_closed
+        ),
         "recent_sessions": [
             {"session": session, "class_name": class_name(session.class_subject.school_class)}
             for session in recent_sessions

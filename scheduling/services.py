@@ -13,6 +13,7 @@ Both go through the same rotation and grid code (``_rotation``,
 week is which or which lessons are in effect.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
@@ -530,3 +531,271 @@ def academic_year_span(academic_year):
 
 def teacher_schedule_pdf_filename(schedule):
     return f"weekly-schedule-{academic_year_span(schedule.academic_year)}.pdf"
+
+
+# ----------------------------------------------------------------------
+# Teacher schedule: one dated week, every cell a slot with a state
+# ----------------------------------------------------------------------
+# The screen version of the teacher's schedule shows one calendar week
+# (Saturday..Wednesday) with real dates, so each cell is a concrete slot
+# (class subject + date + bell) the teacher can record a session for.
+# Which slots exist and which are closed comes from academic_calendar --
+# the same rules as the session form, so the page and the server agree.
+
+#: ``SlotLesson.state`` values.
+SLOT_OPEN = "open"              # can be recorded: a link to the session form
+SLOT_FUTURE = "future"          # later than today: not clickable
+SLOT_REGISTERED = "registered"  # a session exists for this slot
+SLOT_HOLIDAY = "holiday"        # closed by the academic calendar
+
+FUTURE_TOOLTIP = "امکان ثبت جلسه برای تاریخ‌های آینده وجود ندارد"
+REGISTERED_MESSAGE = "برای این درس در این زنگ و این تاریخ قبلاً جلسه ثبت شده است"
+
+
+@dataclass
+class SlotLesson:
+    entry: TeacherScheduleEntry
+    class_subject_id: int
+    state: str
+    event_title: str = ""
+    session_id: int | None = None
+    session_number: int | None = None
+
+    @property
+    def is_link(self):
+        """Open and registered cells are links (the server answers a registered one with its error)."""
+
+        return self.state in (SLOT_OPEN, SLOT_REGISTERED)
+
+    @property
+    def tooltip(self):
+        if self.state == SLOT_FUTURE:
+            return FUTURE_TOOLTIP
+        if self.state == SLOT_HOLIDAY:
+            return f"تعطیل: {self.event_title}"
+        if self.state == SLOT_REGISTERED:
+            return REGISTERED_MESSAGE
+        return "ثبت جلسه"
+
+
+@dataclass
+class DatedCell:
+    bell: Bell
+    lessons: list
+    is_now: bool = False
+
+    @property
+    def has_conflict(self):
+        return len(self.lessons) > 1
+
+
+@dataclass
+class DatedDay:
+    date: date            # Gregorian
+    value: int            # ClassSchedule.DayChoices value
+    label: str
+    cells: list
+    is_today: bool = False
+
+    @property
+    def jalali(self):
+        """"1405-07-12": the session form's ``?date=``."""
+
+        return jdatetime.date.fromgregorian(date=self.date).strftime("%Y-%m-%d")
+
+    @property
+    def has_lessons(self):
+        return any(cell.lessons for cell in self.cells)
+
+
+@dataclass
+class TeacherWeek:
+    start: date           # Saturday (Gregorian)
+    week_type: int | None
+    days: list
+    bells: list
+    is_current: bool
+    previous_start: date | None
+    next_start: date | None
+    today: date
+
+    @property
+    def end(self):
+        return self.start + timedelta(days=6)
+
+    @property
+    def last_school_day(self):
+        return self.days[-1].date if self.days else self.start
+
+    @property
+    def label(self):
+        return WEEK_LABELS.get(self.week_type, "")
+
+    @staticmethod
+    def param(day):
+        """The ``?week=`` value of the week starting on ``day``: its Jalali date."""
+
+        return jdatetime.date.fromgregorian(date=day).strftime("%Y-%m-%d") if day else ""
+
+    @property
+    def query(self):
+        return self.param(self.start)
+
+    @property
+    def previous_query(self):
+        return self.param(self.previous_start)
+
+    @property
+    def next_query(self):
+        return self.param(self.next_start)
+
+    @property
+    def default_day(self):
+        values = [day.value for day in self.days]
+        today = persian_weekday(self.today)
+        return today if self.is_current and today in values else (values[0] if values else None)
+
+    @property
+    def lessons(self):
+        return [lesson for day in self.days for cell in day.cells for lesson in cell.lessons]
+
+    def count(self, state):
+        return sum(1 for lesson in self.lessons if lesson.state == state)
+
+    @property
+    def summary(self):
+        return {
+            "periods": len(self.lessons),
+            "registered": self.count(SLOT_REGISTERED),
+            "open": self.count(SLOT_OPEN),
+            "holidays": self.count(SLOT_HOLIDAY),
+        }
+
+
+def parse_week(value):
+    """``?week=`` (a Jalali date, any day of the week) -> Gregorian date, or None."""
+
+    from academic_calendar.services import parse_jalali_date
+
+    try:
+        return parse_jalali_date(value).togregorian()
+    except ValueError:
+        return None
+
+
+def build_teacher_week(teacher_profile, academic_year, week_of=None, now=None):
+    """
+    The calendar week containing ``week_of`` (default: today), clamped to
+    ``academic_year``: Saturday..Wednesday, the active bells, and per cell
+    the teacher's lessons as ``SlotLesson`` with a state:
+
+    * ``holiday`` -- an active ``CalendarEvent`` closes the slot;
+    * ``registered`` -- a session exists for class subject + date + bell
+      (a legacy session without a bell counts against that day's slots
+      in bell order);
+    * ``future`` -- the date is after today;
+    * ``open`` -- the teacher can record it.
+
+    Slots come from ``academic_calendar.services.get_slots`` (weekday,
+    rotation week, teaching windows, never Thursday/Friday). A fixed
+    number of queries: slots, events (+ scope), sessions, bells.
+    """
+
+    from academic_calendar import services as calendar
+    from teaching.models import SchoolSession
+
+    now = timezone.localtime(now) if now else timezone.localtime()
+    today = now.date()
+
+    first_week = week_start(_to_gregorian(academic_year.start_date))
+    last_week = week_start(_to_gregorian(academic_year.end_date))
+    start = week_start(week_of or today)
+    start = min(max(start, first_week), last_week)
+    end = start + timedelta(days=6)
+
+    slots = calendar.get_slots(
+        start, end,
+        class_subject__teacher_assignment__teacher=teacher_profile,
+        class_subject__school_class__year=academic_year,
+    )
+    closures = calendar.Closures.between(start, end, academic_year=academic_year)
+
+    by_slot, legacy = {}, defaultdict(list)
+    for session in (
+        SchoolSession.objects.filter(
+            class_subject_id__in={slot.class_subject.pk for slot in slots},
+            date__gte=jdatetime.date.fromgregorian(date=start),
+            date__lte=jdatetime.date.fromgregorian(date=end),
+        )
+        .exclude(status=SchoolSession.Status.HOLIDAY)
+        .only("pk", "class_subject_id", "date", "bell_id", "session_number")
+        .order_by("session_number", "pk")
+    ):
+        day = _to_gregorian(session.date)
+        if session.bell_id is None:
+            legacy[(session.class_subject_id, day)].append(session)
+        else:
+            by_slot[(session.class_subject_id, day, session.bell_id)] = session
+
+    day_slots = defaultdict(list)
+    for slot in slots:
+        day_slots[(slot.class_subject.pk, slot.date)].append(slot)
+    for key, sessions in legacy.items():
+        free = [s for s in day_slots.get(key, ()) if s.key not in by_slot]
+        for slot, session in zip(free, sessions):
+            by_slot[slot.key] = session
+
+    cells = defaultdict(list)
+    for slot in slots:
+        class_subject = slot.class_subject
+        event = closures.event_for(slot.date, class_subject.school_class, slot.bell)
+        session = by_slot.get(slot.key)
+        if event is not None:
+            state = SLOT_HOLIDAY
+        elif session is not None:
+            state = SLOT_REGISTERED
+        elif slot.date > today:
+            state = SLOT_FUTURE
+        else:
+            state = SLOT_OPEN
+        cells[(slot.date, slot.bell.pk)].append(SlotLesson(
+            entry=_teacher_entry(class_subject),
+            class_subject_id=class_subject.pk,
+            state=state,
+            event_title=event.title if event else "",
+            session_id=session.pk if session else None,
+            session_number=session.session_number if session else None,
+        ))
+
+    bells = list(Bell.objects.filter(is_active=True).order_by("order"))
+    day_labels = dict(ClassSchedule.DayChoices.choices)
+    days = []
+    for value in _working_days(()):
+        if value == ClassSchedule.DayChoices.THURSDAY:
+            continue  # never a school day, whatever the settings say
+        day = start + timedelta(days=value)
+        days.append(DatedDay(
+            date=day,
+            value=value,
+            label=day_labels[value],
+            is_today=day == today,
+            cells=[
+                DatedCell(
+                    bell=bell,
+                    lessons=cells.get((day, bell.pk), []),
+                    is_now=day == today and bell.start_time <= now.time() < bell.end_time,
+                )
+                for bell in bells
+            ],
+        ))
+
+    return TeacherWeek(
+        start=start,
+        week_type=calendar.get_week_type(max(start, _to_gregorian(academic_year.start_date)), academic_year),
+        days=days,
+        bells=bells,
+        is_current=start == week_start(today),
+        previous_start=start - timedelta(days=7) if start > first_week else None,
+        next_start=start + timedelta(days=7) if start < last_week else None,
+        today=today,
+    )

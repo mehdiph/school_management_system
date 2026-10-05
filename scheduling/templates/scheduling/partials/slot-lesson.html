@@ -1,0 +1,29 @@
+{% load jalali_tags %}
+{% comment %}
+One lesson of the teacher's dated week (scheduling/teacher-schedule.html).
+Context: lesson (services.SlotLesson), day (DatedDay), cell (DatedCell),
+schedule_next (this week's URL, where the session form sends refusals).
+
+open / registered -> a real link to the session form for this slot
+(class subject + date + bell prefilled). The server re-checks every rule
+and answers a registered slot with its error; JS only shows that error
+in place (data-ts-registered). future / holiday -> not a link.
+{% endcomment %}
+{% if lesson.is_link %}
+<a class="ts-lesson ts-slot ts-slot--{{ lesson.state }}" style="{{ lesson.entry.style }}"
+   href="{% url 'teaching:session_form' lesson.class_subject_id %}?date={{ day.jalali }}&amp;bell={{ cell.bell.pk }}&amp;next={{ schedule_next|urlencode }}"
+   title="{{ lesson.tooltip }}"
+   {% if lesson.state == "registered" %}data-ts-registered data-message="{{ lesson.tooltip }}" data-session-url="{% url 'teaching:update_session' lesson.session_id %}"{% endif %}>
+{% else %}
+<span class="ts-lesson ts-slot ts-slot--{{ lesson.state }}" style="{{ lesson.entry.style }}"
+      title="{{ lesson.tooltip }}" aria-disabled="true" data-ts-disabled data-message="{{ lesson.tooltip }}">
+{% endif %}
+    <strong class="ts-lesson__subject">{{ lesson.entry.subject }}</strong>
+    <span class="ui-chip ts-lesson__class">{{ lesson.entry.class_label }} · {{ lesson.entry.branch }}</span>
+    <span class="ts-slot__state">
+        {% if lesson.state == "registered" %}ثبت شد{% if lesson.session_number %} · جلسه‌ی {{ lesson.session_number|fa_digits }}{% endif %}
+        {% elif lesson.state == "holiday" %}تعطیل: {{ lesson.event_title }}
+        {% elif lesson.state == "future" %}آینده
+        {% else %}ثبت جلسه{% endif %}
+    </span>
+{% if lesson.is_link %}</a>{% else %}</span>{% endif %}

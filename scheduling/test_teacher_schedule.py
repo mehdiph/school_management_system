@@ -183,11 +183,13 @@ class TeacherScheduleViewTests(ScheduleFixtureMixin, TestCase):
         self.assertTemplateUsed(response, "teacher/base.html")
         self.assertContains(response, "ریاضی")
         self.assertContains(response, self.pdf_url)
-        self.assertEqual(response.context["selected_week"].number, 2)  # the current one
+        self.assertTrue(response.context["week"].is_current)
 
     def test_week_query_parameter(self):
-        response = self.client.get(self.url + "?week=1")
-        self.assertEqual(response.context["selected_week"].number, 1)
+        response = self.client.get(self.url + "?week=1405-07-20")
+        self.assertEqual(str(response.context["week"].start), "2026-10-10")  # its Saturday
+        # anything else (e.g. the old ?week=1) falls back to this week
+        self.assertTrue(self.client.get(self.url + "?week=1").context["week"].is_current)
 
     def test_empty_state_without_lessons(self):
         ClassSchedule.objects.all().delete()
