@@ -380,6 +380,36 @@ def get_slots(start, end, days=None, **filters):
     return slots
 
 
+def count_open_slots(ranges):
+    """
+    ``{class_subject_id: (start, end)}`` -> ``{class_subject_id: n}``: how
+    many expected slots (``get_slots``) each class subject has in its own
+    range that no active event closes -- what "sessions the timetable
+    planned" means once holidays are taken out. Two bells of the same
+    subject on one day are two. Fixed number of queries.
+    """
+
+    ranges = {
+        pk: (to_gregorian(start), to_gregorian(end))
+        for pk, (start, end) in ranges.items()
+        if start is not None and end is not None and to_gregorian(start) <= to_gregorian(end)
+    }
+    counts = {pk: 0 for pk in ranges}
+    if not ranges:
+        return counts
+
+    start = min(r[0] for r in ranges.values())
+    end = max(r[1] for r in ranges.values())
+    closures = Closures.between(start, end)
+    for slot in get_slots(start, end, class_subject_id__in=list(ranges)):
+        first, last = ranges[slot.class_subject.pk]
+        if first <= slot.date <= last and not closures.is_closed(
+            slot.date, slot.class_subject.school_class, slot.bell
+        ):
+            counts[slot.class_subject.pk] += 1
+    return counts
+
+
 # ----------------------------------------------------------------------
 # Sync
 # ----------------------------------------------------------------------

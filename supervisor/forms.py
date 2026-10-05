@@ -146,7 +146,11 @@ class SessionPeriodForm(forms.Form):
     range = forms.ChoiceField(choices=[("", "")] + RANGE_CHOICES, required=False)
     status = forms.ChoiceField(
         label="وضعیت جلسه",
-        choices=[("", "همه‌ی وضعیت‌ها")] + SchoolSession.Status.choices,
+        # «تعطیل» rows are not sessions: they are counted in their own column
+        choices=[("", "همه‌ی وضعیت‌ها")] + [
+            choice for choice in SchoolSession.Status.choices
+            if choice[0] != SchoolSession.Status.HOLIDAY
+        ],
         required=False,
         error_messages={"invalid_choice": "وضعیت انتخاب‌شده معتبر نیست."},
     )

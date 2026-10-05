@@ -70,3 +70,45 @@ class StudentPagesAccessTests(TestCase):
         self.client.force_login(student.user)
 
         self.assertEqual(self.client.get(reverse('student:dashboard')).status_code, 200)
+
+
+class StudentSessionJsonCalendarTests(TestCase):
+    """Holiday sessions in the student's session list: flagged, no number, reason."""
+
+    def test_holiday_is_flagged_with_its_reason(self):
+        import jdatetime
+
+        from core.testing import (
+            make_academic_year, make_assignment, make_bell, make_branch, make_calendar_event,
+            make_class_subject, make_enrollment, make_grade, make_school_class, make_student,
+            make_subject, make_teacher_profile,
+        )
+        from teaching.models import SchoolSession
+
+        year = make_academic_year()
+        branch = make_branch()
+        school_class = make_school_class(branch, make_grade(), year)
+        teacher = make_teacher_profile()
+        class_subject = make_class_subject(school_class, make_subject(), make_assignment(teacher, branch, year))
+        bell = make_bell(1)
+        event = make_calendar_event(year, jdatetime.date(1403, 8, 2), title='تاسوعا')
+        SchoolSession.objects.create(class_subject=class_subject, date=jdatetime.date(1403, 8, 1), bell=bell)
+        SchoolSession.objects.create(
+            class_subject=class_subject, date=jdatetime.date(1403, 8, 2), bell=bell,
+            status=SchoolSession.Status.HOLIDAY, calendar_event=event, is_auto_created=True,
+        )
+        student = make_student()
+        make_enrollment(student, school_class)
+        self.client.force_login(student.user)
+
+        data = self.client.get(
+            reverse('student:session_list_json', args=[class_subject.subject.slug])
+        ).json()
+
+        holiday, held = data['sessions']
+        self.assertTrue(holiday['is_holiday'])
+        self.assertEqual(holiday['reason'], 'تاسوعا')
+        self.assertTrue(holiday['label'].startswith('تعطیل'))
+        # the held session without content no longer breaks the endpoint
+        self.assertFalse(held['is_holiday'])
+        self.assertIn('اول', held['label'])

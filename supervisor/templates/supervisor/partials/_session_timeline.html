@@ -1,7 +1,7 @@
 {% load report_tags jalali_tags %}
 {% comment %}
   One class subject's sessions as a vertical timeline, in teaching order
-  (session number), for comparing against the curriculum plan. Rendered
+  (date, then bell), for comparing against the curriculum plan. Rendered
   into an expanded row of the sessions table (?partial=1) and inside the
   full timeline page. Context: class_subject, sessions (see
   SupervisorSessionsSelector.timeline), filters, status_label,
@@ -10,7 +10,8 @@
 <div class="sv-timeline">
   <div class="sv-timeline__head">
     <p>
-      <strong>{{ sessions|length|to_persian }}</strong> جلسه
+      <strong>{{ counted_sessions|to_persian }}</strong> جلسه
+      {% if holiday_sessions %}(و {{ holiday_sessions|to_persian }} زنگ تعطیل که شمرده نمی‌شود){% endif %}
       {% if filters.date_from or filters.date_to %}
         در بازه‌ی
         {% if filters.date_from %}{{ filters.date_from|jalali_date }}{% else %}ابتدای سال{% endif %}
@@ -18,7 +19,7 @@
         {% if filters.date_to %}{{ filters.date_to|jalali_date }}{% else %}امروز{% endif %}
       {% endif %}
       {% if status_label %}· فقط «{{ status_label }}»{% endif %}
-      · به ترتیب شماره‌ی جلسه
+      · به ترتیب تاریخ و زنگ
     </p>
     {% if request.GET.partial == "1" %}
       <a class="link-action" href="{% url 'supervisor:class_subject_timeline' class_subject.pk %}{% querystring partial=None %}">صفحه‌ی کامل</a>
@@ -35,12 +36,16 @@
       </li>
       {% endif %}
 
-      <li class="sv-tl-item{% if session.is_missing_content %} is-missing{% endif %}{% if session.status == 'CD' %} is-canceled{% endif %}">
+      <li class="sv-tl-item{% if session.is_missing_content %} is-missing{% endif %}{% if session.status == 'CD' or session.status == 'HL' %} is-canceled{% endif %}">
         <span class="sv-tl-item__dot" aria-hidden="true"></span>
         <div class="sv-tl-item__card">
           <div class="sv-tl-item__head">
+            {% if session.status == 'HL' %}
+            <span class="sv-tl-item__number">بدون شماره</span>
+            {% else %}
             <span class="sv-tl-item__number">جلسه‌ی {{ session.session_number|to_persian }}</span>
-            <span class="sv-tl-item__date">{{ session.date|jalali_date:"weekday" }}</span>
+            {% endif %}
+            <span class="sv-tl-item__date">{{ session.date|jalali_date:"weekday" }}{% if session.bell_id %} · {{ session.bell.title }}{% endif %}</span>
             {% include "supervisor/partials/_session_status_badge.html" %}
             {% if session.gap_days and not session.is_long_gap %}
               <span class="sv-tl-item__gap">{{ session.gap_days|to_persian }} روز پس از جلسه‌ی قبل</span>
@@ -71,6 +76,10 @@
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
               <span>محتوایی برای این جلسه ثبت نشده است.</span>
               <a href="{% url 'supervisor:session_detail' session.pk %}" data-session-detail>جزئیات</a>
+            </p>
+          {% elif session.status == 'HL' %}
+            <p class="sv-tl-item__muted">
+              این زنگ به‌دلیل «{{ session.calendar_event.title }}» تعطیل بوده است؛ جزو جلسات شمرده نمی‌شود.
             </p>
           {% else %}
             <p class="sv-tl-item__muted">

@@ -11,10 +11,11 @@
       {{ class_subject.subject.name }} · {{ class_subject.school_class.grade.name }} {{ class_subject.school_class.section }}
       · {{ class_subject.teacher_assignment.teacher.staff.user.get_full_name }}
     </p>
-    <h3 class="sv-detail__title">{% if content %}{{ content.title }}{% else %}جلسه‌ی {{ session.session_number|to_persian }}{% endif %}</h3>
+    <h3 class="sv-detail__title">{% if session.is_holiday %}تعطیل: {{ session.calendar_event.title }}{% elif content %}{{ content.title }}{% else %}جلسه‌ی {{ session.session_number|to_persian }}{% endif %}</h3>
     <dl class="sv-detail__meta">
-      <div><dt>شماره‌ی جلسه</dt><dd>{{ session.session_number|to_persian }}</dd></div>
+      <div><dt>شماره‌ی جلسه</dt><dd>{% if session.is_holiday %}بدون شماره{% else %}{{ session.session_number|to_persian }}{% endif %}</dd></div>
       <div><dt>تاریخ</dt><dd>{{ session.date|jalali_date:"weekday" }}</dd></div>
+      {% if session.bell_id %}<div><dt>زنگ</dt><dd>{{ session.bell.title }}</dd></div>{% endif %}
       <div><dt>وضعیت</dt><dd>{% include "supervisor/partials/_session_status_badge.html" %}</dd></div>
     </dl>
   </header>
@@ -36,6 +37,8 @@
       <h4>یادداشت‌ها</h4>
       {% if content.notes %}<p>{{ content.notes|linebreaksbr }}</p>{% else %}<p class="sv-detail__empty">ثبت نشده</p>{% endif %}
     </section>
+  {% elif session.is_holiday %}
+    <p class="sv-detail__empty">این زنگ به‌دلیل «{{ session.calendar_event.title }}» تعطیل بوده است؛ جزو جلسات شمرده نمی‌شود و حضور و غیاب ندارد.</p>
   {% else %}
     <p class="sv-tl-item__missing">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>

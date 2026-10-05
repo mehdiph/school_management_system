@@ -46,6 +46,7 @@ SESSION_TABLE_COLUMNS = [
     ("class", "کلاس", False),
     ("sessions", "جلسات ثبت‌شده", True),
     ("empty", "بدون محتوا", True),
+    ("holidays", "تعطیل", True),
     ("first_date", "اولین جلسه", False),
     ("last_date", "آخرین جلسه", True),
 ]
@@ -209,9 +210,14 @@ def class_subject_timeline(request, pk):
     )
     filters = form.filters()
 
+    sessions = selector.timeline(class_subject, filters)
+    holidays = sum(1 for s in sessions if s.status == SchoolSession.Status.HOLIDAY)
+
     context = {
         "class_subject": class_subject,
-        "sessions": selector.timeline(class_subject, filters),
+        "sessions": sessions,
+        "counted_sessions": len(sessions) - holidays,
+        "holiday_sessions": holidays,
         "filters": filters,
         "form": form,
         "status_label": SchoolSession.Status(filters.status).label if filters.status else "",

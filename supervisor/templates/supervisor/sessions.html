@@ -76,6 +76,7 @@
     <div class="stat-card__body">
       <span class="stat-card__title">جلسات ثبت‌شده</span>
       <span class="stat-card__value">{{ kpis.session_count|to_persian }}</span>
+      {% if kpis.holiday_count %}<span class="stat-card__desc">و {{ kpis.holiday_count|to_persian }} زنگ تعطیل که شمرده نمی‌شود</span>{% endif %}
     </div>
   </article>
 
@@ -96,7 +97,7 @@
     <div class="stat-card__body">
       <span class="stat-card__title">جلسات بدون محتوا</span>
       <span class="stat-card__value">{{ kpis.empty_count|to_persian }}</span>
-      <span class="stat-card__desc">به‌جز جلسات کنسل‌شده</span>
+      <span class="stat-card__desc">به‌جز جلسات کنسل‌شده و تعطیل</span>
     </div>
   </article>
 
@@ -142,7 +143,7 @@
           </th>
           {% endfor %}
           <th scope="col">
-            <span class="sv-th-help" title="جلسات برگزارشده یا جبرانی در برابر جلسات برنامه‌ی هفتگی تا امروز (تعطیلات در نظر گرفته نشده است)">پیشرفت نسبت به برنامه</span>
+            <span class="sv-th-help" title="جلسات برگزارشده یا جبرانی در برابر زنگ‌های برنامه‌ی هفتگی تا امروز (زنگ‌های تعطیل تقویم آموزشی و پنج‌شنبه و جمعه حساب نمی‌شوند)">پیشرفت نسبت به برنامه</span>
           </th>
           <th scope="col"><span class="visually-hidden">جلسات</span></th>
         </tr>
@@ -171,6 +172,13 @@
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
                 {{ row.empty_count|to_persian }}
               </span>
+            {% else %}
+              <span class="sv-muted">۰</span>
+            {% endif %}
+          </td>
+          <td data-label="تعطیل" class="sv-num">
+            {% if row.holiday_count %}
+              <span class="badge badge--gray" title="زنگ‌هایی که تقویم آموزشی تعطیل کرده است">{{ row.holiday_count|to_persian }}</span>
             {% else %}
               <span class="sv-muted">۰</span>
             {% endif %}

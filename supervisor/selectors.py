@@ -32,9 +32,9 @@ from attendance.models.attendance import Attendance
 from school.models import ClassSubject, SchoolClass, Subject
 from school.models.academic_year import AcademicYear
 from scheduling.models.class_schedule import ClassSchedule
+from academic_calendar import services as calendar
 from scheduling.utils import (
     DateBeforeAcademicYearError,
-    count_scheduled_occurrences,
     get_today_schedule_day,
     get_week_cycle,
 )
@@ -308,8 +308,9 @@ class SupervisorDashboardSelector:
         """
 
         day_of_week = get_today_schedule_day(today)
-        if day_of_week is None:
-            # No classes are scheduled on this weekday (e.g. Friday).
+        if day_of_week is None or not calendar.is_working_day(today):
+            # Thursday and Friday are never school days (a legacy Thursday
+            # slot is not expected either), nor are days outside the year.
             return ClassSchedule.objects.none()
 
         # Week 1 / week 2 depends on each class's own academic year.
@@ -347,10 +348,21 @@ class SupervisorDashboardSelector:
             ),
         )
 
-    def today_schedule_count(self):
-        """How many class slots are scheduled for today, in scope."""
+    def _open_today(self, schedules, today):
+        """``schedules`` minus the slots the academic calendar closed today."""
 
-        return self._scheduled_today(timezone.localdate()).count()
+        closures = calendar.Closures.between(today, today)
+        return [
+            schedule for schedule in schedules
+            if not closures.is_closed(today, schedule.class_subject.school_class, schedule.bell)
+        ]
+
+    def today_schedule_count(self):
+        """How many class slots are held today, in scope (closed ones are not)."""
+
+        today = timezone.localdate()
+        schedules = self._scheduled_today(today).select_related("bell", "class_subject__school_class")
+        return len(self._open_today(schedules, today))
 
     def attention_items(self):
         """
@@ -364,13 +376,11 @@ class SupervisorDashboardSelector:
         happened today -- and checks which of those slots have no
         matching registration.
 
-        SchoolSession has no bell/schedule FK, so a scheduled slot and a
-        registered session are matched by (class_subject, date) *count*
-        rather than by a direct foreign key: if a class_subject meets
-        twice today (two distinct ClassSchedule slots) and only one
-        SchoolSession has been registered for today, exactly one
-        occurrence is reported as missing -- whichever slot's grace
-        period elapsed first.
+        A slot is matched to a session by (class_subject, date, bell):
+        two bells of one subject are two expected sessions, and recording
+        one does not cover the other. A legacy session recorded without a
+        bell covers that day's first uncovered slot (in bell order). Slots
+        the academic calendar closed are never reported.
         """
 
         now = timezone.localtime(timezone.now())
@@ -388,6 +398,7 @@ class SupervisorDashboardSelector:
             )
             .order_by("bell__end_time", "class_subject_id")
         )
+        schedules = self._open_today(schedules, today)
 
         if not schedules:
             return []
@@ -409,31 +420,34 @@ class SupervisorDashboardSelector:
         if not overdue_by_class_subject:
             return []
 
-        # Single extra query: how many sessions were already registered
-        # today for each of the overdue class_subjects.
-        registered_counts = dict(
-            SchoolSession.objects.counted().filter(
-                class_subject_id__in=overdue_by_class_subject.keys(),
-                date=today_jalali,
-            )
-            .values("class_subject_id")
-            .annotate(count=Count("id"))
-            .values_list("class_subject_id", "count")
-        )
+        # Single extra query: the sessions already registered today for
+        # the overdue class subjects, by bell.
+        registered_bells = defaultdict(set)
+        legacy_counts = defaultdict(int)
+        for class_subject_id, bell_id in SchoolSession.objects.counted().filter(
+            class_subject_id__in=overdue_by_class_subject.keys(),
+            date=today_jalali,
+        ).values_list("class_subject_id", "bell_id"):
+            if bell_id is None:
+                legacy_counts[class_subject_id] += 1
+            else:
+                registered_bells[class_subject_id].add(bell_id)
+
+        todays_bells = defaultdict(list)
+        for schedule in sorted(schedules, key=lambda s: s.bell.order):
+            todays_bells[schedule.class_subject_id].append(schedule.bell_id)
 
         items = []
 
         for class_subject_id, entries in overdue_by_class_subject.items():
-            registered = registered_counts.get(class_subject_id, 0)
-            missing = len(entries) - registered
+            covered = set(registered_bells[class_subject_id])
+            uncovered = [b for b in todays_bells[class_subject_id] if b not in covered]
+            covered.update(uncovered[:legacy_counts[class_subject_id]])
 
-            if missing <= 0:
-                continue
-
-            # The slots whose grace period elapsed earliest are reported
-            # first as "missing" (entries are already ordered by
-            # bell end time, ascending).
-            for schedule, deadline in entries[:missing]:
+            # entries are ordered by bell end time: earliest overdue first
+            for schedule, deadline in entries:
+                if schedule.bell_id in covered:
+                    continue
                 class_subject = schedule.class_subject
                 school_class = class_subject.school_class
                 teacher_assignment = class_subject.teacher_assignment
@@ -704,6 +718,7 @@ class SupervisorSessionsSelector:
         "class": ("school_class__grade__level", "school_class__section"),
         "sessions": ("session_count",),
         "empty": ("empty_count",),
+        "holidays": ("holiday_count",),
         "first_date": ("first_date",),
         "last_date": ("last_date",),
     }
@@ -762,6 +777,14 @@ class SupervisorSessionsSelector:
         return Q(**conditions)
 
     @classmethod
+    def _holiday_q(cls, filters, prefix=""):
+        """Holiday sessions in the filtered date range (whatever the status filter)."""
+
+        return cls._session_q(filters, prefix, with_status=False) & Q(
+            **{f"{prefix}status": SchoolSession.Status.HOLIDAY}
+        )
+
+    @classmethod
     def _counted_session_q(cls, filters, prefix=""):
         """The filtered sessions, holidays excluded (what every count uses)."""
 
@@ -809,6 +832,8 @@ class SupervisorSessionsSelector:
                 session_count=Count("sessions", filter=in_range),
                 empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
                 delivered_count=Count("sessions", filter=delivered),
+                # per class subject: slots the academic calendar closed
+                holiday_count=Count("sessions", filter=self._holiday_q(filters, "sessions__")),
                 first_date=Min("sessions__date", filter=in_range),
                 last_date=Max("sessions__date", filter=in_range),
             )
@@ -825,6 +850,7 @@ class SupervisorSessionsSelector:
             empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
             teacher_count=Count("teacher_assignment__teacher", distinct=True),
             last_date=Max("sessions__date", filter=in_range),
+            holiday_count=Count("sessions", filter=self._holiday_q(filters, "sessions__")),
         )
 
     def attach_coverage(self, rows, filters):
@@ -839,43 +865,43 @@ class SupervisorSessionsSelector:
           nothing was expected yet), ``coverage_bar`` (the same, capped at
           100 for the progress bar) and ``coverage_level``.
 
-        Holidays are not modelled, so the expected count includes them.
-        One query (the timetable slots of the whole page).
+        Expected slots come from ``academic_calendar.services``: never on
+        Thursday/Friday, and a slot an active calendar event closed is not
+        expected. Two bells of the same subject on one day are two. A
+        fixed number of queries for the whole page.
         """
 
         rows = list(rows)
         if not rows:
             return rows
 
-        slots = defaultdict(list)
-        for class_subject_id, day, week_type in ClassSchedule.objects.filter(
-            class_subject__in=[row.pk for row in rows]
-        ).values_list("class_subject_id", "day_of_week", "week_type"):
-            slots[class_subject_id].append((day, week_type))
+        with_timetable = set(
+            ClassSchedule.objects.filter(class_subject__in=[row.pk for row in rows])
+            .values_list("class_subject_id", flat=True)
+        )
 
         today = jdatetime.date.fromgregorian(date=self.today)
+
+        ranges = {}
+        for row in rows:
+            year = row.school_class.year
+            ranges[row.pk] = (
+                max(d for d in (row.start_date, year.start_date, filters.date_from) if d),
+                min(d for d in (today, row.end_date, year.end_date, filters.date_to) if d),
+            )
+        expected = calendar.count_open_slots(
+            {pk: r for pk, r in ranges.items() if pk in with_timetable}
+        )
 
         for row in rows:
             row.expected_count = None
             row.coverage = None
             row.coverage_level = ""
 
-            row_slots = slots.get(row.pk)
-            if not row_slots:
+            if row.pk not in with_timetable:
                 continue
 
-            year = row.school_class.year
-            start = max(
-                d for d in (row.start_date, year.start_date, filters.date_from) if d
-            )
-            end = min(
-                d for d in (today, row.end_date, year.end_date, filters.date_to) if d
-            )
-
-            row.expected_count = (
-                count_scheduled_occurrences(row_slots, start, end, year)
-                if start <= end else 0
-            )
+            row.expected_count = expected.get(row.pk, 0)
 
             if row.expected_count:
                 row.coverage = round(row.delivered_count * 100 / row.expected_count)
@@ -923,7 +949,11 @@ class SupervisorSessionsSelector:
         sessions = list(
             SchoolSession.objects.filter(class_subject=class_subject)
             .filter(self._session_q(filters))
-            .only("id", "class_subject_id", "date", "session_number", "status")
+            .select_related("bell", "calendar_event")
+            .only(
+                "id", "class_subject_id", "date", "session_number", "status",
+                "bell__title", "bell__order", "calendar_event__title",
+            )
             .annotate(
                 title=F("session_contents__title"),
                 excerpt=Substr("session_contents__content", 1, self.EXCERPT_LENGTH),
@@ -934,11 +964,16 @@ class SupervisorSessionsSelector:
                 has_activity=present("activity"),
                 has_notes=present("notes"),
             )
-            .order_by("session_number", "date")
+            .order_by("date", F("bell__order").asc(nulls_first=True), "session_number")
         )
 
+        # Holidays are shown in place, but a gap is measured between
+        # counted sessions only: a closure neither breaks nor makes one.
         previous = None
         for session in sessions:
+            if session.status == SchoolSession.Status.HOLIDAY:
+                session.gap_days, session.is_long_gap, session.is_missing_content = None, False, False
+                continue
             session.gap_days = (session.date - previous.date).days if previous else None
             session.is_long_gap = (
                 session.gap_days is not None and session.gap_days > self.GAP_WARNING_DAYS
@@ -960,6 +995,8 @@ class SupervisorSessionsSelector:
 
         return self.scope.supervised_sessions().select_related(
             "session_contents",
+            "bell",
+            "calendar_event",
             "class_subject__subject",
             "class_subject__school_class__grade",
             "class_subject__school_class__branch",

@@ -1,4 +1,4 @@
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.shortcuts import render
 from teaching.models.school_session import SchoolSession
 from teaching.models.session_content import SessionContent
@@ -59,6 +59,39 @@ def sessions_list(request):
     return render(request, 'student/session_list.html', context)
 
 
+def _session_json(session):
+    """
+    One session for the student's timeline. A holiday (closed by the
+    academic calendar) has no number, the event as its reason, and is
+    flagged so the page can show it apart; it is never counted.
+    """
+
+    content = getattr(session, 'session_contents', None)
+    bell = f' · {session.bell.title}' if session.bell_id else ''
+    date = persian_filters.persian_date(session.date)
+
+    if session.is_holiday:
+        reason = session.calendar_event.title if session.calendar_event_id else ''
+        return {
+            'id': session.id,
+            'label': f'تعطیل - {date}{bell}',
+            'title': f'تعطیل: {reason}' if reason else 'تعطیل',
+            'content': 'این زنگ تعطیل بوده است و جزو جلسات شمرده نمی‌شود.',
+            'is_holiday': True,
+            'reason': reason,
+        }
+
+    return {
+        'id': session.id,
+        'label': f'جلسه {persian_filters.persian_ordinal(session.session_number)} - {date}{bell}',
+        # older sessions may have no content yet
+        'title': content.title if content else 'بدون عنوان',
+        'content': content.content if content else '',
+        'is_holiday': False,
+        'reason': '',
+    }
+
+
 @student_required
 def session_list_json(request, subject):
     school_class = request.user.student_profile.enrollments.get().school_class
@@ -70,29 +103,16 @@ def session_list_json(request, subject):
             subject__slug=subject
         )
         .select_related('subject')
-        .prefetch_related(
-            'sessions',
-            'sessions__session_contents'
-        )
         .get()
     )
 
-    sessions = class_subject.sessions.all()
+    sessions = (
+        class_subject.sessions
+        .select_related('session_contents', 'bell', 'calendar_event')
+        .order_by('-date', F('bell__order').desc(nulls_last=True), '-session_number')
+    )
 
-    data = [
-        {
-            'id': session.id,
-            'label': (
-                f'جلسه '
-                f'{persian_filters.persian_ordinal(session.session_number)}'
-                f' - '
-                f'{persian_filters.persian_date(session.date)}'
-            ),
-            'title': session.session_contents.title,
-            'content': session.session_contents.content,
-        }
-        for session in sessions
-    ]
+    data = [_session_json(session) for session in sessions]
 
     return JsonResponse({
         'subject': str(class_subject.subject),

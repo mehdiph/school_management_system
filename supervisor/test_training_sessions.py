@@ -627,7 +627,8 @@ class QueryCountTests(SupervisorPagesTestCase):
     page adds 2 more for the footer's site settings. Page-specific:
 
     * sessions: years, teacher / subject / class options, page count,
-      KPIs, rows, timetable slots of the page                      -> 8
+      KPIs, rows, which rows have a timetable                      -> 8
+      + once a row has one: calendar events, expected slots        -> 10
     * teachers: years, subject options, page count, rows, chips    -> 5
     * timeline (partial): class subject, sessions                  -> 2
     * detail (partial): session (+ content + chain), attendance    -> 2
@@ -664,9 +665,11 @@ class QueryCountTests(SupervisorPagesTestCase):
             self.get(url)
 
         self.add_rows(6)
+        expected += 2  # the new rows have a timetable: coverage reads the calendar
         with self.assertNumQueries(expected):
             self.get(url)
-        with self.assertNumQueries(expected):
+        # filtered down to the first row, which has no timetable
+        with self.assertNumQueries(expected - 2):
             self.get(url, {
                 "teacher": self.teacher.pk,
                 "subject": self.subject.pk,

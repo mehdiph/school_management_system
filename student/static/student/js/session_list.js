@@ -23,6 +23,11 @@ coursesGridSection.addEventListener('click', function (event){
             clone.getElementById('session-badge-date').textContent = session.label;
             clone.getElementById('session-main-title').textContent = session.title;
             clone.getElementById('session-main-desc').textContent = session.content;
+            if (session.is_holiday) {
+                // closed by the academic calendar: no number, not counted
+                clone.getElementById('session-card-content').classList.add('session-card--holiday');
+                clone.getElementById('session-badge-date').classList.add('session-tag--holiday');
+            }
 
             container.appendChild(clone);
         });
