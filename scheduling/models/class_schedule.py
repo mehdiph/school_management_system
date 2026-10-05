@@ -26,7 +26,9 @@ class ClassScheduleQuerySet(models.QuerySet):
         check_no_new_thursday(objs)
         with transaction.atomic(using=self.db):
             check_slots(schedules_as_slots(objs))
-            return super().bulk_create(objs, *args, **kwargs)
+            created = super().bulk_create(objs, *args, **kwargs)
+            _resync_later(obj.class_subject_id for obj in objs)
+            return created
 
     def bulk_update(self, objs, fields, *args, **kwargs):
         from scheduling.conflicts import (
@@ -43,6 +45,13 @@ class ClassScheduleQuerySet(models.QuerySet):
         with transaction.atomic(using=self.db):
             if CONFLICT_FIELDS & {_field_name(name) for name in fields}:
                 check_slots(schedules_as_slots(self._as_saved_with(objs, fields)))
+            if "class_subject" in {_field_name(name) for name in fields}:
+                # the class subjects the rows leave need a sync too
+                _resync_later(
+                    self.filter(pk__in=[obj.pk for obj in objs])
+                    .values_list("class_subject_id", flat=True)
+                )
+            _resync_later(obj.class_subject_id for obj in objs)
             with prevalidated():
                 return super().bulk_update(objs, fields, *args, **kwargs)
 
@@ -59,6 +68,14 @@ class ClassScheduleQuerySet(models.QuerySet):
             and self.exclude(day_of_week=ClassSchedule.DayChoices.THURSDAY).exists()
         ):
             raise ValidationError({"day_of_week": THURSDAY_MESSAGE})
+
+        if not is_prevalidated() and {"day_of_week", "week_type", "bell", "class_subject"} & {
+            _field_name(k) for k in kwargs
+        }:
+            _resync_later(self.values_list("class_subject_id", flat=True))
+            if "class_subject" in kwargs or "class_subject_id" in kwargs:
+                value = kwargs.get("class_subject", kwargs.get("class_subject_id"))
+                _resync_later([getattr(value, "pk", value)])
 
         if is_prevalidated() or not CONFLICT_FIELDS & {_field_name(k) for k in kwargs}:
             return super().update(**kwargs)
@@ -114,6 +131,14 @@ def check_no_new_thursday(objs):
     )
     if any(saved_days.get(obj.pk) != thursday for obj in candidates):
         raise ValidationError({"day_of_week": THURSDAY_MESSAGE})
+
+
+def _resync_later(class_subject_ids):
+    """Holiday sessions follow the timetable (academic_calendar.signals)."""
+
+    from academic_calendar.signals import resync_later
+
+    resync_later(list(class_subject_ids))
 
 
 def _field_name(name):
