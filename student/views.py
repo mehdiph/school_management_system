@@ -1,4 +1,6 @@
+from django.db.models import Count, Q
 from django.shortcuts import render
+from teaching.models.school_session import SchoolSession
 from teaching.models.session_content import SessionContent
 from school.models.class_subject import ClassSubject
 from datetime import timedelta
@@ -46,6 +48,9 @@ def sessions_list(request):
     school_class = request.user.student_profile.enrollments.get().school_class
     class_subject_query = ClassSubject.objects\
         .filter(school_class=school_class)\
+        .annotate(session_count=Count(
+            'sessions', filter=~Q(sessions__status=SchoolSession.Status.HOLIDAY)
+        ))\
         .prefetch_related('sessions', 'sessions__session_contents')
 
     context = {

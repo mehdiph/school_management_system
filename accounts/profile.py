@@ -39,7 +39,7 @@ def teacher_overview(teacher_profile):
         'classes': classes,
         'weekly_periods': schedule.summary(schedule.current_week).periods,
         'active_classes': active_classes_count(teacher_profile, year),
-        'sessions_this_year': SchoolSession.objects.filter(
+        'sessions_this_year': SchoolSession.objects.counted().filter(
             class_subject__teacher_assignment__teacher=teacher_profile,
             class_subject__school_class__year=year,
         ).count(),

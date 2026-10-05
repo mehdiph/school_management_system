@@ -33,7 +33,7 @@ cards once there is room -- never a table that scrolls sideways.
             <p class="sl-subtitle">{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
             <p class="sl-count">
                 <i class="fas fa-clipboard-list" aria-hidden="true"></i>
-                تعداد کل: {{ page_obj.paginator.count|to_persian }} جلسه
+                تعداد کل: {{ session_count|to_persian }} جلسه
             </p>
         </div>
         <a href="{% url 'teaching:session_form' class_subject_id %}" class="sl-btn sl-btn--primary">

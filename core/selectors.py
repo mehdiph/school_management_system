@@ -109,7 +109,7 @@ def _today_lessons(teacher_profile, academic_year, now):
         week_type__in=[week_type, ClassSchedule.WeekTypeChoices.BOTH]
     )
     last_session = (
-        SchoolSession.objects
+        SchoolSession.objects.counted()
         .filter(class_subject=OuterRef("pk"))
         .order_by("-session_number")
     )
@@ -144,7 +144,7 @@ def _today_lessons(teacher_profile, academic_year, now):
 
     recorded_today = {}
     for session_id, class_subject_id in (
-        SchoolSession.objects
+        SchoolSession.objects.counted()
         .filter(
             class_subject__in=[cs.pk for cs in class_subjects],
             date=jdatetime.date.fromgregorian(date=today),
@@ -229,7 +229,8 @@ def build_teacher_dashboard(teacher_profile, now=None):
     now = timezone.localtime(now) if now else timezone.localtime()
     academic_year = current_academic_year()
 
-    teacher_sessions = SchoolSession.objects.filter(
+    # Holidays are not sessions the teacher recorded: never counted or listed.
+    teacher_sessions = SchoolSession.objects.counted().filter(
         class_subject__teacher_assignment__teacher=teacher_profile
     )
 

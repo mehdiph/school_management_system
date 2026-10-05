@@ -67,10 +67,10 @@
             <div class="course-icon-wrapper">
               <i class="fa-solid {{ cs.icon }}"></i>
             </div>
-            {% if cs.sessions.count == 0 %}
+            {% if not cs.session_count %}
               <span class="sessions-badge">جلسه ای ثبت نشده</span>
             {% else %}
-              <span class="sessions-badge">{{ cs.sessions.count }} جلسه</span>
+              <span class="sessions-badge">{{ cs.session_count }} جلسه</span>
             {% endif %}
           </div>
           <div class="course-info">

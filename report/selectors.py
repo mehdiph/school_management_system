@@ -198,6 +198,8 @@ def build_class_report(scope, school_class):
 
     for class_subject in class_subjects:
         sessions = list(class_subject.sessions.all())
+        # Holidays are listed (greyed, with their reason) but never counted.
+        counted = [s for s in sessions if s.status != SchoolSession.Status.HOLIDAY]
         session_list = [
             {
                 "number": session.session_number,
@@ -212,17 +214,17 @@ def build_class_report(scope, school_class):
             if session.status == SchoolSession.Status.HELD
         )
 
-        first_date = sessions[0].date if sessions else None
-        last_date = sessions[-1].date if sessions else None
+        first_date = counted[0].date if counted else None
+        last_date = counted[-1].date if counted else None
 
-        if sessions:
+        if counted:
             first_dates.append(first_date)
             last_dates.append(last_date)
 
         subjects_data.append({
             "name": class_subject.subject.name,
             "teacher_name": teacher_display_name(class_subject),
-            "session_count": len(session_list),
+            "session_count": len(counted),
             "first_date": first_date,
             "last_date": last_date,
             "sessions": session_list,

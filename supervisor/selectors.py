@@ -191,7 +191,7 @@ class SupervisorDashboardSelector:
             "classes_count": self.scope.classes().count(),
             "teachers_count": self.scope.teachers().count(),
             "students_count": students_count,
-            "sessions_count": self.scope.sessions().count(),
+            "sessions_count": self.scope.sessions().counted().count(),
         }
 
     # ------------------------------------------------------------------
@@ -207,6 +207,7 @@ class SupervisorDashboardSelector:
 
         return (
             self.scope.sessions()
+            .counted()
             .select_related(
                 "class_subject",
                 "class_subject__school_class",
@@ -232,7 +233,8 @@ class SupervisorDashboardSelector:
 
         current_year = AcademicYear.objects.filter(is_current=True).first()
 
-        sessions = self.scope.sessions()
+        # Holidays are not sessions: left out of every count and status.
+        sessions = self.scope.sessions().counted()
 
         current_year_sessions = (
             sessions.filter(
@@ -255,6 +257,7 @@ class SupervisorDashboardSelector:
             "by_status": {
                 value: status_counts.get(value, 0)
                 for value, _ in SchoolSession.Status.choices
+                if value != SchoolSession.Status.HOLIDAY
             },
         }
 
@@ -409,7 +412,7 @@ class SupervisorDashboardSelector:
         # Single extra query: how many sessions were already registered
         # today for each of the overdue class_subjects.
         registered_counts = dict(
-            SchoolSession.objects.filter(
+            SchoolSession.objects.counted().filter(
                 class_subject_id__in=overdue_by_class_subject.keys(),
                 date=today_jalali,
             )
@@ -524,6 +527,7 @@ class SupervisorAttendanceSelector:
 
         return (
             self.scope.sessions()
+            .counted()
             .filter(class_subject__school_class=school_class)
             .select_related(
                 "class_subject",
@@ -630,14 +634,21 @@ class SessionFilters:
 
 def _no_content_q(prefix=""):
     """
-    Sessions with no ``SessionContent`` row. Cancelled sessions are left
-    out: nothing was taught, so a missing content is expected there.
+    Sessions with no ``SessionContent`` row. Cancelled and holiday
+    sessions are left out: nothing was taught, so a missing content is
+    expected there.
     """
 
     return (
         Q(**{f"{prefix}session_contents__isnull": True})
-        & ~Q(**{f"{prefix}status": SchoolSession.Status.CANCELED})
+        & ~Q(**{f"{prefix}status__in": [SchoolSession.Status.CANCELED, SchoolSession.Status.HOLIDAY]})
     )
+
+
+def _counted_q(prefix=""):
+    """``SchoolSession.objects.counted()`` as a Q, for aggregates over a relation."""
+
+    return ~Q(**{f"{prefix}status": SchoolSession.Status.HOLIDAY})
 
 
 def _ordering(sort, fields, default):
@@ -750,6 +761,12 @@ class SupervisorSessionsSelector:
             conditions[f"{prefix}status"] = filters.status
         return Q(**conditions)
 
+    @classmethod
+    def _counted_session_q(cls, filters, prefix=""):
+        """The filtered sessions, holidays excluded (what every count uses)."""
+
+        return cls._session_q(filters, prefix) & _counted_q(prefix)
+
     def class_subjects(self, filters):
         """The supervised class subjects the filters select (no annotations)."""
 
@@ -773,10 +790,10 @@ class SupervisorSessionsSelector:
         the supervisor needs to see.
         """
 
-        in_range = self._session_q(filters, "sessions__")
+        in_range = self._counted_session_q(filters, "sessions__")
         delivered = (
             self._session_q(filters, "sessions__", with_status=False)
-            & ~Q(sessions__status=SchoolSession.Status.CANCELED)
+            & ~Q(sessions__status__in=[SchoolSession.Status.CANCELED, SchoolSession.Status.HOLIDAY])
         )
 
         return (
@@ -789,11 +806,11 @@ class SupervisorSessionsSelector:
                 "teacher_assignment__teacher__staff__user",
             )
             .annotate(
-                session_count=Count("sessions", filter=in_range or None),
+                session_count=Count("sessions", filter=in_range),
                 empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
                 delivered_count=Count("sessions", filter=delivered),
-                first_date=Min("sessions__date", filter=in_range or None),
-                last_date=Max("sessions__date", filter=in_range or None),
+                first_date=Min("sessions__date", filter=in_range),
+                last_date=Max("sessions__date", filter=in_range),
             )
             .order_by(*_ordering(filters.sort, self.SORT_FIELDS, self.DEFAULT_SORT))
         )
@@ -801,13 +818,13 @@ class SupervisorSessionsSelector:
     def kpis(self, filters):
         """The KPI cards, for every row the filters select (one query)."""
 
-        in_range = self._session_q(filters, "sessions__")
+        in_range = self._counted_session_q(filters, "sessions__")
 
         return self.class_subjects(filters).aggregate(
-            session_count=Count("sessions", filter=in_range or None),
+            session_count=Count("sessions", filter=in_range),
             empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
             teacher_count=Count("teacher_assignment__teacher", distinct=True),
-            last_date=Max("sessions__date", filter=in_range or None),
+            last_date=Max("sessions__date", filter=in_range),
         )
 
     def attach_coverage(self, rows, filters):
@@ -1030,9 +1047,10 @@ class SupervisorTeachersSelector:
         return (
             teachers.select_related("staff__user")
             .annotate(
-                session_count=Count(sessions),
+                session_count=Count(sessions, filter=_counted_q(f"{sessions}__")),
                 empty_count=Count(sessions, filter=_no_content_q(f"{sessions}__")),
-                last_session_date=Max(f"{sessions}__date"),
+                # a holiday is not activity
+                last_session_date=Max(f"{sessions}__date", filter=_counted_q(f"{sessions}__")),
             )
             .order_by(*_ordering(sort, self.SORT_FIELDS, self.DEFAULT_SORT))
         )

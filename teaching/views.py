@@ -222,6 +222,8 @@ def session_list(request, class_subject_id):
     context = {
         'sessions': page_obj.object_list,
         'page_obj': page_obj,
+        # holidays are listed but never counted
+        'session_count': SchoolSession.objects.counted().filter(class_subject=class_subject).count(),
         'class_subject_id': class_subject_id,
         'class_subject': class_subject
     }
