@@ -55,7 +55,7 @@ erDiagram
 
     User {
         string username UK
-        string role "teacher / student / supervisor / admin ..."
+        string role "teacher / student / supervisor / admin / director ..."
         string phone_number
         string national_code UK
         bool must_change_password

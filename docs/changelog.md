@@ -26,6 +26,18 @@
 
 ## Added
 
+### Director Panel (Phase 1, read-only analytics)
+
+- New role «مدیر مدرسه» (`User.Roles.DIRECTOR`, migration `accounts/0004_director_role`, choices only); the system admin's role is relabelled «مدیر سامانه»
+- `director` app at `/director/`: only the director and superusers; other roles are sent to their own dashboard; GET only
+- Dashboard: active students, classes, teachers; attendance, execution and content rates with the change vs the previous period of as many teaching days; both branches side by side; teaching days elapsed / remaining, days lost to closures and closures of the next 30 days; alerts (classes under 85% attendance and teachers with 3+ unregistered slots over the last 7 teaching days, held sessions without attendance after a day, conflicts with the calendar), thresholds in settings
+- Execution page: expected slots held / cancelled by the teacher / unregistered, lost to closures, compensatory sessions and makeup coverage; drill-down branch → grade → class → class subject, a per-teacher view, the same subject across the classes of a grade, the conflicts
+- Attendance page: daily attendance rate with closure days marked (Chart.js, with a table twin), comparison by branch → grade → class, students with the most absences, sessions without attendance
+- Filters on every page as GET parameters (presets, custom Jalali range, branch, grade); empty states; usable on a tablet; a fixed number of queries per page, locked in tests
+- `analytics` app: the single definition of every metric (scope, slot engine, breakdowns, teaching days, previous period); `academic_calendar.services.match_sessions` (the legacy bell-less fallback, now shared by the sync, the supervisor and the teacher dashboard); `AttendanceQuerySet.delivered()` / `status_counts()`
+- Chart.js 4.5.1 vendored under `static/vendor/chartjs/`
+- Documentation: `docs/apps/analytics.md`, `docs/apps/director.md`, ADR-019 to ADR-021, `docs/plans/director-dashboard.md`
+
 ### Academic Calendar (holidays and closures)
 
 - `academic_calendar` app with `CalendarEvent`: official holidays and unplanned closures, scoped by branches, grades and bells (empty = all), soft-deleted with `is_active`
@@ -48,6 +60,7 @@
 
 ## Fixed
 
+- The student dashboard and session list no longer load Font Awesome from cdnjs (the vendored copy in `static/assets` was already loaded)
 - The student session list JSON no longer fails on sessions without content
 
 - The attendance page (`/attendance/<session id>/`) required no login and no ownership: it now needs a login and is limited to the session's teacher, a supervisor of its class, a superuser, or a staff admin with `attendance.change_attendance` on the class's branch (`attendance/permissions.py`); anyone else gets 404

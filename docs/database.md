@@ -61,7 +61,7 @@ Provides authentication and authorization capabilities.
 | ------------ | ----------------------- |
 | username     | Unique login identifier |
 | email        | User email              |
-| role         | System role             |
+| role         | System role: `student`, `teacher`, `supervisor`, `accountant`, `counselor`, `it`, `services`, `admin` (system admin, «مدیر سامانه»), `director` (school director, «مدیر مدرسه», read-only panel) |
 | phone_number | Contact number          |
 
 ### Relationships

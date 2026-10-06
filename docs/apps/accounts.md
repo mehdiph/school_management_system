@@ -168,18 +168,16 @@ The role determines:
 * Available features
 * Access permissions
 
-Current roles include:
+Current roles (`User.Roles`):
 
-* Teacher
-* Supervisor
-* Student
+* Teacher (`teacher`)
+* Supervisor (`supervisor`, «پشتیبان»)
+* Student (`student`)
+* School director (`director`, «مدیر مدرسه»): one person who oversees both branches through the read-only director panel (`docs/apps/director.md`). No profile row: the role alone gives access.
+* System admin (`admin`, «مدیر سامانه»): enters and edits the data in the Django admin. Relabelled from «مدیر» in October 2026 so it cannot be confused with the director.
+* Accountant, counselor, IT and services staff: roles exist, no panel of their own yet.
 
-Future roles may include:
-
-* Counselor
-* Accountant
-* IT Staff
-* Administrator
+To make someone the director: in the Django admin, open the user (or add one) and set «نقش» to «مدیر مدرسه». No staff flag, group or permission is needed; do not make them staff unless they also administer data.
 
 ---
 
@@ -221,6 +219,10 @@ Teacher Dashboard
 Supervisor
 ↓
 Supervisor Dashboard
+
+Director
+↓
+Director Dashboard (/director/)
 
 Student
 ↓

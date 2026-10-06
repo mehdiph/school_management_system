@@ -2,7 +2,7 @@
 
 A Django-based School Management System designed to streamline teaching activities, classroom management, academic scheduling, and student learning tracking.
 
-The project focuses on providing a centralized platform for teachers, supervisors, and students to manage educational activities efficiently.
+The project focuses on providing a centralized platform for teachers, supervisors, students and the school director to manage educational activities efficiently.
 
 ---
 
@@ -32,9 +32,18 @@ The project focuses on providing a centralized platform for teachers, supervisor
 
 * Dashboard of the supervised classes and a "needs attention" list
 * Per-class attendance review
-* Training sessions: sessions recorded per teacher, subject and class, with filters, KPIs, progress against the weekly timetable, a session timeline and session details
+* Training sessions: sessions recorded per teacher, subject and class, with filters, KPIs, progress against the weekly timetable (the same execution rate the director sees), a session timeline and session details
 * Supervised teachers: each teacher's subjects, classes and session-recording activity, as cards or a table
 * Everything is limited to the classes assigned to the supervisor
+
+## Director Portal
+
+* Read-only analytics for the school director («مدیر مدرسه») over both branches, with branch / grade filters and date presets on every page
+* Dashboard: key figures with the change vs the previous period, the branches side by side, the academic calendar at a glance, and alerts (low attendance, unregistered lessons, missing attendance, calendar conflicts)
+* Program execution: lessons the timetable expected vs held, cancelled and unregistered, drill-down to each class and subject, per teacher, and the same subject across classes
+* Attendance: daily trend (holidays marked), comparison by branch, grade and class, students with the most absences
+* Every metric is defined once in the `analytics` app, so the director and the supervisors see the same numbers
+* Details: [docs/apps/director.md](docs/apps/director.md), [docs/apps/analytics.md](docs/apps/analytics.md)
 
 ## Scheduling System
 
@@ -208,6 +217,9 @@ Recommended documents:
 * database.md and database-mermaid.md (ER diagram)
 * architecture-decisions.md
 * apps/academic_calendar.md (holidays, closures, the clickable weekly schedule)
+* apps/analytics.md (every metric definition: expected slots, execution, attendance, content)
+* apps/director.md (the director panel: pages, filters, alerts, access, performance)
+* plans/director-dashboard.md (the director dashboard plan and implementation report)
 * changelog.md
 * apps/*.md
 

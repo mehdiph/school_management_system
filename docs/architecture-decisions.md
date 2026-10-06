@@ -439,6 +439,65 @@ Counted sessions of a class subject are renumbered 1..N in teaching order (date,
 
 ---
 
+# ADR-019: Metrics Are Defined Once, in a Shared Analytics Layer
+
+## Decision
+
+Every school metric (expected slots, slot outcomes, execution rate, makeup coverage, content rate, attendance recorded / attendance rate) is computed by the `analytics` app: `AnalyticsScope` (what), `engine.compute` (one pass over slots and sessions) and `metrics.Breakdown` / `breakdowns()` (counts, rates, any grouping and date window). Rules that lower layers also need (`counted_q`, `missing_content_q`, `attendance_rate`, the registration grace) live in `analytics.definitions`, which imports no model. The legacy bell-less fallback is one function, `academic_calendar.services.match_sessions`. Panels choose a scope, a window and a grouping; they never re-derive a rule.
+
+The supervisor's training-sessions coverage moved onto the engine, and its dashboard attendance rate onto the same formula, in the same change that added the director panel.
+
+## Rationale
+
+* The director and a supervisor looking at the same class must see the same number. Before, coverage was a count (every HD + JB session against the expected slots, which could pass 100%) and the attendance rate counted only «حاضر»; a second, slot-based definition for the director would have made two "truths".
+* The fallback for sessions without a bell existed in three copies (calendar sync, supervisor «نیازمند پیگیری», teacher dashboard); a fourth would have drifted.
+* Computing on the fly from aggregated queries keeps Phase 1 free of summary tables that would need their own invalidation; the engine runs a fixed number of queries whatever the data size, and pages lock their counts in tests.
+
+## Consequences
+
+* Execution is slot-based: only a session recorded in an expected slot makes it "held" (a JB session in a regular slot included); compensatory sessions elsewhere count as makeup, never as execution. Late counts as attended everywhere.
+* A new metric or grouping is added to `analytics` and tested there; panels only display it.
+* Cost grows with the range: a whole year means every slot and session of the year in memory and one grouped query over its attendance records (measured in `docs/apps/director.md`). If that becomes too slow, the engine is the one place to add caching or precomputed daily rows.
+
+---
+
+# ADR-020: The School Director Is a Role With a Read-Only Panel
+
+## Decision
+
+The director is `User.Roles.DIRECTOR` («مدیر مدرسه») with no profile model. `director.permissions.director_required` admits that role and superusers, sends everyone else to their own dashboard (the teacher / student pattern), and accepts only GET / HEAD. The panel has no form that writes and no link to an edit page. The system admin's role is relabelled «مدیر سامانه».
+
+## Rationale
+
+* The director sees both branches, so there is nothing to scope and nothing to store: a profile row would only be one more thing to forget to create.
+* Writes belong to the system admin in the Django admin; a read-only panel cannot be misused to change data, and makes the separation visible.
+* «مدیر» alone was ambiguous between the person who runs the school and the person who runs the system.
+
+## Consequences
+
+* The director is not staff (no Django admin) unless the system admin also makes them staff on purpose.
+* `core.services.access` does not know the director: the panel uses its own `?branch=` filter over all active branches, never `request.branch`.
+
+---
+
+# ADR-021: Front-End Libraries Are Vendored, Never Loaded From a CDN
+
+## Decision
+
+Third-party CSS / JS / fonts are copied into `static/` (with their licence and a README stating the version, source and integrity) and served with the project's static files. No template loads anything from an external host. Chart.js 4.5.1 is vendored under `static/vendor/chartjs/`; Font Awesome 7.2 already was (`static/assets`), and the two student pages that also loaded Font Awesome 6.4 from cdnjs no longer do.
+
+## Rationale
+
+* External CDNs can be slow, unreliable or blocked for the school's users; a page that depends on one breaks for reasons outside the project.
+* Vendored files are reviewed, versioned with the code, and cannot change under the project.
+
+## Consequences
+
+* Upgrades are deliberate: download, check the integrity against the registry, replace the files, update the README.
+* Every chart has a table twin and pages work without JavaScript (ADR-015), so a missing script never hides data.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:
