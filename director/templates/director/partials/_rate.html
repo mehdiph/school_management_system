@@ -1,0 +1,14 @@
+{% load director_tags %}{% comment %}
+  A rate with its bar: ``value`` (a percentage or None), optional
+  ``detail`` (e.g. "۱۲ از ۱۴"). Under 60% is red, under 85% amber, and
+  the level is also spelled out for screen readers (never color alone).
+{% endcomment %}{% with level=value|rate_level %}
+{% if value is None %}<span class="sv-muted" title="داده‌ای برای محاسبه نیست">—</span>{% else %}
+<span class="sv-coverage sv-coverage--{{ level }}">
+  <span class="sv-coverage__text">
+    {% if level == "low" %}<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg><span class="visually-hidden">(پایین)</span>{% elif level == "warning" %}<span class="visually-hidden">(نیازمند توجه)</span>{% endif %}
+    {{ value|percent }}{% if detail %} <span class="sv-sub director-inline">{{ detail }}</span>{% endif %}
+  </span>
+  <span class="sv-coverage__bar" aria-hidden="true"><span style="width: {{ value|bar }}%"></span></span>
+</span>
+{% endif %}{% endwith %}

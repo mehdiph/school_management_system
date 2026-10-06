@@ -1,17 +1,145 @@
-{% extends "base.html" %}
+{% extends "director/_layout.html" %}
+{% load report_tags jalali_tags director_tags %}
 
-{% block title %}داشبورد مدیر مدرسه | سامانه مدیریت مدرسه{% endblock %}
+{% block heading_title %}داشبورد{% endblock %}
+{% block heading %}داشبورد مدیر مدرسه{% endblock %}
 
-{% block sidebar %}
-  {% include "partials/sidebar.html" %}
-{% endblock %}
-
-{% block content %}
-<div class="dashboard-content">
-  <header class="dashboard-header">
-    <div class="dashboard-header__text">
-      <h1>داشبورد مدیر مدرسه</h1>
+{% block page %}
+<!-- KPIs: counts have no history (no comparison); rates are compared
+     with the previous period of as many teaching days. -->
+<section class="summary-cards director-kpis" aria-label="شاخص‌های اصلی">
+  {% for kpi in kpis %}
+  <article class="stat-card director-kpi">
+    <div class="stat-card__body">
+      <span class="stat-card__title">{{ kpi.title }}</span>
+      {% if kpi.is_rate %}
+        <span class="stat-card__value">{{ kpi.value|percent }}</span>
+        {% if kpi.delta is not None %}
+          <span class="director-delta director-delta--{{ kpi.direction }}">
+            {% if kpi.direction == "up" %}<span aria-hidden="true">↑</span>{% elif kpi.direction == "down" %}<span aria-hidden="true">↓</span>{% endif %}
+            {{ kpi.delta|signed }} واحد نسبت به دوره‌ی قبل ({{ kpi.previous|percent }})
+          </span>
+        {% elif kpi.note %}
+          <span class="stat-card__desc">{{ kpi.note }}</span>
+        {% endif %}
+      {% else %}
+        <span class="stat-card__value">{{ kpi.value|to_persian }}</span>
+        <span class="stat-card__desc">{% if kpi.key == "students" %}ثبت‌نام فعال{% elif kpi.key == "classes" %}کلاس فعال{% else %}با درس فعال{% endif %}</span>
+      {% endif %}
     </div>
-  </header>
-</div>
+  </article>
+  {% endfor %}
+</section>
+<p class="sv-footnote">
+  نرخ حضور: حاضر و تأخیر از همه‌ی رکوردها · نرخ اجرا: زنگ‌های برگزارشده از زنگ‌های مورد انتظار برنامه · ثبت محتوا: جلسات برگزارشده و جبرانی که محتوا دارند.
+  {% if previous_period %}دوره‌ی قبل: {{ previous_period.0|jalali_date }} تا {{ previous_period.1|jalali_date }}.{% endif %}
+</p>
+
+<!-- Alerts -->
+<section aria-labelledby="alertsTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="alertsTitle">نیازمند توجه</h2>
+    </div>
+  </div>
+  <div class="director-alerts">
+    {% for alert in alerts %}
+    <article class="sv-card director-alert{% if alert.count %} director-alert--{{ alert.level }}{% endif %}" aria-labelledby="alert-{{ alert.key }}">
+      <header class="director-alert__head">
+        <h3 id="alert-{{ alert.key }}">{{ alert.title }}</h3>
+        {% if alert.count %}<span class="badge badge--{% if alert.level == 'danger' %}danger{% else %}warning{% endif %}">{{ alert.count|to_persian }}</span>{% else %}<span class="badge badge--success">ندارد</span>{% endif %}
+      </header>
+      <p class="sv-muted director-alert__desc">{{ alert.description|fa_digits }}</p>
+      {% if alert.items %}
+      <ul class="director-alert__list">
+        {% for item in alert.items %}
+        <li>
+          <a href="{{ item.url }}">{{ item.label }}</a>
+          <span class="director-alert__detail">
+            {% if item.date %}{{ item.date|jalali_date }}{% if item.detail %} · {% endif %}{% endif %}{{ item.detail|fa_digits }}
+          </span>
+          {% if item.sub %}<span class="sv-sub">{{ item.sub }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if alert.url and alert.count %}<a class="link-action" href="{{ alert.url }}">مشاهده‌ی همه</a>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Branches side by side -->
+<section class="sv-card" aria-labelledby="branchesTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="branchesTitle">مقایسه‌ی شعبه‌ها</h2>
+      <p>همین بازه{% if filters.grade %} و {{ filters.grade.name }}{% endif %}، برای هر شعبه</p>
+    </div>
+  </div>
+  {% if comparison %}
+  <div class="sv-table-wrap">
+    <table class="sv-table director-compare">
+      <thead>
+        <tr>
+          <th scope="col">شاخص</th>
+          {% for column in comparison %}
+          <th scope="col" class="sv-num{% if column.is_selected %} is-selected{% endif %}">
+            <a href="{% querystring branch=column.branch.pk %}">{{ column.branch.name }}</a>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">دانش‌آموزان فعال</th>{% for c in comparison %}<td class="sv-num" data-label="{{ c.branch.name }}">{{ c.counts.students|to_persian }}</td>{% endfor %}</tr>
+        <tr><th scope="row">کلاس‌ها</th>{% for c in comparison %}<td class="sv-num" data-label="{{ c.branch.name }}">{{ c.counts.classes|to_persian }}</td>{% endfor %}</tr>
+        <tr><th scope="row">معلمان</th>{% for c in comparison %}<td class="sv-num" data-label="{{ c.branch.name }}">{{ c.counts.teachers|to_persian }}</td>{% endfor %}</tr>
+        <tr><th scope="row">نرخ حضور</th>{% for c in comparison %}<td data-label="{{ c.branch.name }}">{% include "director/partials/_rate.html" with value=c.breakdown.attendance_rate detail=None %}</td>{% endfor %}</tr>
+        <tr><th scope="row">نرخ اجرای برنامه</th>{% for c in comparison %}<td data-label="{{ c.branch.name }}">{% include "director/partials/_rate.html" with value=c.breakdown.execution_rate detail=None %}</td>{% endfor %}</tr>
+        <tr><th scope="row">ثبت محتوا</th>{% for c in comparison %}<td data-label="{{ c.branch.name }}">{% include "director/partials/_rate.html" with value=c.breakdown.content_rate detail=None %}</td>{% endfor %}</tr>
+        <tr><th scope="row">زنگ ثبت‌نشده</th>{% for c in comparison %}<td class="sv-num" data-label="{{ c.branch.name }}">{{ c.breakdown.unregistered|to_persian }}</td>{% endfor %}</tr>
+        <tr><th scope="row">زنگ تعطیل</th>{% for c in comparison %}<td class="sv-num" data-label="{{ c.branch.name }}">{{ c.breakdown.lost_to_closures|to_persian }}</td>{% endfor %}</tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state"><p>شعبه‌ی فعالی ثبت نشده است.</p></div>
+  {% endif %}
+</section>
+
+<!-- Academic calendar -->
+<section class="sv-card" aria-labelledby="calendarTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="calendarTitle">تقویم آموزشی سال {{ year.title|fa_digits }}</h2>
+      <p>{% if filters.branch %}شعبه‌ی {{ filters.branch.name }}{% else %}هر دو شعبه{% endif %}{% if filters.grade %} · {{ filters.grade.name }}{% endif %}</p>
+    </div>
+  </div>
+  <dl class="director-calendar">
+    <div><dt>روز آموزشی گذشته</dt><dd>{{ calendar.elapsed|to_persian }}</dd></div>
+    <div><dt>روز آموزشی باقی‌مانده</dt><dd>{{ calendar.remaining|to_persian }}</dd></div>
+    <div><dt>روز تعطیل تا امروز</dt><dd>{{ calendar.lost|to_persian }}</dd></div>
+  </dl>
+  <h3 class="director-subheading">تعطیلی‌های {{ calendar.upcoming_days|fa_digits }} روز آینده</h3>
+  {% if calendar.upcoming %}
+  <ul class="director-events">
+    {% for event in calendar.upcoming %}
+    <li>
+      <strong>{{ event.title }}</strong>
+      <span>{{ event.start_date|jalali_date }}{% if event.end_date != event.start_date %} تا {{ event.end_date|jalali_date }}{% endif %}</span>
+      <span class="sv-sub">
+        {{ event.get_event_type_display }}
+        {% with branches=event.branches.all grades=event.grades.all bells=event.bells.all %}
+          · {% if branches %}{% for b in branches %}{{ b.name }}{% if not forloop.last %}، {% endif %}{% endfor %}{% else %}همه‌ی شعبه‌ها{% endif %}
+          {% if grades %} · {% for g in grades %}{{ g.name }}{% if not forloop.last %}، {% endif %}{% endfor %}{% endif %}
+          {% if bells %} · {% for bell in bells %}{{ bell.title }}{% if not forloop.last %}، {% endif %}{% endfor %}{% endif %}
+        {% endwith %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="sv-muted">تعطیلی‌ای در این مدت ثبت نشده است.</p>
+  {% endif %}
+</section>
 {% endblock %}

@@ -100,6 +100,14 @@
         <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
         <span>داشبورد</span>
       </a>
+      <a href="{% url 'director:execution' %}{% if director_query %}?{{ director_query }}{% endif %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'director' and request.resolver_match.url_name == 'execution' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9.5h18"></path><path d="M8 3v3M16 3v3"></path><path d="m9 15 2 2 4-4"></path></svg>
+        <span>اجرای برنامه</span>
+      </a>
+      <a href="{% url 'director:attendance' %}{% if director_query %}?{{ director_query }}{% endif %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'director' and request.resolver_match.url_name == 'attendance' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11 13.5 15.5 9"></path><path d="M12 3 4 6.5V11c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6.5L12 3Z"></path></svg>
+        <span>حضور و غیاب</span>
+      </a>
     {% endif %}
 
   </nav>

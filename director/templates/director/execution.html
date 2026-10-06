@@ -1,0 +1,168 @@
+{% extends "director/_layout.html" %}
+{% load report_tags jalali_tags director_tags %}
+
+{% block heading_title %}اجرای برنامه{% endblock %}
+{% block heading %}اجرای برنامه‌ی هفتگی{% endblock %}
+
+{% block page %}
+<!-- What happened to the expected slots -->
+<section class="summary-cards summary-cards--four" aria-label="خلاصه‌ی اجرای برنامه">
+  <article class="stat-card">
+    <div class="stat-card__body">
+      <span class="stat-card__title">نرخ اجرا</span>
+      <span class="stat-card__value">{{ summary.execution_rate|percent }}</span>
+      <span class="stat-card__desc">{{ summary.held|to_persian }} برگزارشده از {{ summary.expected|to_persian }} زنگ مورد انتظار</span>
+    </div>
+  </article>
+  <article class="stat-card{% if summary.unregistered %} stat-card--alert{% endif %}">
+    <div class="stat-card__body">
+      <span class="stat-card__title">ثبت‌نشده</span>
+      <span class="stat-card__value">{{ summary.unregistered|to_persian }}</span>
+      <span class="stat-card__desc">و {{ summary.cancelled|to_persian }} زنگ لغو معلم</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-card__body">
+      <span class="stat-card__title">تعطیل تقویم آموزشی</span>
+      <span class="stat-card__value">{{ summary.lost_to_closures|to_persian }}</span>
+      <span class="stat-card__desc">زنگ؛ جزو زنگ‌های مورد انتظار نیست</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-card__body">
+      <span class="stat-card__title">پوشش جبرانی</span>
+      <span class="stat-card__value">{{ summary.makeup_coverage|percent }}</span>
+      <span class="stat-card__desc">{{ summary.compensatory|to_persian }} جلسه‌ی جبرانی برای {{ summary.lost_to_closures|add:summary.cancelled|to_persian }} زنگ از دست‌رفته</span>
+    </div>
+  </article>
+</section>
+
+{% if summary.outside_timetable or summary.conflicts %}
+<p class="sv-footnote">
+  {% if summary.outside_timetable %}{{ summary.outside_timetable|to_persian }} جلسه‌ی برگزارشده یا لغوشده خارج از زنگ‌های برنامه ثبت شده و در نرخ اجرا حساب نشده است.{% endif %}
+  {% if summary.conflicts %}{{ summary.conflicts|to_persian }} جلسه در زنگ تعطیل ثبت شده است (<a href="#conflicts">تداخل‌ها</a>).{% endif %}
+</p>
+{% endif %}
+
+<nav class="director-tabs" aria-label="نمای صفحه">
+  {% for key, label in views %}
+    <a class="status-pill{% if view == key %} is-active{% endif %}"
+       href="{% querystring view=key class=None %}"
+       {% if view == key %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+
+{% if view == "teachers" %}
+<section class="sv-card" aria-labelledby="teachersTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="teachersTitle">به تفکیک معلم</h2>
+      <p>کمترین نرخ اجرا در بالا</p>
+    </div>
+  </div>
+  {% if teacher_rows %}
+    {% include "director/partials/_execution_table.html" with rows=teacher_rows first_column="معلم" total=None %}
+  {% else %}
+    <div class="empty-state"><p>در این بازه زنگی در برنامه‌ی معلمان نبوده است.</p></div>
+  {% endif %}
+</section>
+
+{% elif view == "subjects" %}
+<section class="sv-card" aria-labelledby="subjectsTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="subjectsTitle">مقایسه‌ی یک درس در کلاس‌های یک پایه</h2>
+      <p>جلسات برگزارشده در زنگ‌های برنامه (از زنگ‌های مورد انتظار)؛ کلاسی که {{ subject_matrix.gap_warning|default:2|fa_digits }} جلسه یا بیشتر از بهترین کلاس همان درس عقب است علامت می‌خورد.</p>
+    </div>
+  </div>
+  {% if not filters.grade %}
+    <div class="empty-state">
+      <p>برای مقایسه، یک پایه انتخاب کنید:</p>
+      <p class="director-chips">
+        {% for grade in dims.grades %}<a class="status-pill" href="{% querystring grade=grade.pk %}">{{ grade.name }}</a>{% endfor %}
+      </p>
+    </div>
+  {% elif not subject_matrix.rows %}
+    <div class="empty-state"><p>برای این پایه درسی ثبت نشده است.</p></div>
+  {% else %}
+  <div class="sv-table-wrap">
+    <table class="sv-table director-matrix">
+      <thead>
+        <tr>
+          <th scope="col">درس</th>
+          {% for school_class in subject_matrix.classes %}
+          <th scope="col" class="sv-num">{{ school_class.grade.name }} {{ school_class.section }}<span class="sv-sub">{{ school_class.branch.name }}</span></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in subject_matrix.rows %}
+        <tr>
+          <th scope="row">{{ row.subject.name }}</th>
+          {% for cell in row.cells %}
+          <td class="sv-num{% if cell.is_behind %} director-matrix__behind{% endif %}"
+              data-label="{{ cell.school_class.grade.name }} {{ cell.school_class.section }}">
+            {% if cell.breakdown is None %}
+              <span class="sv-muted" title="این درس در این کلاس نیست">—</span>
+            {% else %}
+              <span class="director-matrix__value">{{ cell.breakdown.held|to_persian }}<span class="sv-sub director-inline">از {{ cell.breakdown.expected|to_persian }}</span></span>
+              {% if cell.is_behind %}<span class="badge badge--warning" title="{{ cell.gap|fa_digits }} جلسه کمتر از بهترین کلاس">−{{ cell.gap|fa_digits }}<span class="visually-hidden"> جلسه عقب</span></span>{% endif %}
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+{% else %}
+<section class="sv-card" aria-labelledby="breakdownTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="breakdownTitle">زنگ‌های برنامه به تفکیک {% if level == "branch" %}شعبه{% elif level == "grade" %}پایه{% elif level == "class" %}کلاس{% else %}درس{% endif %}</h2>
+      {% include "director/partials/_breadcrumbs.html" %}
+    </div>
+  </div>
+  {% if rows %}
+    {% if level == "branch" %}{% include "director/partials/_execution_table.html" with first_column="شعبه" total=summary %}
+    {% elif level == "grade" %}{% include "director/partials/_execution_table.html" with first_column="پایه" total=summary %}
+    {% elif level == "class" %}{% include "director/partials/_execution_table.html" with first_column="کلاس" total=summary %}
+    {% else %}{% include "director/partials/_execution_table.html" with first_column="درس و معلم" total=summary %}{% endif %}
+  {% else %}
+    <div class="empty-state"><p>در این بازه و این فیلترها کلاسی نیست.</p></div>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="sv-card" id="conflicts" aria-labelledby="conflictsTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="conflictsTitle">تداخل با تقویم آموزشی</h2>
+      <p>جلسه‌هایی که در زنگ تعطیل ثبت شده‌اند؛ مدیر سامانه باید یکی از آن دو را اصلاح کند.</p>
+    </div>
+  </div>
+  {% if conflicts %}
+  <div class="sv-table-wrap">
+    <table class="sv-table">
+      <thead><tr><th scope="col">تاریخ</th><th scope="col">زنگ</th><th scope="col">کلاس و درس</th><th scope="col">معلم</th><th scope="col">تعطیلی</th></tr></thead>
+      <tbody>
+        {% for row in conflicts %}
+        <tr>
+          <td data-label="تاریخ">{{ row.date|jalali_date }}</td>
+          <td data-label="زنگ">{{ row.bell.title }}</td>
+          <td data-label="کلاس و درس">{{ row.class_label }} · {{ row.class_subject.subject.name }}<span class="sv-sub">{{ row.class_subject.school_class.branch.name }}</span></td>
+          <td data-label="معلم">{{ row.teacher }}</td>
+          <td data-label="تعطیلی">{{ row.event.title }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state empty-state--inline"><p>در این بازه تداخلی نیست.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

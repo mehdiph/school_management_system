@@ -1,0 +1,57 @@
+{% load report_tags director_tags %}{% comment %}
+  One execution row per item (``rows``: DrillRow), with the full
+  breakdown. ``first_column`` names the first column; a row with a
+  ``query`` links to the level below.
+{% endcomment %}
+<div class="sv-table-wrap">
+  <table class="sv-table director-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ first_column }}</th>
+        <th scope="col" class="sv-num"><span class="sv-th-help" title="زنگ‌های برنامه‌ی هفتگی تا الان، بدون زنگ‌های تعطیل">زنگ مورد انتظار</span></th>
+        <th scope="col" class="sv-num">برگزارشده</th>
+        <th scope="col" class="sv-num"><span class="sv-th-help" title="جلسه با وضعیت «کنسل شده» که معلم ثبت کرده است">لغو معلم</span></th>
+        <th scope="col" class="sv-num"><span class="sv-th-help" title="زنگ برنامه که هیچ جلسه‌ای برایش ثبت نشده است">ثبت‌نشده</span></th>
+        <th scope="col"><span class="sv-th-help" title="برگزارشده ÷ زنگ مورد انتظار">نرخ اجرا</span></th>
+        <th scope="col" class="sv-num"><span class="sv-th-help" title="زنگ‌هایی که تقویم آموزشی تعطیل کرده است (جزو مورد انتظار نیست)">تعطیل</span></th>
+        <th scope="col" class="sv-num"><span class="sv-th-help" title="جلسه‌ی جبرانی خارج از زنگ‌های برنامه">جبرانی</span></th>
+        <th scope="col"><span class="sv-th-help" title="جبرانی ÷ (تعطیل + لغو معلم)">پوشش جبرانی</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% with b=row.breakdown %}
+      <tr>
+        <th scope="row" data-label="{{ first_column }}">
+          {% if row.query %}<a href="?{{ row.query }}">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}
+          {% if row.sub %}<span class="sv-sub">{{ row.sub }}</span>{% endif %}
+        </th>
+        <td data-label="زنگ مورد انتظار" class="sv-num">{{ b.expected|to_persian }}</td>
+        <td data-label="برگزارشده" class="sv-num">{{ b.held|to_persian }}</td>
+        <td data-label="لغو معلم" class="sv-num">{{ b.cancelled|to_persian }}</td>
+        <td data-label="ثبت‌نشده" class="sv-num">{% if b.unregistered %}<span class="badge badge--warning">{{ b.unregistered|to_persian }}</span>{% else %}<span class="sv-muted">۰</span>{% endif %}</td>
+        <td data-label="نرخ اجرا">{% include "director/partials/_rate.html" with value=b.execution_rate detail=None %}</td>
+        <td data-label="تعطیل" class="sv-num">{{ b.lost_to_closures|to_persian }}</td>
+        <td data-label="جبرانی" class="sv-num">{{ b.compensatory|to_persian }}</td>
+        <td data-label="پوشش جبرانی" class="sv-num">{{ b.makeup_coverage|percent }}</td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+    {% if total %}
+    <tfoot>
+      <tr>
+        <th scope="row">جمع</th>
+        <td class="sv-num">{{ total.expected|to_persian }}</td>
+        <td class="sv-num">{{ total.held|to_persian }}</td>
+        <td class="sv-num">{{ total.cancelled|to_persian }}</td>
+        <td class="sv-num">{{ total.unregistered|to_persian }}</td>
+        <td>{{ total.execution_rate|percent }}</td>
+        <td class="sv-num">{{ total.lost_to_closures|to_persian }}</td>
+        <td class="sv-num">{{ total.compensatory|to_persian }}</td>
+        <td class="sv-num">{{ total.makeup_coverage|percent }}</td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</div>

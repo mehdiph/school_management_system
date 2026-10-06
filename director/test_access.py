@@ -13,7 +13,7 @@ from core.testing import make_superuser, make_user
 from accounts.models import User
 
 #: Every page of the panel.
-PAGES = ("director:dashboard",)
+PAGES = ("director:dashboard", "director:execution", "director:attendance")
 
 
 class DirectorAccessTests(TestCase):

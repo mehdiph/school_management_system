@@ -480,13 +480,18 @@ class _Plan:
     conflicts: list
 
 
-def _plan(start, end, class_subject_ids=None, academic_year=None):
-    """Everything the sync (and the conflicts page) needs, read only."""
+def _plan(start, end, class_subject_ids=None, academic_year=None, closures=None):
+    """
+    Everything the sync (and the conflicts page) needs, read only.
+    ``closures`` may be passed when the caller already loaded the active
+    events covering the range (the director dashboard does).
+    """
 
     from teaching.models import SchoolSession
 
     start, end = to_gregorian(start), to_gregorian(end)
-    closures = Closures.between(start, end, academic_year=academic_year)
+    if closures is None:
+        closures = Closures.between(start, end, academic_year=academic_year)
 
     in_range = SchoolSession.objects.filter(
         date__gte=to_jalali(start), date__lte=to_jalali(end)
@@ -660,11 +665,13 @@ def sync_cancelled_sessions(start, end, event=None, class_subjects=None, academi
     return result
 
 
-def find_conflicts(start=None, end=None, academic_year=None, event=None):
+def find_conflicts(start=None, end=None, academic_year=None, event=None, closures=None):
     """
     Non-holiday sessions recorded for slots an active event closes (read
-    only), for the admin's conflicts page. Defaults to the whole of
-    ``academic_year`` (else the current year), or ``event``'s range.
+    only), for the admin's conflicts page and the director dashboard.
+    Defaults to the whole of ``academic_year`` (else the current year), or
+    ``event``'s range. ``closures``: the active events of that range, when
+    the caller already has them loaded.
     """
 
     if event is not None:
@@ -678,7 +685,7 @@ def find_conflicts(start=None, end=None, academic_year=None, event=None):
     start = start or academic_year.start_date
     end = end or academic_year.end_date
 
-    conflicts = _plan(start, end, academic_year=academic_year).conflicts
+    conflicts = _plan(start, end, academic_year=academic_year, closures=closures).conflicts
     if event is not None:
         conflicts = [c for c in conflicts if c.event.pk == event.pk]
     return conflicts

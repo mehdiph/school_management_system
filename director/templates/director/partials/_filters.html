@@ -1,0 +1,45 @@
+{% comment %}
+  The filter bar of every director page: one GET form above everything it
+  scopes. Presets are plain links; the page's own state (``view``) rides
+  along as a hidden field. Changing branch or grade leaves a class
+  drill-down (the class may not be in the new scope).
+{% endcomment %}
+<form method="get" action="" class="sv-filters director-filters" id="directorFilters" role="search" aria-label="فیلترها" novalidate>
+  {% if form.errors %}
+  <div class="sv-filters__errors" role="alert">
+    <strong>برخی فیلترها اعمال نشدند:</strong>
+    <ul>
+      {% for field in form %}{% for error in field.errors %}
+      <li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ error }}</a></li>
+      {% endfor %}{% endfor %}
+      {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="sv-filters__grid">
+    {% include "supervisor/partials/_filter_field.html" with field=form.date_from %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.date_to %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.branch %}
+    {% include "supervisor/partials/_filter_field.html" with field=form.grade %}
+  </div>
+
+  <div class="sv-filters__footer">
+    <div class="sv-shortcuts" role="group" aria-label="بازه‌های آماده">
+      {% for key, label in period_choices %}{% if key != "custom" %}
+        <a class="status-pill{% if filters.period == key %} is-active{% endif %}"
+           href="{% querystring period=key date_from=None date_to=None %}"
+           {% if filters.period == key %}aria-current="true"{% endif %}>{{ label }}</a>
+      {% endif %}{% endfor %}
+    </div>
+    <div class="sv-filters__actions">
+      {{ form.period }}
+      {% if view and view != "breakdown" %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
+      <button type="submit" class="btn btn--primary btn--small">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z"></path></svg>
+        <span>اعمال فیلتر</span>
+      </button>
+      <a href="?" class="link-action">حذف فیلترها</a>
+    </div>
+  </div>
+</form>

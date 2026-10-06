@@ -1,0 +1,171 @@
+{% extends "director/_layout.html" %}
+{% load static report_tags jalali_tags director_tags %}
+
+{% block heading_title %}حضور و غیاب{% endblock %}
+{% block heading %}حضور و غیاب{% endblock %}
+
+{% block page %}
+<section class="summary-cards summary-cards--four" aria-label="خلاصه‌ی حضور و غیاب">
+  <article class="stat-card">
+    <div class="stat-card__body">
+      <span class="stat-card__title">نرخ حضور</span>
+      <span class="stat-card__value">{{ summary.attendance_rate|percent }}</span>
+      <span class="stat-card__desc">حاضر و تأخیر از {{ summary.attendance_total|to_persian }} رکورد</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-card__body">
+      <span class="stat-card__title">غیبت</span>
+      <span class="stat-card__value">{{ summary.absent|to_persian }}</span>
+      <span class="stat-card__desc">رکورد غیبت</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-card__body">
+      <span class="stat-card__title">تأخیر</span>
+      <span class="stat-card__value">{{ summary.late_rate|percent }}</span>
+      <span class="stat-card__desc">{{ summary.late|to_persian }} رکورد؛ در نرخ حضور حاضر حساب می‌شود</span>
+    </div>
+  </article>
+  <article class="stat-card{% if missing.count %} stat-card--alert{% endif %}">
+    <div class="stat-card__body">
+      <span class="stat-card__title">ثبت حضور و غیاب</span>
+      <span class="stat-card__value">{{ summary.attendance_recorded_rate|percent }}</span>
+      <span class="stat-card__desc">{{ summary.with_attendance|to_persian }} از {{ summary.delivered|to_persian }} جلسه‌ی برگزارشده و جبرانی</span>
+    </div>
+  </article>
+</section>
+
+<section class="sv-card" aria-labelledby="trendTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="trendTitle">نرخ حضور روزانه</h2>
+      <p>{% if school_class %}کلاس {{ school_class.grade.name }} {{ school_class.section }} · {% endif %}روزهای تعطیل با نوار خاکستری مشخص شده‌اند و صفر حساب نمی‌شوند.</p>
+    </div>
+  </div>
+
+  {% if not trend.has_data %}
+    <div class="empty-state">
+      <p>هنوز در این بازه حضور و غیابی ثبت نشده است.</p>
+      {% if trend.closed_days %}<p class="sv-muted">{{ trend.closed_days|fa_digits }} روز از این بازه تعطیل بوده است.</p>{% endif %}
+    </div>
+  {% else %}
+    {% if trend.enough %}
+    <div class="director-chart" id="attendanceTrend" hidden>
+      <div class="director-chart__keys" aria-hidden="true">
+        <span class="director-key"><span class="director-key__line"></span>نرخ حضور</span>
+        <span class="director-key"><span class="director-key__band"></span>روز تعطیل</span>
+      </div>
+      <div class="director-chart__canvas">
+        <canvas role="img" aria-label="نمودار نرخ حضور روزانه؛ همین داده‌ها در جدول زیر آمده است"></canvas>
+      </div>
+    </div>
+    {{ trend.chart|json_script:"attendance-trend-data" }}
+    {% else %}
+    <p class="sv-muted">برای رسم نمودار دست‌کم دو روز با حضور و غیاب لازم است؛ داده‌ها در جدول زیر است.</p>
+    {% endif %}
+
+    <details class="director-details" id="attendanceTrendTable" open>
+      <summary>جدول روزانه</summary>
+      <div class="sv-table-wrap">
+        <table class="sv-table">
+          <thead><tr><th scope="col">روز</th><th scope="col">نرخ حضور</th><th scope="col" class="sv-num">رکورد</th><th scope="col" class="sv-num">غیبت</th><th scope="col" class="sv-num">تأخیر</th></tr></thead>
+          <tbody>
+            {% for point in trend.points %}
+            <tr{% if point.closed %} class="director-row--closed"{% endif %}>
+              <th scope="row" data-label="روز">{{ point.title }}</th>
+              {% if point.closed %}
+                <td data-label="نرخ حضور" colspan="4"><span class="badge badge--gray">تعطیل</span> {{ point.closure }}</td>
+              {% else %}
+                <td data-label="نرخ حضور">{{ point.rate|percent }}</td>
+                <td data-label="رکورد" class="sv-num">{{ point.total|to_persian }}</td>
+                <td data-label="غیبت" class="sv-num">{{ point.absent|to_persian }}</td>
+                <td data-label="تأخیر" class="sv-num">{{ point.late|to_persian }}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endif %}
+</section>
+
+<section class="sv-card" aria-labelledby="compareTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="compareTitle">به تفکیک {% if level == "branch" %}شعبه{% elif level == "grade" %}پایه{% elif level == "class" %}کلاس{% else %}درس{% endif %}</h2>
+      {% include "director/partials/_breadcrumbs.html" %}
+    </div>
+  </div>
+  {% if rows %}
+    {% if level == "branch" %}{% include "director/partials/_attendance_table.html" with first_column="شعبه" total=summary %}
+    {% elif level == "grade" %}{% include "director/partials/_attendance_table.html" with first_column="پایه" total=summary %}
+    {% elif level == "class" %}{% include "director/partials/_attendance_table.html" with first_column="کلاس" total=summary %}
+    {% else %}{% include "director/partials/_attendance_table.html" with first_column="درس و معلم" total=summary %}{% endif %}
+  {% else %}
+    <div class="empty-state"><p>در این بازه و این فیلترها کلاسی نیست.</p></div>
+  {% endif %}
+</section>
+
+<section class="sv-card" aria-labelledby="absenteesTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="absenteesTitle">بیشترین غیبت</h2>
+      <p>دانش‌آموزان با بیشترین غیبت در این بازه{% if school_class %} در این کلاس{% endif %} (حداکثر {{ absentee_limit|fa_digits }} نفر)</p>
+    </div>
+  </div>
+  {% if absentees %}
+  <div class="sv-table-wrap">
+    <table class="sv-table">
+      <thead><tr><th scope="col">دانش‌آموز</th><th scope="col">کلاس</th><th scope="col" class="sv-num">غیبت</th><th scope="col" class="sv-num">نرخ غیبت</th><th scope="col" class="sv-num">تأخیر</th></tr></thead>
+      <tbody>
+        {% for student in absentees %}
+        <tr>
+          <th scope="row" data-label="دانش‌آموز">{{ student.name }}</th>
+          <td data-label="کلاس">{{ student.class_label }}<span class="sv-sub">{{ student.branch }}</span></td>
+          <td data-label="غیبت" class="sv-num">{{ student.absent|to_persian }} <span class="sv-sub director-inline">از {{ student.total|to_persian }}</span></td>
+          <td data-label="نرخ غیبت" class="sv-num">{{ student.absence_rate|percent }}</td>
+          <td data-label="تأخیر" class="sv-num">{{ student.late|to_persian }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state empty-state--inline"><p>در این بازه غیبتی ثبت نشده است.</p></div>
+  {% endif %}
+</section>
+
+<section class="sv-card" id="missing" aria-labelledby="missingTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="missingTitle">جلسات بدون حضور و غیاب</h2>
+      <p>جلسه‌ی برگزارشده یا جبرانی این بازه که از آن گذشته و هیچ رکورد حضور و غیابی ندارد{% if missing.count > missing.limit %} (جدیدترین {{ missing.limit|fa_digits }} مورد از {{ missing.count|fa_digits }}){% endif %}</p>
+    </div>
+  </div>
+  {% if missing.rows %}
+  <div class="sv-table-wrap">
+    <table class="sv-table">
+      <thead><tr><th scope="col">تاریخ</th><th scope="col">کلاس و درس</th><th scope="col">معلم</th></tr></thead>
+      <tbody>
+        {% for row in missing.rows %}
+        <tr>
+          <td data-label="تاریخ">{{ row.date|jalali_date }}</td>
+          <td data-label="کلاس و درس">{{ row.class_label }} · {{ row.class_subject.subject.name }}<span class="sv-sub">{{ row.class_subject.school_class.branch.name }}</span></td>
+          <td data-label="معلم">{{ row.teacher }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state empty-state--inline"><p>همه‌ی جلسات این بازه حضور و غیاب دارند.</p></div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'director/js/attendance_chart.js' %}"></script>
+{% endblock %}

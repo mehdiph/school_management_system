@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load static jalali_tags director_tags %}
+{% comment %}
+  Shell of every director page: header, filter bar, and the "no current
+  academic year" state. Pages fill {% block page %}.
+
+  The panel reuses the supervisor panel's components (stat cards, filter
+  bar, cards, tables, badges, empty states, coverage bars) and adds only
+  director.css.
+{% endcomment %}
+
+{% block title %}{% block heading_title %}{% endblock %} | پنل مدیر مدرسه{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'teaching/js/datepicker/package/dist/css/persian-datepicker.min.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/attendance.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/panel.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/sessions.css' %}">
+<link rel="stylesheet" href="{% static 'director/css/director.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+  {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content director">
+
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>{% block heading %}{% endblock %}</h1>
+    {% if filters %}
+    <p>
+      {{ scope.start|jalali_date }} تا {{ scope.end|jalali_date }}
+      {% if teaching_days is not None %} · {{ teaching_days|fa_digits }} روز آموزشی{% endif %}
+      · {% if filters.branch %}شعبه‌ی {{ filters.branch.name }}{% else %}هر دو شعبه{% endif %}
+      {% if filters.grade %} · {{ filters.grade.name }}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+</header>
+
+{% if not year %}
+  <section class="sv-card">
+    <div class="empty-state">
+      <p>سال تحصیلی جاری تعریف نشده است.</p>
+      <p class="sv-muted">پس از آن‌که مدیر سامانه سال تحصیلی جاری را مشخص کند، آمار این‌جا نمایش داده می‌شود.</p>
+    </div>
+  </section>
+{% else %}
+  {% include "director/partials/_filters.html" %}
+
+  {% if scope.is_empty %}
+  <section class="sv-card">
+    <div class="empty-state">
+      <p>بازه‌ی انتخاب‌شده هیچ روزی از سال تحصیلی تا امروز را در بر نمی‌گیرد.</p>
+      <a href="{% querystring period="year" date_from=None date_to=None %}" class="link-action">از ابتدای سال تحصیلی</a>
+    </div>
+  </section>
+  {% else %}
+  {% block page %}{% endblock %}
+  {% endif %}
+{% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'teaching/js/datepicker/persian-date.min.js' %}"></script>
+<script src="{% static 'teaching/js/datepicker/package/dist/js/persian-datepicker.min.js' %}"></script>
+<script src="{% static 'director/js/filters.js' %}"></script>
+{% block page_scripts %}{% endblock %}
+{% endblock %}
