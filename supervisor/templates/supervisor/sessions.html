@@ -143,7 +143,7 @@
           </th>
           {% endfor %}
           <th scope="col">
-            <span class="sv-th-help" title="زنگ‌هایی از برنامه‌ی هفتگی که در همان زنگ جلسه‌ی برگزارشده یا جبرانی دارند، در برابر همه‌ی زنگ‌های برنامه تا الان (زنگ‌های تعطیل تقویم آموزشی و پنج‌شنبه و جمعه حساب نمی‌شوند؛ همان «نرخ اجرا» در پنل مدیر مدرسه)">پیشرفت نسبت به برنامه</span>
+            <span class="sv-th-help" title="زنگ‌هایی از برنامه‌ی هفتگی که در همان زنگ جلسه‌ی برگزارشده یا جبرانی دارند، در برابر همه‌ی زنگ‌های برنامه تا الان (زنگ‌های تعطیل تقویم آموزشی و پنج‌شنبه و جمعه حساب نمی‌شوند؛ همان «نرخ اجرا» در پنل مدیر مدرسه). جلسه‌های جبرانی خارج از برنامه جدا نوشته می‌شوند.">پیشرفت نسبت به برنامه</span>
           </th>
           <th scope="col"><span class="visually-hidden">جلسات</span></th>
         </tr>
@@ -198,6 +198,9 @@
                 </span>
                 <span class="sv-coverage__bar" aria-hidden="true"><span style="width: {{ row.coverage_bar }}%"></span></span>
               </span>
+            {% endif %}
+            {% if row.compensatory_count %}
+              <span class="sv-sub sv-makeup" title="جلسه‌های جبرانی که خارج از زنگ‌های برنامه برگزار شده‌اند (مثلاً پنج‌شنبه)؛ در «پیشرفت» حساب نمی‌شوند">{{ row.compensatory_count|to_persian }} جلسه‌ی جبرانی</span>
             {% endif %}
           </td>
           <td class="sv-row__action">

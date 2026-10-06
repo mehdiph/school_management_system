@@ -363,6 +363,42 @@ class CountTests(SupervisorPagesTestCase):
         self.assertEqual(row.coverage_level, "warning")
         self.assertContains(response, "۲ از ۳ · ۶۷٪")
 
+    def test_compensatory_sessions_are_shown_next_to_the_coverage(self):
+        # Saturdays every week: Sat 26 Sep and Sat 3 Oct are expected.
+        saturday_bell = make_bell(time(8), time(9))
+        make_schedule(self.class_subject, ClassSchedule.DayChoices.SATURDAY, saturday_bell)
+        # Made up on Thursday 1 Oct: counted apart, not in the rate.
+        SchoolSession.objects.create(
+            class_subject=self.class_subject, date=J(1405, 7, 9), bell=saturday_bell,
+            status=SchoolSession.Status.COMPENSATORY,
+        )
+        # In a regular slot: the slot is held, it is not make-up work.
+        SchoolSession.objects.create(
+            class_subject=self.class_subject, date=J(1405, 7, 4), bell=saturday_bell,
+            status=SchoolSession.Status.COMPENSATORY,
+        )
+
+        response = self.client.get(reverse("supervisor:sessions"))
+        row = response.context["rows"][0]
+
+        self.assertEqual((row.expected_count, row.held_count, row.coverage), (2, 1, 50))
+        self.assertEqual(row.compensatory_count, 1)
+        self.assertContains(response, "۱ جلسه‌ی جبرانی")
+
+    def test_compensatory_sessions_without_a_timetable(self):
+        SchoolSession.objects.create(
+            class_subject=self.class_subject, date=J(1405, 7, 9),
+            status=SchoolSession.Status.COMPENSATORY,
+        )
+
+        response = self.client.get(reverse("supervisor:sessions"))
+        row = response.context["rows"][0]
+
+        self.assertIsNone(row.expected_count)
+        self.assertEqual(row.compensatory_count, 1)
+        self.assertContains(response, "برنامه‌ی هفتگی ندارد")
+        self.assertContains(response, "۱ جلسه‌ی جبرانی")
+
     def test_no_timetable_means_no_coverage(self):
         row = self.client.get(reverse("supervisor:sessions")).context["rows"][0]
 
@@ -668,18 +704,20 @@ class QueryCountTests(SupervisorPagesTestCase):
 
     def test_sessions_page(self):
         url = reverse("supervisor:sessions")
-        expected = self.OVERHEAD + self.FOOTER + 8
+        # 8 for the page + 3 for coverage and compensatory sessions (the
+        # engine reads slots, events and sessions for every page of rows,
+        # timetable or not)
+        expected = self.OVERHEAD + self.FOOTER + 11
         self.get(url)  # warm up per-process caches (content types, ...)
 
         with self.assertNumQueries(expected):
             self.get(url)
 
-        self.add_rows(6)
-        expected += 3  # rows with a timetable: coverage reads slots, events and sessions
+        self.add_rows(6)   # more rows, with a timetable: no extra query
         with self.assertNumQueries(expected):
             self.get(url)
         # filtered down to the first row, which has no timetable
-        with self.assertNumQueries(expected - 3):
+        with self.assertNumQueries(expected):
             self.get(url, {
                 "teacher": self.teacher.pk,
                 "subject": self.subject.pk,

@@ -68,6 +68,7 @@
 ## Changed
 
 - Supervisor training sessions «پیشرفت» column is the analytics engine's execution rate, the number the director dashboard shows: expected slots held by a session recorded in that slot (HD, or JB in a regular slot), over open expected slots; a slot of today counts once its bell ended + 15 minutes. It used to count every HD + JB session of the range (sessions on days without a slot, Thursday compensatory sessions and sessions in closed slots included), so it could pass 100%. `academic_calendar.services.count_open_slots` and the `delivered_count` annotation are removed
+- Supervisor training sessions: the number of compensatory sessions made up outside the timetable («n جلسه‌ی جبرانی») is shown under «پیشرفت», for every row, so make-up work stays visible now that it no longer raises the rate
 - One attendance rate everywhere: records that are not absent (present **and late**) over all records of held and compensatory sessions (`analytics.definitions.attendance_rate`). The supervisor dashboard's «نرخ حضور دانش‌آموزان» used to count «حاضر» only (late lowered it) and included records of cancelled sessions; it now shows the same number as the director dashboard
 - Session numbers follow teaching order (date, then bell) and are renumbered on every save/delete: recording a missed past session shifts the later numbers
 - Teacher dashboard: each bell is its own session (a double period is recorded when both bells are); closed lessons are shown and are not pending

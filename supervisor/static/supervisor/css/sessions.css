@@ -50,6 +50,10 @@
 .sv-coverage--low .sv-coverage__text { color: var(--danger); }
 .sv-coverage--low .sv-coverage__bar > span { background: var(--danger); }
 
+/* Compensatory sessions outside the timetable: shown under the progress,
+   which they do not raise. */
+.sv-makeup { margin-top: 4px; }
+
 /* ==========================================================================
    EXPANDABLE ROWS
    ========================================================================== */

@@ -808,13 +808,17 @@ class SupervisorSessionsSelector:
           ``expected_count``; ``None`` when nothing was expected yet),
           ``coverage_bar`` (the same, for the progress bar) and
           ``coverage_level``.
+        * ``compensatory_count`` -- compensatory sessions made up outside
+          the timetable's slots (on a Thursday, at a free bell), for every
+          row, timetable or not. They do not raise the rate, so the page
+          shows them next to it: make-up work stays visible.
 
-        Both come from the analytics engine, so the director dashboard
-        shows exactly the same numbers for the same class subjects (see
-        ``analytics.engine`` for what is expected and what is held:
-        never Thursday/Friday, never a closed slot, a slot of today only
-        once its bell is over, a held or compensatory session in the slot
-        itself). A fixed number of queries for the whole page.
+        All of it comes from the analytics engine, so the director
+        dashboard shows exactly the same numbers for the same class
+        subjects (see ``analytics.engine`` for what is expected and what
+        is held: never Thursday/Friday, never a closed slot, a slot of
+        today only once its bell is over, a held or compensatory session
+        in the slot itself). A fixed number of queries for the whole page.
         """
 
         rows = list(rows)
@@ -826,10 +830,12 @@ class SupervisorSessionsSelector:
             .values_list("class_subject_id", flat=True)
         )
 
+        # Every row goes through the engine (not only those with a
+        # timetable): a class subject without slots can still have
+        # compensatory sessions to count.
         by_year = defaultdict(list)
         for row in rows:
-            if row.pk in with_timetable:
-                by_year[row.school_class.year].append(row)
+            by_year[row.school_class.year].append(row)
 
         breakdowns = {}
         as_of = as_of_for(self.today)
@@ -844,15 +850,16 @@ class SupervisorSessionsSelector:
             breakdowns.update(metrics.breakdowns(result, metrics.by_class_subject))
 
         for row in rows:
+            breakdown = breakdowns.get(row.pk, metrics.Breakdown())
             row.expected_count = None
             row.held_count = None
             row.coverage = None
             row.coverage_level = ""
+            row.compensatory_count = breakdown.compensatory
 
             if row.pk not in with_timetable:
                 continue
 
-            breakdown = breakdowns.get(row.pk, metrics.Breakdown())
             row.expected_count = breakdown.expected
             row.held_count = breakdown.held
 
