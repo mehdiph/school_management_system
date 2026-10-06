@@ -465,6 +465,49 @@ class SupervisorDashboardSelectorAttendanceTests(TestCase):
         self.assertEqual(stats["present"], 1)
         self.assertEqual(stats["absent"], 1)
         self.assertEqual(stats["late"], 0)
+        self.assertEqual(stats["present_rate"], 50)
+
+    def test_present_rate_counts_late_as_attended_on_delivered_sessions(self):
+        """
+        The rate the director dashboard shows too: late is attended, and
+        only held / compensatory sessions count.
+        """
+
+        branch, grade = make_branch(), make_grade()
+        year = make_academic_year(jdatetime.date(1402, 1, 1))
+        supervisor = make_supervisor(branch, grade)
+        school_class = make_school_class(branch, grade, year)
+        assign_class(supervisor, school_class)
+        _, assignment = make_teacher(branch, year)
+        class_subject = make_class_subject(
+            school_class, make_subject(), assignment, WIDE_START, WIDE_END
+        )
+        held = make_session(class_subject, jdatetime.date(1402, 7, 1))
+        compensatory = make_session(
+            class_subject, jdatetime.date(1402, 7, 2), status=SchoolSession.Status.COMPENSATORY
+        )
+        cancelled = make_session(
+            class_subject, jdatetime.date(1402, 7, 3), status=SchoolSession.Status.CANCELED
+        )
+        enrollments = [make_enrollment(make_student(), school_class) for _ in range(2)]
+        make_attendance(held, enrollments[0], Attendance.AttendanceStatus.PRESENT)
+        make_attendance(held, enrollments[1], Attendance.AttendanceStatus.LATE)
+        make_attendance(compensatory, enrollments[0], Attendance.AttendanceStatus.ABSENT)
+        make_attendance(compensatory, enrollments[1], Attendance.AttendanceStatus.LATE)
+        # A record on a cancelled session is not part of any rate.
+        make_attendance(cancelled, enrollments[0], Attendance.AttendanceStatus.ABSENT)
+
+        stats = SupervisorDashboardSelector(supervisor).attendance_statistics()
+
+        self.assertEqual((stats["total"], stats["absent"], stats["late"]), (4, 1, 2))
+        self.assertEqual(stats["present_rate"], 75)
+
+    def test_present_rate_without_records_is_zero(self):
+        supervisor = make_supervisor(make_branch(), make_grade())
+
+        self.assertEqual(
+            SupervisorDashboardSelector(supervisor).attendance_statistics()["present_rate"], 0
+        )
 
 
 class SupervisorDashboardSelectorAttentionItemsTests(TestCase):

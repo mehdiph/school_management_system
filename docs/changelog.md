@@ -54,6 +54,7 @@
 
 ## Changed
 
+- One attendance rate everywhere: records that are not absent (present **and late**) over all records of held and compensatory sessions (`analytics.definitions.attendance_rate`). The supervisor dashboard's «نرخ حضور دانش‌آموزان» used to count «حاضر» only (late lowered it) and included records of cancelled sessions; it now shows the same number as the director dashboard
 - Session numbers follow teaching order (date, then bell) and are renumbered on every save/delete: recording a missed past session shifts the later numbers
 - Teacher dashboard: each bell is its own session (a double period is recorded when both bells are); closed lessons are shown and are not pending
 - Supervisor «نیازمند پیگیری» matches sessions per bell and never reports closed slots; coverage leaves closed slots, Thursdays and Fridays out; the timeline orders by date and bell and shows holidays without counting them

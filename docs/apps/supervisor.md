@@ -73,6 +73,7 @@ The sidebar items «جلسات آموزشی» and «معلمان من» (`templa
 
 Holiday sessions (status `HL`, created by the academic calendar for closed slots) are **never counted** here and closed slots are **never expected** (all through `academic_calendar.services`; see [academic_calendar.md §8.3](academic_calendar.md#83-supervisor)):
 
+* **Dashboard / attendance rate**: «نرخ حضور دانش‌آموزان» is the attendance rate every panel uses (`analytics.definitions.attendance_rate`): records that are not «غایب» (present **and late**) over all records, counting only the records of held and compensatory sessions. It used to count «حاضر» only, so a late student lowered it; the director dashboard shows the same number for the same classes.
 * **Dashboard / «نیازمند پیگیری»**: a scheduled slot is matched to a session by class subject + date + **bell**, so two bells of one subject are two expected sessions; a legacy session without a bell covers the day's first uncovered bell. Closed slots, Thursdays and Fridays are never reported missing nor counted in «امروز». Statistics, recent sessions and the attendance page's latest session skip holidays.
 * **Training sessions**: counts, KPIs, first/last dates and coverage exclude holidays; a sortable «تعطیل» column shows each class subject's sessions cancelled by closures. The timeline shows holidays in place (no number, the event as the reason) and measures gaps between counted sessions only.
 * **Teachers**: session count and last activity ignore holidays.

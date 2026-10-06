@@ -267,15 +267,15 @@ class SupervisorDashboardSelector:
     # ------------------------------------------------------------------
 
     def attendance_statistics(self):
-        aggregates = self.scope.attendance().status_counts()
+        """
+        Counts per status over the records of delivered sessions, and
+        ``present_rate``: the attendance rate every panel uses (late
+        counts as attended, see ``analytics.definitions``), 0 without
+        records.
+        """
 
-        total = aggregates["total"] or 0
-        present = aggregates["present"] or 0
-
-        aggregates["present_rate"] = (
-            round((present / total) * 100) if total else 0
-        )
-
+        aggregates = self.scope.attendance().delivered().status_counts()
+        aggregates["present_rate"] = aggregates["rate"] or 0
         return aggregates
 
     # ------------------------------------------------------------------

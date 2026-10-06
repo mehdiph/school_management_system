@@ -1,6 +1,6 @@
 from django.db.models import Count, Q
 
-from analytics.definitions import ABSENT, LATE, PRESENT, attendance_rate, rounded
+from analytics.definitions import ABSENT, DELIVERED_STATUSES, LATE, PRESENT, attendance_rate, rounded
 from analytics.definitions import HOLIDAY as HOLIDAY_STATUS
 
 from .base import BaseQuerySet
@@ -32,6 +32,14 @@ class AttendanceQuerySet(BaseQuerySet):
         return self.filter(
             student_enrollment__school_class__branch=branch
         )
+
+    def delivered(self):
+        """
+        Records of held or compensatory sessions: the only ones an
+        attendance rate is computed over (``analytics.definitions``).
+        """
+
+        return self.filter(session__status__in=DELIVERED_STATUSES)
 
     def status_counts(self):
         """
