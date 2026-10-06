@@ -475,17 +475,18 @@ class QueryCountTests(DirectorPageTestCase):
 
     #: overhead (session, user, branch middleware, site footer) 7 +
     #: current year, branches, grades 3 + the year's events 4 + engine 3
-    #: (class subjects, slots, sessions); the dashboard adds head counts 5,
-    #: sessions without attendance 1 and the calendar conflicts 3; the
-    #: attendance page adds the top absentees 1.
+    #: (class subjects, slots, sessions) + 1 attendance tallies where the
+    #: page shows attendance; the dashboard adds the head counts 5 (its
+    #: conflicts and sessions without attendance come from the engine
+    #: run); the attendance page adds the top absentees 1.
     EXPECTED = {
-        ("dashboard", ()): 26,
-        ("dashboard", (("branch", "A"),)): 26,
+        ("dashboard", ()): 23,
+        ("dashboard", (("branch", "A"),)): 23,
         ("execution", ()): 17,
         ("execution", (("view", "teachers"),)): 17,
         ("execution", (("grade", "G"), ("view", "subjects"))): 17,
         ("execution", (("class", "C"),)): 17,
-        ("attendance", ()): 18,
-        ("attendance", (("class", "C"),)): 18,
+        ("attendance", ()): 19,
+        ("attendance", (("class", "C"),)): 19,
     }
 

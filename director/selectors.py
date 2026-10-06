@@ -30,7 +30,6 @@ from attendance.models import Attendance
 from school.models import AcademicYear, Branch, ClassSubject, Grade, SchoolClass
 from staff.models import TeacherAssignment
 from student.models.student_enrollment import StudentEnrollment
-from teaching.models import SchoolSession
 
 from .forms import custom_range_query
 
@@ -240,8 +239,10 @@ def dashboard(dims, filters, as_of, urls):
         year, today + timedelta(days=1), threshold("DIRECTOR_ALERT_WINDOW_TEACHING_DAYS"), closures, units,
     )
 
-    starts = [d for d in (scope.start, previous and previous[0], window and window[0]) if d]
-    hull = scope.with_range(min(starts), today)
+    # One engine run over the year so far serves every window of the page
+    # (the range, the previous period, the alert window) and the
+    # year-to-date alerts (conflicts, sessions without attendance).
+    hull = scope.with_range(year.start_date, today)
     result = engine.compute(hull, closures=closures)
     where = _in_branch(filters.branch)
 
@@ -289,7 +290,7 @@ def dashboard(dims, filters, as_of, urls):
         "kpis": kpis,
         "comparison": comparison,
         "calendar": calendar_summary(year, today, closures, units, filters),
-        "alerts": alerts(dims, filters, result, window, today, urls, closures),
+        "alerts": alerts(dims, filters, result, window, today, urls),
         "teaching_days": len(periods.teaching_days(year, scope.start, scope.end, closures, units))
         if not scope.is_empty else 0,
     }
@@ -322,7 +323,7 @@ def calendar_summary(year, today, closures, units, filters):
     }
 
 
-def alerts(dims, filters, result, window, today, urls, closures=None):
+def alerts(dims, filters, result, window, today, urls):
     """The four alert cards, each linking to the page that explains it."""
 
     branch_id = filters.branch.pk if filters.branch else None
@@ -391,68 +392,48 @@ def alerts(dims, filters, result, window, today, urls, closures=None):
         ]
     cards += [low, unregistered]
 
-    # 3. Held sessions still without attendance after the grace days.
-    cards.append(missing_attendance_alert(filters, result, today, urls))
-
-    # 4. Sessions recorded in closed slots (the whole year so far).
-    cards.append(conflicts_alert(filters, urls, closures))
+    # 3. Held sessions still without attendance after the grace days, and
+    # 4. sessions recorded in closed slots -- both over the year so far,
+    # which ``result`` covers.
+    cards.append(missing_attendance_alert(filters, result, urls))
+    cards.append(conflicts_alert(filters, result, urls))
     return cards
 
 
-def _missing_attendance(filters, today):
-    """Delivered sessions of the year, before the grace days, without any record (one query)."""
-
-    grace = threshold("DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS")
-    sessions = SchoolSession.objects.filter(
-        status__in=DELIVERED_STATUSES,
-        date__gte=filters.year.start_date,
-        date__lt=calendar.to_jalali(today - timedelta(days=grace)),
-        attendances__isnull=True,
-        class_subject__school_class__year=filters.year,
-    )
-    if filters.branch is not None:
-        sessions = sessions.filter(class_subject__school_class__branch=filters.branch)
-    if filters.grade is not None:
-        sessions = sessions.filter(class_subject__school_class__grade=filters.grade)
-    return list(
-        sessions.order_by("-date", "-pk").values_list("pk", "class_subject_id", "date", "bell__title")
-    )
-
-
-def missing_attendance_alert(filters, result, today, urls):
-    rows = _missing_attendance(filters, today)
+def missing_attendance_alert(filters, result, urls):
+    missing = missing_attendance_rows(result, result.scope, _in_branch(filters.branch), limit=ALERT_ITEMS)
     grace = threshold("DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS")
     card = Alert(
         key="missing_attendance",
         title="جلسات بدون حضور و غیاب",
         description=f"جلسه‌ی برگزارشده یا جبرانی که بیش از {grace} روز از آن گذشته و حضور و غیابی ندارد",
-        count=len(rows),
+        count=missing["count"],
         url=urls("attendance", filters.query(period="year", date_from=None, date_to=None)) + "#missing",
     )
-    for pk, cs_id, day, bell_title in rows[:ALERT_ITEMS]:
-        cs = result.class_subjects.get(cs_id)
-        if cs is None:
-            continue
+    for row in missing["rows"]:
+        cs = row["class_subject"]
         card.items.append({
-            "label": f"{cs.subject.name} · {class_label(cs.school_class)}",
-            "date": day,
-            "detail": bell_title or "",
-            "sub": teacher_name(cs.teacher_assignment.teacher),
+            "label": f"{cs.subject.name} · {row['class_label']}",
+            "date": row["date"],
+            "detail": "",
+            "sub": row["teacher"],
             "url": card.url,
         })
     return card
 
 
-def conflicts_in_scope(filters, closures=None):
-    """The calendar's conflicts of the year, in the filters' branch / grade."""
+def conflicts_alert(filters, result, urls):
+    """
+    Sessions in closed slots, from the engine run over the year so far:
+    the same set ``academic_calendar.services.find_conflicts`` reports
+    (same matching, same active events), in the filters' branch.
+    """
 
-    conflicts = calendar.find_conflicts(academic_year=filters.year, closures=closures)
-    accept = _in_scope(filters)
-    return [c for c in conflicts if accept(c.session.class_subject)]
-
-
-def conflicts_alert(filters, urls, closures=None):
-    conflicts = conflicts_in_scope(filters, closures)
+    accept = _in_branch(filters.branch)
+    conflicts = [
+        row for row in conflict_rows(result)
+        if accept is None or accept(row["class_subject"])
+    ]
     card = Alert(
         key="conflicts",
         title="تداخل با تقویم آموزشی",
@@ -461,13 +442,12 @@ def conflicts_alert(filters, urls, closures=None):
         url=urls("execution", filters.query(period="year", date_from=None, date_to=None)) + "#conflicts",
         level="danger",
     )
-    for conflict in conflicts[:ALERT_ITEMS]:
-        cs = conflict.session.class_subject
+    for row in conflicts[:ALERT_ITEMS]:
         card.items.append({
-            "label": f"{cs.subject.name} · {class_label(cs.school_class)}",
-            "date": conflict.date,
-            "detail": conflict.event.title,
-            "sub": cs.school_class.branch.name,
+            "label": f"{row['class_subject'].subject.name} · {row['class_label']}",
+            "date": row["date"],
+            "detail": row["event"].title,
+            "sub": row["class_subject"].school_class.branch.name,
             "url": card.url,
         })
     return card

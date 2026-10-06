@@ -33,6 +33,7 @@ Dates: functions accept ``datetime.date`` or ``jdatetime.date`` (what
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from typing import NamedTuple
 
 import jdatetime
 from django.db import transaction
@@ -235,6 +236,15 @@ class Closures:
 
     def __init__(self, events):
         self.scopes = [_Scope.of(event) for event in events]
+        self._by_day = {}
+
+    def _scopes_on(self, day):
+        """The scopes whose range includes ``day``, in order (memoised per day)."""
+
+        scopes = self._by_day.get(day)
+        if scopes is None:
+            scopes = self._by_day[day] = [s for s in self.scopes if s.start <= day <= s.end]
+        return scopes
 
     @classmethod
     def between(cls, start, end, academic_year=None, branch=None, grade=None):
@@ -243,7 +253,7 @@ class Closures:
     def event_for(self, value, school_class, bell=None):
         day = to_gregorian(value)
         bell_id = getattr(bell, "pk", bell)
-        for scope in self.scopes:
+        for scope in self._scopes_on(day):
             if scope.covers(day, school_class, bell_id):
                 return scope.event
         return None
@@ -297,9 +307,34 @@ def is_closed(value, school_class, bell=None):
 # Expected slots
 # ----------------------------------------------------------------------
 
-@dataclass(frozen=True)
-class ExpectedSlot:
-    """One lesson the timetable plans: a class subject at a bell on a date."""
+#: Jalali date / time fields of the rows ``get_slots`` joins that no caller
+#: reads. Each jDate value read from the database becomes a jdatetime
+#: object, whose constructor queries the locale: a whole school's timetable
+#: would convert tens of thousands of them for nothing.
+UNUSED_JALALI_FIELDS = (
+    "created_at",
+    "subject__created_at",
+    "school_class__created_at",
+    "school_class__grade__created_at",
+    "teacher_assignment__hire_date",
+    "teacher_assignment__end_date",
+    "teacher_assignment__created_at",
+    "teacher_assignment__teacher__created_at",
+    "teacher_assignment__teacher__updated_at",
+    "teacher_assignment__teacher__staff__birth_date",
+    "teacher_assignment__teacher__staff__hire_date",
+    "teacher_assignment__teacher__staff__created_at",
+    "teacher_assignment__teacher__staff__updated_at",
+)
+
+
+class ExpectedSlot(NamedTuple):
+    """
+    One lesson the timetable plans: a class subject at a bell on a date.
+    A named tuple (immutable, like the frozen dataclass it replaced) because
+    a school year is tens of thousands of them and a tuple is the cheapest
+    object to build.
+    """
 
     class_subject: ClassSubject
     date: date          # Gregorian
@@ -358,25 +393,29 @@ def get_slots(start, end, days=None, **filters):
             "class_subject__school_class__branch",
             "class_subject__teacher_assignment__teacher__staff__user",
         )
+        .defer("created_at", *(f"class_subject__{name}" for name in UNUSED_JALALI_FIELDS))
     )
 
+    # Each row's dates, converted once (not once per day: a whole year of
+    # a whole school is tens of thousands of checks): it gives a slot from
+    # the later of its year's and class subject's start to the earlier end.
     by_weekday = defaultdict(list)
     for schedule in schedules:
-        by_weekday[schedule.day_of_week].append(schedule)
+        class_subject = schedule.class_subject
+        year = class_subject.school_class.year
+        first = max(to_gregorian(year.start_date), to_gregorian(class_subject.start_date))
+        last = min(to_gregorian(year.end_date), to_gregorian(class_subject.end_date))
+        by_weekday[schedule.day_of_week].append((schedule, first, last))
 
     week_types = {}
     both = ClassSchedule.WeekTypeChoices.BOTH
     slots = []
     for day in wanted:
-        for schedule in by_weekday.get(persian_weekday(day), ()):
+        for schedule, first, last in by_weekday.get(persian_weekday(day), ()):
+            if not first <= day <= last:
+                continue
             class_subject = schedule.class_subject
             year = class_subject.school_class.year
-            if not _in_year(day, year):
-                continue
-            if not (
-                to_gregorian(class_subject.start_date) <= day <= to_gregorian(class_subject.end_date)
-            ):
-                continue
             key = (year.pk, day)
             if key not in week_types:
                 week_types[key] = get_week_type(day, year)
@@ -480,18 +519,13 @@ class _Plan:
     conflicts: list
 
 
-def _plan(start, end, class_subject_ids=None, academic_year=None, closures=None):
-    """
-    Everything the sync (and the conflicts page) needs, read only.
-    ``closures`` may be passed when the caller already loaded the active
-    events covering the range (the director dashboard does).
-    """
+def _plan(start, end, class_subject_ids=None, academic_year=None):
+    """Everything the sync (and the conflicts page) needs, read only."""
 
     from teaching.models import SchoolSession
 
     start, end = to_gregorian(start), to_gregorian(end)
-    if closures is None:
-        closures = Closures.between(start, end, academic_year=academic_year)
+    closures = Closures.between(start, end, academic_year=academic_year)
 
     in_range = SchoolSession.objects.filter(
         date__gte=to_jalali(start), date__lte=to_jalali(end)
@@ -665,13 +699,12 @@ def sync_cancelled_sessions(start, end, event=None, class_subjects=None, academi
     return result
 
 
-def find_conflicts(start=None, end=None, academic_year=None, event=None, closures=None):
+def find_conflicts(start=None, end=None, academic_year=None, event=None):
     """
     Non-holiday sessions recorded for slots an active event closes (read
-    only), for the admin's conflicts page and the director dashboard.
-    Defaults to the whole of ``academic_year`` (else the current year), or
-    ``event``'s range. ``closures``: the active events of that range, when
-    the caller already has them loaded.
+    only), for the admin's conflicts page. Defaults to the whole of
+    ``academic_year`` (else the current year), or ``event``'s range.
+    ``analytics.engine`` finds the same set for its own range.
     """
 
     if event is not None:
@@ -685,7 +718,7 @@ def find_conflicts(start=None, end=None, academic_year=None, event=None, closure
     start = start or academic_year.start_date
     end = end or academic_year.end_date
 
-    conflicts = _plan(start, end, academic_year=academic_year, closures=closures).conflicts
+    conflicts = _plan(start, end, academic_year=academic_year).conflicts
     if event is not None:
         conflicts = [c for c in conflicts if c.event.pk == event.pk]
     return conflicts

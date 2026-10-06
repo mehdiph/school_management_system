@@ -19,11 +19,12 @@ One pass:
 
 Then each slot gets one outcome:
 
-* a slot of today whose bell has not ended (plus the registration grace)
-  is not expected yet, whatever was recorded in it;
 * a slot an active event closes is not expected: it is lost to the
   closure (its ``HL`` session is counted as such), and a non-holiday
-  session recorded in it is a conflict;
+  session recorded in it is a conflict (exactly the calendar's
+  ``find_conflicts``);
+* a slot of today whose bell has not ended (plus the registration grace)
+  is not expected yet, whatever was recorded in it;
 * a slot holding a holiday row that no event closes any more (the sync
   has not run since an event changed) is treated the same way;
 * otherwise it is expected, and **held** (an ``HD`` session -- or a
@@ -39,10 +40,12 @@ slot at all (``""``): a compensatory session made up elsewhere, or an
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
-from django.db.models import Count, Exists, OuterRef, Q
+from django.db.models import Count, DateField, Exists, OuterRef, Q
+from django.db.models.functions import Cast
 from django.utils import timezone
 
 from academic_calendar import services as calendar
+from attendance.models import Attendance
 from school.models import ClassSubject
 from teaching.models import SchoolSession, SessionContent
 
@@ -135,35 +138,54 @@ def load_class_subjects(scope):
         cs.pk: cs
         for cs in ClassSubject.objects.filter(**scope.class_subject_filter())
         .select_related(*CLASS_SUBJECT_RELATED)
+        .defer(*calendar.UNUSED_JALALI_FIELDS)
     }
 
 
 def session_rows(scope, with_attendance=True):
-    """Every session of the scope in its range (holidays included), one query."""
+    """
+    Every session of the scope in its range (holidays included): one
+    query, plus one for the attendance tallies. The tallies are a separate
+    grouped aggregate over the attendance records rather than a join on
+    the sessions: on a year of a whole school (a million records) that is
+    about twice as fast.
+    """
 
+    in_range = {
+        "date__gte": calendar.to_jalali(scope.start),
+        "date__lte": calendar.to_jalali(scope.end),
+        **scope.class_subject_filter("class_subject__"),
+    }
     sessions = (
-        SchoolSession.objects.filter(
-            date__gte=calendar.to_jalali(scope.start),
-            date__lte=calendar.to_jalali(scope.end),
-            **scope.class_subject_filter("class_subject__"),
-        )
+        SchoolSession.objects.filter(**in_range)
         .order_by()
-        .annotate(has_content=Exists(SessionContent.objects.filter(session=OuterRef("pk"))))
-    )
-    fields = ["pk", "class_subject_id", "date", "bell_id", "status", "session_number", "has_content"]
-    if with_attendance:
-        sessions = sessions.annotate(
-            attendance_total=Count("attendances"),
-            absent=Count("attendances", filter=Q(attendances__status=ABSENT)),
-            late=Count("attendances", filter=Q(attendances__status=LATE)),
+        .annotate(
+            # Read as a plain (Gregorian) date: a jDateField value becomes a
+            # jdatetime.date, whose constructor queries the locale -- the
+            # slowest part of reading a year of sessions.
+            day=Cast("date", output_field=DateField()),
+            has_content=Exists(SessionContent.objects.filter(session=OuterRef("pk"))),
         )
-        fields += ["attendance_total", "absent", "late"]
+        .values_list("pk", "class_subject_id", "day", "bell_id", "status", "session_number", "has_content")
+    )
+    rows = [SessionRow(*values) for values in sessions]
 
-    rows = []
-    for values in sessions.values_list(*fields):
-        row = SessionRow(*values)
-        row.date = calendar.to_gregorian(row.date)
-        rows.append(row)
+    if with_attendance and rows:
+        by_pk = {row.pk: row for row in rows}
+        tallies = (
+            Attendance.objects.filter(**{f"session__{name}": value for name, value in in_range.items()})
+            .order_by()
+            .values_list("session_id")
+            .annotate(
+                total=Count("id"),
+                absent=Count("id", filter=Q(status=ABSENT)),
+                late=Count("id", filter=Q(status=LATE)),
+            )
+        )
+        for session_id, total, absent, late in tallies:
+            row = by_pk.get(session_id)
+            if row is not None:
+                row.attendance_total, row.absent, row.late = total, absent, late
     return rows
 
 
@@ -193,16 +215,18 @@ def compute(scope, *, closures=None, with_attendance=True, class_subjects=None):
         session = matched.get(slot.key)
         cs_id = slot.class_subject.pk
 
-        if slot.date == scope.today and scope.as_of < _deadline(slot.date, slot.bell):
-            if session is not None:
-                session.role = PENDING
-            continue
-
+        # Closed first: a closed slot is never expected, and a session in
+        # it is a conflict at once -- as find_conflicts reports it.
         event = closures.event_for(slot.date, slot.class_subject.school_class, slot.bell)
         if event is not None:
             if session is not None and session.status != HOLIDAY:
                 session.role = CONFLICT
                 result.conflicts.append(ConflictSlot(cs_id, slot.date, slot.bell, session, event))
+            continue
+
+        if slot.date == scope.today and scope.as_of < _deadline(slot.date, slot.bell):
+            if session is not None:
+                session.role = PENDING
             continue
 
         if session is not None and session.status == HOLIDAY:

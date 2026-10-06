@@ -229,6 +229,29 @@ class ClosureTests(Fixture):
         self.assertEqual(breakdown.lost_to_closures, 1)      # bell 2 only
         self.assertEqual(breakdown.delivered, 1)             # it was still taught
 
+    def test_the_engine_finds_the_calendars_conflicts(self):
+        self.session(self.math, SUNDAY_1, self.bell_2)
+        self.session(self.math, SUNDAY_2)                          # legacy: fills bell 1
+        self.session(self.physics, SUNDAY_2, self.bell_1, SchoolSession.Status.CANCELED)
+        make_calendar_event(self.year, SUNDAY_1, bells=[self.bell_2])
+        make_calendar_event(self.year, SUNDAY_2)
+
+        engine_conflicts = {c.session.pk for c in compute(self.scope()).conflicts}
+        calendar_conflicts = {
+            c.session.pk for c in calendar.find_conflicts(self.year.start_date, AS_OF.date(), academic_year=self.year)
+        }
+
+        self.assertEqual(len(engine_conflicts), 3)
+        self.assertEqual(engine_conflicts, calendar_conflicts)
+
+    def test_a_conflict_today_is_reported_before_its_bell_ends(self):
+        session = self.session(self.math, SUNDAY_2, self.bell_2)
+        make_calendar_event(self.year, SUNDAY_2)
+
+        result = compute(self.scope(as_of=at(SUNDAY_2, 8)))
+
+        self.assertEqual([c.session.pk for c in result.conflicts], [session.pk])
+
     def test_a_holiday_left_on_a_reopened_slot_is_still_not_expected(self):
         event = self.closure(SUNDAY_2, branches=[self.branch_a])
         type(event).objects.filter(pk=event.pk).update(is_active=False)   # no sync
