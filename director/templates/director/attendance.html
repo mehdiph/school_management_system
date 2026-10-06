@@ -40,7 +40,7 @@
   <div class="section-heading">
     <div>
       <h2 id="trendTitle">نرخ حضور روزانه</h2>
-      <p>{% if school_class %}کلاس {{ school_class.grade.name }} {{ school_class.section }} · {% endif %}روزهای تعطیل با نوار خاکستری مشخص شده‌اند و صفر حساب نمی‌شوند.</p>
+      <p>{% if school_class %}کلاس {{ school_class.grade.name }} {{ school_class.section|fa_digits }} · {% endif %}روزهای تعطیل با نوار خاکستری مشخص شده‌اند و صفر حساب نمی‌شوند.</p>
     </div>
   </div>
 

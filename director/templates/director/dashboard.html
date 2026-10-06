@@ -17,7 +17,7 @@
         {% if kpi.delta is not None %}
           <span class="director-delta director-delta--{{ kpi.direction }}">
             {% if kpi.direction == "up" %}<span aria-hidden="true">↑</span>{% elif kpi.direction == "down" %}<span aria-hidden="true">↓</span>{% endif %}
-            {{ kpi.delta|signed }} واحد نسبت به دوره‌ی قبل ({{ kpi.previous|percent }})
+            <bdi dir="ltr">{{ kpi.delta|signed }}</bdi> واحد نسبت به دوره‌ی قبل ({{ kpi.previous|percent }})
           </span>
         {% elif kpi.note %}
           <span class="stat-card__desc">{{ kpi.note }}</span>
@@ -58,7 +58,7 @@
           <span class="director-alert__detail">
             {% if item.date %}{{ item.date|jalali_date }}{% if item.detail %} · {% endif %}{% endif %}{{ item.detail|fa_digits }}
           </span>
-          {% if item.sub %}<span class="sv-sub">{{ item.sub }}</span>{% endif %}
+          {% if item.sub %}<span class="sv-sub">{{ item.sub|fa_digits }}</span>{% endif %}
         </li>
         {% endfor %}
       </ul>

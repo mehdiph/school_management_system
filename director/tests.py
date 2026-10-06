@@ -15,6 +15,7 @@ from django.urls import reverse
 from academic_calendar import services as calendar
 from analytics.tests import AS_OF, SUNDAY_1, SUNDAY_2, THURSDAY, Fixture, J
 from attendance.models import Attendance
+from core.templatetags.jalali_tags import fa_digits
 from core.testing import (
     make_assignment,
     make_calendar_event,
@@ -106,7 +107,7 @@ class DashboardTests(DirectorPageTestCase):
                          (J(1405, 7, 4).togregorian(), J(1405, 7, 8).togregorian(), True))
         self.assertEqual((round(kpi.value), round(kpi.previous), kpi.delta), (33, 100, -67))
         self.assertEqual(kpi.direction, "down")
-        self.assertContains(response, "−۶۷ واحد")
+        self.assertContains(response, '<bdi dir="ltr">−۶۷</bdi> واحد')
 
     def test_an_incomplete_previous_period_shows_no_arrow(self):
         # Sat 4 .. Wed 15 has 10 teaching days; only 1 Mehr comes before.
@@ -177,7 +178,7 @@ class AlertTests(DirectorPageTestCase):
         alert = self.alerts()["attendance"]
 
         self.assertEqual(alert.count, 1)
-        self.assertEqual(alert.items[0]["label"], f"{self.grade.name} {self.class_b.section}")
+        self.assertEqual(alert.items[0]["label"], fa_digits(f"{self.grade.name} {self.class_b.section}"))
         self.assertIn(f"class={self.class_b.pk}", alert.items[0]["url"])
         self.assertIn("period=custom", alert.items[0]["url"])
 
@@ -258,7 +259,7 @@ class ExecutionTests(DirectorPageTestCase):
 
         level, by_class = rows(branch=self.branch_a.pk, grade=self.grade.pk)
         self.assertEqual(level, "class")
-        self.assertEqual(list(by_class), [f"{self.grade.name} {self.class_a.section}"])
+        self.assertEqual(list(by_class), [fa_digits(f"{self.grade.name} {self.class_a.section}")])
 
         level, by_subject = rows(branch=self.branch_a.pk, grade=self.grade.pk, **{"class": self.class_a.pk})
         self.assertEqual(level, "class_subject")
@@ -357,7 +358,7 @@ class AttendancePageTests(DirectorPageTestCase):
         rows = {r.label: r.breakdown for r in response.context["rows"]}
 
         self.assertEqual([(s["absent"], s["absence_rate"]) for s in absentees], [(2, 100), (1, 50)])
-        self.assertEqual(absentees[0]["class_label"], f"{self.grade.name} {self.class_a.section}")
+        self.assertEqual(absentees[0]["class_label"], fa_digits(f"{self.grade.name} {self.class_a.section}"))
         self.assertEqual(rows[self.grade.name].attendance_total, 4)
         self.assertEqual(round(rows[self.grade.name].attendance_rate), 25)
 
@@ -368,6 +369,17 @@ class AttendancePageTests(DirectorPageTestCase):
 
         self.assertEqual(response.context["missing"]["count"], 1)
         self.assertContains(response, 'id="missing"')
+
+
+class FormattingTests(DirectorPageTestCase):
+    def test_a_rate_is_banded_by_the_value_it_shows(self):
+        from director.templatetags.director_tags import percent, rate_level, signed
+
+        self.assertEqual((percent(84.6), rate_level(84.6)), ("۸۵٪", "ok"))
+        self.assertEqual((percent(84.4), rate_level(84.4)), ("۸۴٪", "warning"))
+        self.assertEqual((rate_level(59.5), rate_level(59.4)), ("warning", "low"))
+        self.assertEqual((percent(None), rate_level(None)), ("—", ""))
+        self.assertEqual((signed(3), signed(-12), signed(0)), ("+۳", "−۱۲", "۰"))
 
 
 class FilterTests(DirectorPageTestCase):

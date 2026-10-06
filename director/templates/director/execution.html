@@ -91,7 +91,7 @@
         <tr>
           <th scope="col">درس</th>
           {% for school_class in subject_matrix.classes %}
-          <th scope="col" class="sv-num">{{ school_class.grade.name }} {{ school_class.section }}<span class="sv-sub">{{ school_class.branch.name }}</span></th>
+          <th scope="col" class="sv-num">{{ school_class.grade.name }} {{ school_class.section|fa_digits }}<span class="sv-sub">{{ school_class.branch.name }}</span></th>
           {% endfor %}
         </tr>
       </thead>
@@ -101,12 +101,12 @@
           <th scope="row">{{ row.subject.name }}</th>
           {% for cell in row.cells %}
           <td class="sv-num{% if cell.is_behind %} director-matrix__behind{% endif %}"
-              data-label="{{ cell.school_class.grade.name }} {{ cell.school_class.section }}">
+              data-label="{{ cell.school_class.grade.name }} {{ cell.school_class.section|fa_digits }}">
             {% if cell.breakdown is None %}
               <span class="sv-muted" title="این درس در این کلاس نیست">—</span>
             {% else %}
-              <span class="director-matrix__value">{{ cell.breakdown.held|to_persian }}<span class="sv-sub director-inline">از {{ cell.breakdown.expected|to_persian }}</span></span>
-              {% if cell.is_behind %}<span class="badge badge--warning" title="{{ cell.gap|fa_digits }} جلسه کمتر از بهترین کلاس">−{{ cell.gap|fa_digits }}<span class="visually-hidden"> جلسه عقب</span></span>{% endif %}
+              <span class="director-matrix__value">{{ cell.breakdown.held|to_persian }} <span class="sv-sub director-inline">از {{ cell.breakdown.expected|to_persian }}</span></span>
+              {% if cell.is_behind %}<span class="badge badge--warning" title="{{ cell.gap|fa_digits }} جلسه کمتر از بهترین کلاس"><bdi dir="ltr">−{{ cell.gap|fa_digits }}</bdi><span class="visually-hidden"> جلسه عقب</span></span>{% endif %}
             {% endif %}
           </td>
           {% endfor %}

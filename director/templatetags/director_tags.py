@@ -28,6 +28,11 @@ def percent(value):
 
 @register.filter
 def signed(value):
+    """
+    A signed whole number in Persian digits. Wrap it in ``<bdi dir="ltr">``
+    in RTL text, or the bidi algorithm moves the sign after the digits.
+    """
+
     if value is None:
         return ""
     if value > 0:
@@ -39,8 +44,11 @@ def signed(value):
 
 @register.filter
 def rate_level(value):
+    """The band of the *shown* (rounded) rate, so «۸۵٪» is never amber."""
+
     if value is None:
         return ""
+    value = round(value)
     if value < RATE_LOW:
         return "low"
     if value < RATE_WARNING:

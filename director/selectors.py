@@ -80,7 +80,9 @@ class Dimensions:
 
 
 def class_label(school_class):
-    return f"{school_class.grade.name} {school_class.section}"
+    """"هفتم ۲": grade and section, in Persian digits (sections are often numbers)."""
+
+    return fa_digits(f"{school_class.grade.name} {school_class.section}")
 
 
 def teacher_name(teacher):
@@ -801,7 +803,7 @@ def top_absentees(scope, school_class=None, limit=TOP_ABSENTEES):
         ))) or row["student_enrollment__student__user__username"]
         result.append({
             "name": name,
-            "class_label": (
+            "class_label": fa_digits(
                 f"{row['student_enrollment__school_class__grade__name']} "
                 f"{row['student_enrollment__school_class__section']}"
             ),
