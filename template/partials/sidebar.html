@@ -93,6 +93,13 @@
         <span>نیازمند بررسی</span>
         {% if attention_items %}<span class="badge badge--danger sidebar-nav__badge">{{ attention_items|length|to_persian }}</span>{% endif %}
       </a>
+
+    {% elif request.user.role == "director" or request.resolver_match.app_name == "director" %}
+      {# The links keep the panel's filters (?period=&branch=...): director_query comes from the page. #}
+      <a href="{% url 'director:dashboard' %}{% if director_query %}?{{ director_query }}{% endif %}" class="sidebar-nav__item{% if request.resolver_match.app_name == 'director' and request.resolver_match.url_name == 'dashboard' %} is-active{% endif %}">
+        <svg class="sidebar-nav__icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+        <span>داشبورد</span>
+      </a>
     {% endif %}
 
   </nav>

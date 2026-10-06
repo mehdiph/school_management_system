@@ -2,6 +2,7 @@ ROLE_DASHBOARDS = {
     'teacher': 'core:dashboard',
     'student': 'student:dashboard',
     'supervisor': 'supervisor:dashboard',
+    'director': 'director:dashboard',
 }
 
 

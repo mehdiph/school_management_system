@@ -14,7 +14,10 @@ class User(AbstractUser):
         COUNSELOR = 'counselor', 'مشاور'
         IT = 'it', 'انفورماتیک'
         SERVICES = 'services', 'خدمات'
-        ADMIN = 'admin', 'مدیر'
+        # The system admin enters and edits the data (Django admin); the
+        # director only reads it, through the director panel.
+        ADMIN = 'admin', 'مدیر سامانه'
+        DIRECTOR = 'director', 'مدیر مدرسه'
 
     role = models.CharField(choices=Roles.choices, max_length=20, verbose_name='نقش')
     phone_number = models.CharField(max_length=20, blank=True, default='', verbose_name='شماره تماس')

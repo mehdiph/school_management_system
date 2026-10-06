@@ -40,6 +40,7 @@ urlpatterns = [
     path('scheduling/', include('scheduling.urls')),
     path('attendance/', include('attendance.urls')),
     path('supervisor/', include('supervisor.urls')),
+    path('director/', include('director.urls')),
 ]
 
 # Serve user uploads (MEDIA_URL) from MEDIA_ROOT through Django.

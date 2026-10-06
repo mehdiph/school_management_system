@@ -90,7 +90,7 @@ class ProfileAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["tab"], "security")
-        self.assertContains(response, "برای تغییر، با مدیر مدرسه تماس بگیرید")
+        self.assertContains(response, "برای تغییر، با مدیر سامانه تماس بگیرید")
         self.assertContains(response, f'value="{teacher.staff.user.username}" dir="ltr" readonly')
 
 
