@@ -115,6 +115,8 @@ Read from settings at request time (`director.selectors.threshold`), with these 
 
 The alerts follow the branch and grade filters, never the date range (each has its own window), so they always say "now".
 
+The thresholds are **global** (the same for both branches) in Phase 1. Per-branch thresholds can be added later — for example a `{branch code: value}` setting, or a small model the system admin edits — read through `director.selectors.threshold`, which every alert already goes through.
+
 ---
 
 ## 6. Structure
@@ -180,12 +182,14 @@ Before optimization the end-of-year figures were 7.7 s / 3.2 s / 5.0 s: most of 
 
 The cost grows **linearly with the days elapsed**: the engine looks at every expected slot of the range (≈ 48k for a whole school year) in Python, and the attendance page groups every record of the range (≈ 1M) twice (per session and per student). Narrow scopes (a branch and grade, a month, a week) stay well under a second all year.
 
-### 8.2 Proposal: precompute past days (not built in Phase 1)
+### 8.2 Decision
 
-The year-wide views pass one second around Dey and reach 2–3 s by the end of the year. As the brief asks, this is reported instead of hidden behind a cache nobody chose. Two options:
+The current timings are accepted for Phase 1, with two measures:
 
-* **Recommended — a daily rollup table.** `analytics` writes, for every past day and class subject, the counts a `Breakdown` holds (expected, held, cancelled, unregistered, lost to closures, compensatory, outside the timetable, conflicts, delivered, with content, with attendance, records, absent, late) — **computed by the same engine**, so the definitions stay in one place. Pages read past days from the table (an aggregate over ≈ 230 days × 504 class subjects ≈ 116k small rows, tens of milliseconds) and compute only today live. Rows are refreshed by a nightly command and by marking a (day, class subject) dirty from the writes that can change it (session save/delete and renumbering, content and attendance saves, the calendar sync, timetable and class subject changes) — sessions can be recorded for past days, so a nightly rebuild alone would show stale numbers. Expected: every page under ~0.3 s all year. Cost: one table, one command, a handful of signal hooks, and tests that the rollup equals the live engine.
-* **Stopgap — cache the page data** per (year, range, branch, grade) for a few minutes. Simple, but the first request is still slow, the numbers lag, and it needs a shared cache backend (the project uses Django's per-process default).
+* every page opens on **this Jalali month** (`director.forms.DEFAULT_PERIOD`); "since the start of the academic year" stays a preset;
+* a **daily summary table** (one row per day and class subject, written by the same engine, refreshed nightly and on writes to past days) ships **before 1 Dey 1405 (22 December 2026)**, with a management command that recomputes a sample of days with the live engine and reports any mismatch. Specification: `docs/apps/analytics.md` §8.
+
+No cache was added.
 
 ---
 
@@ -198,5 +202,6 @@ Designed for, not built:
 * Supervisor overview (a supervisor's classes as a scope: `AnalyticsScope(class_subjects=...)` already supports it).
 * Day / bell absence patterns, consecutive absences (must skip holiday sessions), a student detail page.
 * Exports (PDF / Excel) and a weekly email digest — both can reuse `director.selectors` unchanged.
-* An academic-year selector (Phase 1 always shows the current year).
-* **Precomputed daily rows** (§8.2) before the year-wide views pass one second (around Dey).
+* **Daily summary table with its verification command** — before **1 Dey 1405 (22 December 2026)** (§8.2, `docs/apps/analytics.md` §8).
+* **Academic-year selector** — before the **1406–1407 academic year starts (Mehr 1406, September 2027)**. Phase 1 always shows the current year (`AcademicYear.is_current`), so when the new year becomes current the director loses sight of 1405–1406. `AnalyticsScope` already takes the year as a parameter; the filter form and `Dimensions` need a year field (validated against existing years), and the head counts / alerts must follow the selected year.
+* Per-branch alert thresholds (§5).

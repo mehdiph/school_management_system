@@ -1,5 +1,7 @@
 # Director Dashboard, Phase 1: Plan and Implementation Report
 
+> This is the report of the first implementation round. The open questions in §12 were answered afterwards; the final report, with those decisions and the follow-up commits, is `docs/plans/director-dashboard-phase1.md`.
+
 Branch `director-dashboard` (not pushed). Read-only analytics panel for the school director over both branches. Reference documentation: `docs/apps/director.md` (the panel) and `docs/apps/analytics.md` (every metric definition).
 
 ---
@@ -89,7 +91,7 @@ Coverage differences, case by case: sessions recorded on days without a timetabl
 ## 8. External CDN references
 
 * Fixed: `student/templates/student/dashboard.html` and `session_list.html` loaded Font Awesome 6.4 from cdnjs; the vendored Font Awesome 7.2 (`static/assets`, already loaded by `base.html`) has every icon they use, so the links were removed.
-* Remaining, harmless: `teaching/static/teaching/js/datepicker/package/dist/*.html` (the datepicker package's own demo pages: bootstrapcdn and code.jquery.com) and `.../assets/IRANSans.html` (a font sample page with links to fontiran.com). They are static demo files that no template includes; they are copied by `collectstatic` but never loaded by a page. They could be deleted from the vendored package.
+* Remaining at the time: `teaching/static/teaching/js/datepicker/package/dist/*.html` (the datepicker package's own demo pages: bootstrapcdn and code.jquery.com) and `.../assets/IRANSans.html` (a font sample page with links to fontiran.com). They were deleted afterwards (see the final report).
 * No other template, CSS or JS file references an external host.
 
 ## 9. Performance

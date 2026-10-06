@@ -137,7 +137,7 @@ Each session row gets a `role`: it `fills` an expected slot, is a `conflict`, is
 | Caller | What |
 | --- | --- |
 | Director panel | every KPI, table, alert and the attendance trend |
-| Supervisor training sessions | «پیشرفت نسبت به برنامه» = execution rate per class subject (`attach_coverage`) |
+| Supervisor training sessions | «پیشرفت نسبت به برنامه» = execution rate per class subject, and «n جلسه‌ی جبرانی» = `compensatory` beside it (`attach_coverage`) |
 | Supervisor dashboard | «نرخ حضور دانش‌آموزان» = `Attendance...delivered().status_counts()["rate"]` (same formula) |
 | Supervisor «بدون محتوا» counts, teachers page | `missing_content_q`, `counted_q` |
 
@@ -152,3 +152,46 @@ Measured on PostgreSQL with a synthetic full year (42 classes, 48k slots, 44k se
 ## 7. Tests
 
 `analytics/tests.py` pins every definition: two bells are two slots, held / cancelled / unregistered, the legacy count fallback (one and two bell-less sessions), Thursday never expected, future dates and today's not-yet-ended slots excluded, closed slots and holiday rows, a branch-only closure, a partial (bell) closure, conflicts, a holiday row left on a reopened slot, compensatory sessions outside and inside expected slots, makeup coverage, outside-timetable sessions, content / attendance rates (late attended, cancelled sessions excluded), the queryset and the engine agreeing, groupings and windows, teaching days per branch, the previous period (complete, pushed back by a closure, incomplete) and the presets.
+
+---
+
+## 8. Follow-up: daily summary table (required before Dey 1405)
+
+**Status:** decided, not built. Phase 1 computes everything on the fly; the year-wide whole-school views are acceptable today (Mehr) but grow linearly with the days elapsed. The director pages open on "this Jalali month" to keep the default view fast; "since the start of the year" remains a preset.
+
+**Deadline:** in production before **1 Dey 1405 (22 December 2026)**, when the year-wide dashboard passes one second on a school of the measured size.
+
+### 8.1 Why: measured cost of the live engine
+
+Synthetic full year on PostgreSQL (42 classes, 504 class subjects, 47,880 expected slots, 43,924 sessions, 1,038,480 attendance records; median of 5 full requests, view + template; details in `docs/apps/director.md` §8). Whole school, range = since the start of the academic year:
+
+| As of | Dashboard | Execution | Attendance |
+| --- | --- | --- | --- |
+| 15 Aban 1405 (≈ 1.5 months) | 0.70 s | 0.61 s | 0.92 s |
+| 15 Dey 1405 (≈ 3.5 months) | 1.03 s | 0.82 s | 1.45 s |
+| 15 Esfand 1405 (≈ 5.5 months) | 1.32 s | 0.94 s | 1.89 s |
+| 25 Khordad 1406 (end of year) | 1.82 s | 1.28 s | 2.68 s |
+
+Narrow views stay fast all year (end of year: one branch + grade 0.28 s, one month 0.55–0.88 s, one week 0.60 s). The cost is the per-slot pass over every expected slot of the range and the grouping of every attendance record of the range; it is linear in the days elapsed.
+
+### 8.2 What to build
+
+* A table with one row per **(day, class subject)** for past days, holding exactly the counts of a `Breakdown` (expected, held, cancelled, unregistered, lost to closures, compensatory, outside the timetable, conflicts, delivered, with content, with attendance, records, absent, late).
+* **Written by `engine.compute` itself** (run per day or per range, grouped `by_class_subject` and by day), so there is still only one definition of every metric. Pages sum the stored rows for past days and compute **only today** live; `metrics.breakdowns` keeps its interface (a `Breakdown` per group), so the director and supervisor pages do not change.
+* Kept fresh by a nightly rebuild **and** by marking (day, class subject) dirty on every write that can change a past day: session create / edit / delete (and the renumbering it triggers), content and attendance saves, the calendar sync (events, imports, deactivation), timetable and class subject changes. Teachers record missed sessions for past days, so a nightly rebuild alone would show stale numbers for up to a day.
+* Lists that need individual sessions (conflicts, sessions without attendance, top absentees) keep their targeted queries.
+
+### 8.3 Required: a verification command
+
+The table must ship with a management command (e.g. `verify_daily_summary`) that:
+
+* picks a **sample of past days** (random, plus the most recent days and any day touched by a calendar event; `--days N`, `--from/--to`, `--all`),
+* recomputes those days with the **live engine**,
+* compares every count per (day, class subject) with the stored rows, and
+* **reports every mismatch** (day, class subject, field, stored vs live) and exits non-zero when there is one, so it can run on a schedule and alert.
+
+It is the guarantee that the precomputed numbers still mean what `analytics` defines; tests must also assert that a rebuilt table equals the live engine on the fixture data.
+
+### 8.4 Not chosen
+
+A short-TTL cache of page data: the first request stays slow, the numbers lag, and it needs a shared cache backend (the project uses Django's per-process default).

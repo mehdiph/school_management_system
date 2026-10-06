@@ -457,7 +457,7 @@ The supervisor's training-sessions coverage moved onto the engine, and its dashb
 
 * Execution is slot-based: only a session recorded in an expected slot makes it "held" (a JB session in a regular slot included); compensatory sessions elsewhere count as makeup, never as execution. Late counts as attended everywhere.
 * A new metric or grouping is added to `analytics` and tested there; panels only display it.
-* Cost grows with the range: a whole year means every slot and session of the year in memory and one grouped query over its attendance records (measured in `docs/apps/director.md`). If that becomes too slow, the engine is the one place to add caching or precomputed daily rows.
+* Cost grows with the range: a whole year means every slot and session of the year in memory and one grouped query over its attendance records (measured in `docs/apps/director.md` §8). Decided: a daily summary table per (day, class subject), **written by the engine itself** so the definitions stay single, with a command that recomputes sampled days live and reports mismatches — before Dey 1405 (`docs/apps/analytics.md` §8).
 
 ---
 
@@ -476,6 +476,7 @@ The director is `User.Roles.DIRECTOR` («مدیر مدرسه») with no profile 
 ## Consequences
 
 * The director is not staff (no Django admin) unless the system admin also makes them staff on purpose.
+* Roles and `is_staff` stay independent, for the system admin too: «مدیر سامانه» does not imply staff access (decided October 2026); staff access is granted explicitly.
 * `core.services.access` does not know the director: the panel uses its own `?branch=` filter over all active branches, never `request.branch`.
 
 ---

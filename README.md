@@ -219,7 +219,8 @@ Recommended documents:
 * apps/academic_calendar.md (holidays, closures, the clickable weekly schedule)
 * apps/analytics.md (every metric definition: expected slots, execution, attendance, content)
 * apps/director.md (the director panel: pages, filters, alerts, access, performance)
-* plans/director-dashboard.md (the director dashboard plan and implementation report)
+* plans/director-dashboard-phase1.md (the director dashboard: final Phase 1 report, decisions and follow-ups)
+* plans/director-dashboard.md (the director dashboard: plan and first implementation round)
 * changelog.md
 * apps/*.md
 

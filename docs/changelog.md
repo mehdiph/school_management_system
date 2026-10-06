@@ -36,7 +36,7 @@
 - Filters on every page as GET parameters (presets, custom Jalali range, branch, grade), opening on this Jalali month; empty states; usable on a tablet; a fixed number of queries per page, locked in tests
 - `analytics` app: the single definition of every metric (scope, slot engine, breakdowns, teaching days, previous period); `academic_calendar.services.match_sessions` (the legacy bell-less fallback, now shared by the sync, the supervisor and the teacher dashboard); `AttendanceQuerySet.delivered()` / `status_counts()`
 - Chart.js 4.5.1 vendored under `static/vendor/chartjs/`
-- Documentation: `docs/apps/analytics.md`, `docs/apps/director.md`, ADR-019 to ADR-021, `docs/plans/director-dashboard.md`
+- Documentation: `docs/apps/analytics.md`, `docs/apps/director.md`, ADR-019 to ADR-021, `docs/plans/director-dashboard.md` and `docs/plans/director-dashboard-phase1.md` (final report)
 
 ### Academic Calendar (holidays and closures)
 
@@ -61,6 +61,7 @@
 ## Fixed
 
 - The student dashboard and session list no longer load Font Awesome from cdnjs (the vendored copy in `static/assets` was already loaded)
+- The vendored persian-datepicker's demo pages (`dist/*.html`, loading Bootstrap and jQuery from CDNs) and font sample page are deleted: no HTML file references an external host any more
 - The student session list JSON no longer fails on sessions without content
 
 - The attendance page (`/attendance/<session id>/`) required no login and no ownership: it now needs a login and is limited to the session's teacher, a supervisor of its class, a superuser, or a staff admin with `attendance.change_attendance` on the class's branch (`attendance/permissions.py`); anyone else gets 404
