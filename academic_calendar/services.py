@@ -251,6 +251,15 @@ class Closures:
     def is_closed(self, value, school_class, bell=None):
         return self.event_for(value, school_class, bell) is not None
 
+    def events(self, start, end):
+        """The loaded events with at least one day in ``start``..``end``, by start date."""
+
+        start, end = to_gregorian(start), to_gregorian(end)
+        return [
+            scope.event for scope in sorted(self.scopes, key=lambda s: (s.start, s.event.pk))
+            if scope.start <= end and scope.end >= start
+        ]
+
     def days(self, start=None, end=None):
         """The working days (Saturday..Wednesday) at least one event covers, sorted."""
 

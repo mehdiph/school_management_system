@@ -28,6 +28,11 @@ HOLIDAY = "HL"
 #: Sessions in which something was taught.
 DELIVERED_STATUSES = (HELD, COMPENSATORY)
 
+#: A slot of today is expected only once its bell has ended and the
+#: teacher has had this long to record it (the supervisor's «نیازمند
+#: پیگیری» list uses the same grace).
+REGISTRATION_GRACE_MINUTES = 15
+
 PRESENT = "present"
 ABSENT = "absent"
 LATE = "late"
