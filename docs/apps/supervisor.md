@@ -106,7 +106,8 @@ Invalid values never break the page: the field shows its error and is ignored.
 **Summary table**: one row per supervised `ClassSubject` (teacher × subject × class), including class subjects with no session at all:
 
 * recorded sessions, sessions without content, **holidays** («تعطیل»: sessions the academic calendar cancelled), first and last session date;
-* **progress against the timetable**: held + compensatory sessions compared with the slots the weekly timetable planned (both weeks of the rotation, one per bell) from the class subject's start, or `date_from`, up to today or `date_to`, **without slots an active calendar event closed and without Thursdays/Fridays** (`academic_calendar.services.count_open_slots`). Shown as "n از m · x٪" with a bar: under 60% is red, under 85% amber. Rows without timetable slots show «برنامه‌ی هفتگی ندارد».
+* **progress against the timetable** («پیشرفت»): the **execution rate** of the analytics engine, the same number the director dashboard shows for the class subject (`docs/apps/analytics.md`). The slots the weekly timetable expected (both weeks of the rotation, one per bell) from the class subject's start, or `date_from`, up to now or `date_to` -- **without Thursdays/Fridays, without slots an active calendar event closed, and a slot of today only once its bell ended plus 15 minutes** -- and how many of them were held: a held or compensatory session recorded in that slot (a legacy session without a bell fills the day's first free bell). Shown as "held از expected · x٪" with a bar: under 60% is red, under 85% amber. Rows without timetable slots show «برنامه‌ی هفتگی ندارد».
+  Until October 2026 this column counted every held + compensatory session of the range against the expected slots (it could pass 100%, and sessions on days without a slot or in closed slots counted); see the changelog.
 
 "Without content" means a session with no `SessionContent` row, **excluding cancelled and holiday sessions**. Holiday sessions are never counted as recorded sessions.
 
@@ -139,9 +140,9 @@ Statistics only count the teacher's sessions in the supervisor's classes (and th
 
 `SupervisorSessionsSelector`:
 
-* `summary_rows(filters)`: annotated rows (`session_count`, `empty_count`, `delivered_count`, `first_date`, `last_date`) via `Count(filter=Q(...))`, `Min`, `Max`.
+* `summary_rows(filters)`: annotated rows (`session_count`, `empty_count`, `holiday_count`, `first_date`, `last_date`) via `Count(filter=Q(...))`, `Min`, `Max`.
 * `kpis(filters)`: one `aggregate()`.
-* `attach_coverage(rows, filters)`: expected sessions and coverage for one page of rows (one query for their timetable slots, then `scheduling.utils.count_scheduled_occurrences`).
+* `attach_coverage(rows, filters)`: `expected_count`, `held_count` and coverage for one page of rows: one query for which rows have a timetable, then one `analytics.engine.compute` per academic year on the page (slots, events, sessions: three queries).
 * `timeline(class_subject, filters)`: loads only the session fields, the title and the first 240 characters of the content (`Substr`), never the full texts.
 * `detail_sessions()` / `timeline_class_subjects()`: the scoped querysets the views pass to `get_object_or_404`.
 

@@ -33,7 +33,9 @@ from school.models import ClassSubject, SchoolClass, Subject
 from school.models.academic_year import AcademicYear
 from scheduling.models.class_schedule import ClassSchedule
 from academic_calendar import services as calendar
-from analytics.definitions import counted_q, missing_content_q
+from analytics import engine, metrics
+from analytics.definitions import counted_q, missing_content_q, rounded
+from analytics.scope import AnalyticsScope, as_of_for
 from scheduling.utils import (
     DateBeforeAcademicYearError,
     get_today_schedule_day,
@@ -753,18 +755,13 @@ class SupervisorSessionsSelector:
         """
         One row per class subject with, for the sessions in the filtered
         date range / status: ``session_count``, ``empty_count`` (no
-        content), ``first_date`` and ``last_date``. ``delivered_count``
-        (held + compensatory, date range only) feeds the coverage column
-        (see :meth:`attach_coverage`). Class subjects without any matching
-        session are kept -- a teacher who records nothing is exactly what
-        the supervisor needs to see.
+        content), ``first_date`` and ``last_date``; the coverage column is
+        added per page by :meth:`attach_coverage`. Class subjects without
+        any matching session are kept -- a teacher who records nothing is
+        exactly what the supervisor needs to see.
         """
 
         in_range = self._counted_session_q(filters, "sessions__")
-        delivered = (
-            self._session_q(filters, "sessions__", with_status=False)
-            & ~Q(sessions__status__in=[SchoolSession.Status.CANCELED, SchoolSession.Status.HOLIDAY])
-        )
 
         return (
             self.class_subjects(filters)
@@ -778,7 +775,6 @@ class SupervisorSessionsSelector:
             .annotate(
                 session_count=Count("sessions", filter=in_range),
                 empty_count=Count("sessions", filter=in_range & missing_content_q("sessions__")),
-                delivered_count=Count("sessions", filter=delivered),
                 # per class subject: slots the academic calendar closed
                 holiday_count=Count("sessions", filter=self._holiday_q(filters, "sessions__")),
                 first_date=Min("sessions__date", filter=in_range),
@@ -804,18 +800,21 @@ class SupervisorSessionsSelector:
         """
         ``rows`` (a page of :meth:`summary_rows`) as a list, each with:
 
-        * ``expected_count`` -- sessions the weekly timetable (both weeks of
-          the rotation) planned from the class subject's start, or the
-          filter's ``date_from``, up to today / ``date_to``; ``None`` when
-          the class subject has no timetable slot.
-        * ``coverage`` -- ``delivered_count`` as a % of it (``None`` when
-          nothing was expected yet), ``coverage_bar`` (the same, capped at
-          100 for the progress bar) and ``coverage_level``.
+        * ``expected_count`` -- the slots the timetable expected from the
+          class subject's start, or the filter's ``date_from``, up to now /
+          ``date_to``; ``None`` when the class subject has no timetable slot.
+        * ``held_count`` -- how many of them were held.
+        * ``coverage`` -- the execution rate (``held_count`` as a % of
+          ``expected_count``; ``None`` when nothing was expected yet),
+          ``coverage_bar`` (the same, for the progress bar) and
+          ``coverage_level``.
 
-        Expected slots come from ``academic_calendar.services``: never on
-        Thursday/Friday, and a slot an active calendar event closed is not
-        expected. Two bells of the same subject on one day are two. A
-        fixed number of queries for the whole page.
+        Both come from the analytics engine, so the director dashboard
+        shows exactly the same numbers for the same class subjects (see
+        ``analytics.engine`` for what is expected and what is held:
+        never Thursday/Friday, never a closed slot, a slot of today only
+        once its bell is over, a held or compensatory session in the slot
+        itself). A fixed number of queries for the whole page.
         """
 
         rows = list(rows)
@@ -827,32 +826,39 @@ class SupervisorSessionsSelector:
             .values_list("class_subject_id", flat=True)
         )
 
-        today = jdatetime.date.fromgregorian(date=self.today)
-
-        ranges = {}
+        by_year = defaultdict(list)
         for row in rows:
-            year = row.school_class.year
-            ranges[row.pk] = (
-                max(d for d in (row.start_date, year.start_date, filters.date_from) if d),
-                min(d for d in (today, row.end_date, year.end_date, filters.date_to) if d),
+            if row.pk in with_timetable:
+                by_year[row.school_class.year].append(row)
+
+        breakdowns = {}
+        as_of = as_of_for(self.today)
+        for year, year_rows in by_year.items():
+            scope = AnalyticsScope.build(
+                year, filters.date_from, filters.date_to, as_of=as_of,
+                class_subjects=[row.pk for row in year_rows],
             )
-        expected = calendar.count_open_slots(
-            {pk: r for pk, r in ranges.items() if pk in with_timetable}
-        )
+            result = engine.compute(
+                scope, with_attendance=False, class_subjects={row.pk: row for row in year_rows},
+            )
+            breakdowns.update(metrics.breakdowns(result, metrics.by_class_subject))
 
         for row in rows:
             row.expected_count = None
+            row.held_count = None
             row.coverage = None
             row.coverage_level = ""
 
             if row.pk not in with_timetable:
                 continue
 
-            row.expected_count = expected.get(row.pk, 0)
+            breakdown = breakdowns.get(row.pk, metrics.Breakdown())
+            row.expected_count = breakdown.expected
+            row.held_count = breakdown.held
 
             if row.expected_count:
-                row.coverage = round(row.delivered_count * 100 / row.expected_count)
-                row.coverage_bar = min(row.coverage, 100)
+                row.coverage = rounded(breakdown.execution_rate)
+                row.coverage_bar = row.coverage
                 if row.coverage < self.COVERAGE_LOW:
                     row.coverage_level = "low"
                 elif row.coverage < self.COVERAGE_WARNING:

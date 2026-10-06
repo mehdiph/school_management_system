@@ -275,7 +275,6 @@ class CountTests(SupervisorPagesTestCase):
 
         self.assertEqual(row.session_count, 4)
         self.assertEqual(row.empty_count, 1)  # s3; the cancelled s4 does not count
-        self.assertEqual(row.delivered_count, 3)
         self.assertEqual(row.first_date, J(1405, 7, 1))
         self.assertEqual(row.last_date, J(1405, 7, 12))
 
@@ -339,19 +338,30 @@ class CountTests(SupervisorPagesTestCase):
         # Saturdays every week + Mondays of week 2 only. From 1 Mehr
         # (Wed 23 Sep) to today (Mon 5 Oct): Sat 26 Sep, Sat 3 Oct and
         # Mon 5 Oct (week 2) -- Mon 28 Sep is week 1.
-        make_schedule(self.class_subject, ClassSchedule.DayChoices.SATURDAY, make_bell(time(8), time(9)))
+        saturday_bell = make_bell(time(8), time(9))
+        make_schedule(self.class_subject, ClassSchedule.DayChoices.SATURDAY, saturday_bell)
         make_schedule(
             self.class_subject,
             ClassSchedule.DayChoices.MONDAY,
             make_bell(time(10), time(11)),
             week_type=ClassSchedule.WeekTypeChoices.WEEK_TWO,
         )
+        # Coverage is the execution rate of the analytics engine: only a
+        # session in an expected slot is held there (a compensatory one
+        # too); s1..s4 are on days without a slot and do not count.
+        SchoolSession.objects.create(class_subject=self.class_subject, date=J(1405, 7, 4), bell=saturday_bell)
+        SchoolSession.objects.create(
+            class_subject=self.class_subject, date=J(1405, 7, 11), bell=saturday_bell,
+            status=SchoolSession.Status.COMPENSATORY,
+        )
 
-        row = self.client.get(reverse("supervisor:sessions")).context["rows"][0]
+        response = self.client.get(reverse("supervisor:sessions"))
+        row = response.context["rows"][0]
 
-        self.assertEqual(row.expected_count, 3)
-        self.assertEqual(row.coverage, 100)  # 3 delivered (s4 was cancelled)
-        self.assertEqual(row.coverage_level, "ok")
+        self.assertEqual((row.expected_count, row.held_count), (3, 2))
+        self.assertEqual(row.coverage, 67)       # Mon 5 Oct was not recorded
+        self.assertEqual(row.coverage_level, "warning")
+        self.assertContains(response, "۲ از ۳ · ۶۷٪")
 
     def test_no_timetable_means_no_coverage(self):
         row = self.client.get(reverse("supervisor:sessions")).context["rows"][0]
@@ -665,11 +675,11 @@ class QueryCountTests(SupervisorPagesTestCase):
             self.get(url)
 
         self.add_rows(6)
-        expected += 2  # the new rows have a timetable: coverage reads the calendar
+        expected += 3  # rows with a timetable: coverage reads slots, events and sessions
         with self.assertNumQueries(expected):
             self.get(url)
         # filtered down to the first row, which has no timetable
-        with self.assertNumQueries(expected - 2):
+        with self.assertNumQueries(expected - 3):
             self.get(url, {
                 "teacher": self.teacher.pk,
                 "subject": self.subject.pk,

@@ -216,7 +216,8 @@ All dates may be `datetime.date` or `jdatetime.date`. The service works in Grego
 | Function | Returns |
 | --- | --- |
 | `get_slots(start, end, days=None, **filters)` | `[ExpectedSlot(class_subject, date, bell, schedule), …]`, the slots the timetable plans (rules in [§2.4](#24-automatic-cancellation)), **closures not removed**. `filters` are extra `ClassSchedule` lookups, e.g. `class_subject__teacher_assignment__teacher=…`. One query |
-| `count_open_slots({class_subject_id: (start, end)})` | `{class_subject_id: n}`, the expected slots in each range that no event closes (supervisor coverage) |
+| `match_sessions(slot_keys, sessions)` | `{slot key: session}`: which recorded session fills which slot, with the count fallback for legacy bell-less sessions; used by the sync, the supervisor, the teacher dashboard and `analytics.engine` |
+| `Closures.events(start, end)` | the loaded events overlapping a range (the director dashboard's upcoming closures) |
 
 ### 4.3 Sync and writes
 

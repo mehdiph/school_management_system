@@ -115,7 +115,7 @@ class ExcludedCountTests(TestCase):
         filters = SessionFilters(academic_year=self.year)
 
         row = selector.summary_rows(filters).get()
-        self.assertEqual((row.session_count, row.delivered_count, row.empty_count), (2, 2, 0))
+        self.assertEqual((row.session_count, row.empty_count), (2, 0))
         self.assertEqual(row.last_date, J(1405, 7, 19))
         self.assertEqual(selector.kpis(filters)['session_count'], 2)
 
