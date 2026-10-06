@@ -170,21 +170,26 @@ def _today_lessons(teacher_profile, academic_year, now):
         .select_related("session_contents")
     }
 
-    recorded_bells = defaultdict(dict)       # class subject -> {bell id: session id}
-    legacy_today = defaultdict(list)         # sessions recorded without a bell
-    for session_id, class_subject_id, bell_id in (
+    # Today's sessions, matched to today's slots: a session without a
+    # bell fills the day's free bells in order (calendar.match_sessions).
+    todays_sessions = (
         SchoolSession.objects.counted()
         .filter(
             class_subject__in=[cs.pk for cs in class_subjects],
             date=jdatetime.date.fromgregorian(date=today),
         )
-        .order_by("session_number")
-        .values_list("pk", "class_subject_id", "bell_id")
-    ):
-        if bell_id is None:
-            legacy_today[class_subject_id].append(session_id)
-        else:
-            recorded_bells[class_subject_id][bell_id] = session_id
+        .only("pk", "class_subject_id", "date", "bell_id", "status", "session_number")
+    )
+    slot_keys = [
+        (cs.pk, today, schedule.bell_id)
+        for cs in class_subjects
+        for schedule in cs.todays_schedules
+    ]
+    recorded_bells = defaultdict(dict)       # class subject -> {bell id: session id}
+    for (class_subject_id, _day, bell_id), session in calendar.match_sessions(
+        slot_keys, todays_sessions
+    ).items():
+        recorded_bells[class_subject_id][bell_id] = session.pk
 
     closures = calendar.Closures.between(today, today, academic_year=academic_year)
     today_jalali = jdatetime.date.fromgregorian(date=today).strftime("%Y-%m-%d")
@@ -199,11 +204,7 @@ def _today_lessons(teacher_profile, academic_year, now):
             if content is not None:
                 last_summary = content.content
 
-        # A session without a bell counts against the day's bells in order.
-        recorded = dict(recorded_bells[cs.pk])
-        free = [s.bell for s in cs.todays_schedules if s.bell.pk not in recorded]
-        for bell, session_id in zip(free, legacy_today[cs.pk]):
-            recorded[bell.pk] = session_id
+        recorded = recorded_bells[cs.pk]
 
         for bells in _consecutive_runs([schedule.bell for schedule in cs.todays_schedules]):
             events = {bell.pk: closures.event_for(today, cs.school_class, bell) for bell in bells}

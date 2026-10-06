@@ -602,7 +602,7 @@ class PartialRenderingTests(SupervisorPagesTestCase):
         self.assertTemplateUsed(full, "supervisor/session_detail.html")
         self.assertTemplateUsed(full, "base.html")
         self.assertEqual(
-            partial.context["attendance"], {"total": 1, "present": 0, "absent": 1, "late": 0}
+            partial.context["attendance"], {"total": 1, "present": 0, "absent": 1, "late": 0, "rate": 0}
         )
         self.assertContains(partial, "کار گروهی")
 

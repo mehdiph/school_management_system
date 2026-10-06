@@ -1,7 +1,9 @@
-from .base import BaseQuerySet
+from django.db.models import Count, Q
 
-#: SchoolSession.Status.HOLIDAY (not imported: the model imports this module).
-HOLIDAY_STATUS = "HL"
+from analytics.definitions import ABSENT, LATE, PRESENT, attendance_rate, rounded
+from analytics.definitions import HOLIDAY as HOLIDAY_STATUS
+
+from .base import BaseQuerySet
 
 
 class SchoolSessionQuerySet(BaseQuerySet):
@@ -30,6 +32,23 @@ class AttendanceQuerySet(BaseQuerySet):
         return self.filter(
             student_enrollment__school_class__branch=branch
         )
+
+    def status_counts(self):
+        """
+        ``total`` / ``present`` / ``absent`` / ``late`` records (one
+        query) and ``rate``: the attendance rate of
+        ``analytics.definitions.attendance_rate`` -- late counts as
+        attended -- rounded, or None without records.
+        """
+
+        counts = self.aggregate(
+            total=Count("id"),
+            present=Count("id", filter=Q(status=PRESENT)),
+            absent=Count("id", filter=Q(status=ABSENT)),
+            late=Count("id", filter=Q(status=LATE)),
+        )
+        counts["rate"] = rounded(attendance_rate(counts["total"], counts["absent"]))
+        return counts
     
 class TeacherAssignmentQuerySet(BaseQuerySet):
     def for_branch(self, branch):

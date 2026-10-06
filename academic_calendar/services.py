@@ -380,6 +380,54 @@ def get_slots(start, end, days=None, **filters):
     return slots
 
 
+def match_sessions(slot_keys, sessions):
+    """
+    Which recorded session fills which slot: ``{slot key: session}``.
+
+    ``slot_keys`` are ``(class_subject_id, Gregorian date, bell_id)``
+    tuples (``ExpectedSlot.key``) in teaching order -- by date, then bell
+    order; ``sessions`` are anything with ``pk``, ``class_subject_id``,
+    ``date``, ``bell_id``, ``status`` and ``session_number``.
+
+    A session with a bell fills exactly its own slot. A legacy session
+    recorded before sessions had a bell fills that day's first slot (in
+    bell order) no session with a bell fills, several of them in their
+    number order: the count fallback. Holiday rows always have a bell, so
+    a bell-less holiday is ignored. Sessions that fill no slot are simply
+    not in the result.
+
+    This is the one place the fallback is written: the calendar sync and
+    conflicts, the supervisor's missing-session list, the teacher's
+    lessons of today and the analytics engine all call it.
+    """
+
+    slot_keys = list(slot_keys)
+    wanted = set(slot_keys)
+    matched = {}
+    legacy = defaultdict(list)          # (class subject, date) -> bell-less sessions
+
+    for session in sessions:
+        day = to_gregorian(session.date)
+        if session.bell_id is not None:
+            key = (session.class_subject_id, day, session.bell_id)
+            if key in wanted:
+                matched[key] = session
+        elif session.status != "HL":
+            legacy[(session.class_subject_id, day)].append(session)
+
+    if legacy:
+        free = defaultdict(list)
+        for key in slot_keys:
+            if key not in matched:
+                free[key[:2]].append(key)
+        for day_key, rows in legacy.items():
+            rows = sorted(rows, key=lambda s: (s.session_number or 0, s.pk))
+            for key, session in zip(free.get(day_key, ()), rows):
+                matched[key] = session
+
+    return matched
+
+
 def count_open_slots(ranges):
     """
     ``{class_subject_id: (start, end)}`` -> ``{class_subject_id: n}``: how
@@ -461,53 +509,56 @@ def _plan(start, end, class_subject_ids=None, academic_year=None):
     start, end = to_gregorian(start), to_gregorian(end)
     closures = Closures.between(start, end, academic_year=academic_year)
 
-    sessions = SchoolSession.objects.filter(
+    in_range = SchoolSession.objects.filter(
         date__gte=to_jalali(start), date__lte=to_jalali(end)
-    ).select_related(
-        "bell",
-        "calendar_event",
-        "class_subject__subject",
-        "class_subject__school_class__grade",
-        "class_subject__school_class__branch",
-        "class_subject__teacher_assignment__teacher__staff__user",
     )
     filters = {}
     if class_subject_ids is not None:
-        sessions = sessions.filter(class_subject_id__in=class_subject_ids)
+        in_range = in_range.filter(class_subject_id__in=class_subject_ids)
         filters["class_subject_id__in"] = class_subject_ids
     if academic_year is not None:
-        sessions = sessions.filter(class_subject__school_class__year=academic_year)
+        in_range = in_range.filter(class_subject__school_class__year=academic_year)
         filters["class_subject__school_class__year"] = academic_year
-    sessions = list(sessions)
 
+    # Only days with an event or an existing holiday row can change, so
+    # only the sessions of those days are loaded -- not a whole year's.
+    holiday_days = {
+        to_gregorian(day) for day in
+        in_range.filter(status=SchoolSession.Status.HOLIDAY, is_auto_created=True)
+        .order_by().values_list("date", flat=True).distinct()
+    }
+    days = set(closures.days(start, end)) | holiday_days
+    if not days:
+        return _Plan(closed={}, by_slot={}, legacy_taken=set(), holidays=[], conflicts=[])
+
+    sessions = list(
+        in_range.filter(date__in=sorted(to_jalali(day) for day in days)).select_related(
+            "bell",
+            "calendar_event",
+            "class_subject__subject",
+            "class_subject__school_class__grade",
+            "class_subject__school_class__branch",
+            "class_subject__teacher_assignment__teacher__staff__user",
+        )
+    )
     holidays = [
         s for s in sessions
         if s.status == SchoolSession.Status.HOLIDAY and s.is_auto_created
     ]
-    # Only days with an event or an existing holiday row can change.
-    days = set(closures.days(start, end)) | {to_gregorian(s.date) for s in holidays}
     slots = get_slots(start, end, days=days, **filters)
 
-    by_slot = {}
-    legacy = defaultdict(list)      # (class_subject, date) -> bell-less non-holiday sessions
-    for session in sessions:
-        day = to_gregorian(session.date)
-        if session.bell_id is not None:
-            by_slot[(session.class_subject_id, day, session.bell_id)] = session
-        elif session.status != SchoolSession.Status.HOLIDAY:
-            legacy[(session.class_subject_id, day)].append(session)
-
-    # A legacy session (recorded before sessions had a bell) is counted
-    # against that day's slots in bell order, as attention_items does.
-    legacy_taken = {}
-    if legacy:
-        day_slots = defaultdict(list)
-        for slot in slots:
-            day_slots[(slot.class_subject.pk, slot.date)].append(slot)
-        for key, rows in legacy.items():
-            free = [s for s in day_slots.get(key, ()) if s.key not in by_slot]
-            for slot, session in zip(free, sorted(rows, key=lambda s: (s.session_number or 0, s.pk))):
-                legacy_taken[slot.key] = session
+    by_slot = {
+        (session.class_subject_id, to_gregorian(session.date), session.bell_id): session
+        for session in sessions
+        if session.bell_id is not None
+    }
+    # A legacy session (recorded before sessions had a bell) fills that
+    # day's slots in bell order: match_sessions' count fallback.
+    legacy_taken = {
+        key: session
+        for key, session in match_sessions([slot.key for slot in slots], sessions).items()
+        if session.bell_id is None
+    }
 
     closed, conflicts = {}, []
     for slot in slots:

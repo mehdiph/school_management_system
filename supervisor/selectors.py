@@ -33,6 +33,7 @@ from school.models import ClassSubject, SchoolClass, Subject
 from school.models.academic_year import AcademicYear
 from scheduling.models.class_schedule import ClassSchedule
 from academic_calendar import services as calendar
+from analytics.definitions import counted_q, missing_content_q
 from scheduling.utils import (
     DateBeforeAcademicYearError,
     get_today_schedule_day,
@@ -266,21 +267,7 @@ class SupervisorDashboardSelector:
     # ------------------------------------------------------------------
 
     def attendance_statistics(self):
-        aggregates = self.scope.attendance().aggregate(
-            total=Count("id"),
-            present=Count(
-                "id",
-                filter=Q(status=Attendance.AttendanceStatus.PRESENT),
-            ),
-            absent=Count(
-                "id",
-                filter=Q(status=Attendance.AttendanceStatus.ABSENT),
-            ),
-            late=Count(
-                "id",
-                filter=Q(status=Attendance.AttendanceStatus.LATE),
-            ),
-        )
+        aggregates = self.scope.attendance().status_counts()
 
         total = aggregates["total"] or 0
         present = aggregates["present"] or 0
@@ -421,32 +408,24 @@ class SupervisorDashboardSelector:
             return []
 
         # Single extra query: the sessions already registered today for
-        # the overdue class subjects, by bell.
-        registered_bells = defaultdict(set)
-        legacy_counts = defaultdict(int)
-        for class_subject_id, bell_id in SchoolSession.objects.counted().filter(
+        # the overdue class subjects, matched to today's open slots (a
+        # legacy bell-less session fills the first one in bell order).
+        registered = SchoolSession.objects.counted().filter(
             class_subject_id__in=overdue_by_class_subject.keys(),
             date=today_jalali,
-        ).values_list("class_subject_id", "bell_id"):
-            if bell_id is None:
-                legacy_counts[class_subject_id] += 1
-            else:
-                registered_bells[class_subject_id].add(bell_id)
-
-        todays_bells = defaultdict(list)
-        for schedule in sorted(schedules, key=lambda s: s.bell.order):
-            todays_bells[schedule.class_subject_id].append(schedule.bell_id)
+        ).only("pk", "class_subject_id", "date", "bell_id", "status", "session_number")
+        slot_keys = [
+            (schedule.class_subject_id, today, schedule.bell_id)
+            for schedule in sorted(schedules, key=lambda s: s.bell.order)
+        ]
+        covered = calendar.match_sessions(slot_keys, registered)
 
         items = []
 
         for class_subject_id, entries in overdue_by_class_subject.items():
-            covered = set(registered_bells[class_subject_id])
-            uncovered = [b for b in todays_bells[class_subject_id] if b not in covered]
-            covered.update(uncovered[:legacy_counts[class_subject_id]])
-
             # entries are ordered by bell end time: earliest overdue first
             for schedule, deadline in entries:
-                if schedule.bell_id in covered:
+                if (class_subject_id, today, schedule.bell_id) in covered:
                     continue
                 class_subject = schedule.class_subject
                 school_class = class_subject.school_class
@@ -578,22 +557,9 @@ class SupervisorAttendanceSelector:
         """total/present/absent/late counts for ``session``, computed in the DB."""
 
         if session is None:
-            return {"total": 0, "present": 0, "absent": 0, "late": 0}
+            return {"total": 0, "present": 0, "absent": 0, "late": 0, "rate": None}
 
-        aggregates = self.scope.attendance().filter(session=session).aggregate(
-            total=Count("id"),
-            present=Count(
-                "id", filter=Q(status=Attendance.AttendanceStatus.PRESENT)
-            ),
-            absent=Count(
-                "id", filter=Q(status=Attendance.AttendanceStatus.ABSENT)
-            ),
-            late=Count(
-                "id", filter=Q(status=Attendance.AttendanceStatus.LATE)
-            ),
-        )
-
-        return aggregates
+        return self.scope.attendance().filter(session=session).status_counts()
 
     def get_attendance_page_data(self, class_id):
         """
@@ -644,25 +610,6 @@ class SessionFilters:
     date_to: jdatetime.date = None
     status: str = ""
     sort: str = ""
-
-
-def _no_content_q(prefix=""):
-    """
-    Sessions with no ``SessionContent`` row. Cancelled and holiday
-    sessions are left out: nothing was taught, so a missing content is
-    expected there.
-    """
-
-    return (
-        Q(**{f"{prefix}session_contents__isnull": True})
-        & ~Q(**{f"{prefix}status__in": [SchoolSession.Status.CANCELED, SchoolSession.Status.HOLIDAY]})
-    )
-
-
-def _counted_q(prefix=""):
-    """``SchoolSession.objects.counted()`` as a Q, for aggregates over a relation."""
-
-    return ~Q(**{f"{prefix}status": SchoolSession.Status.HOLIDAY})
 
 
 def _ordering(sort, fields, default):
@@ -788,7 +735,7 @@ class SupervisorSessionsSelector:
     def _counted_session_q(cls, filters, prefix=""):
         """The filtered sessions, holidays excluded (what every count uses)."""
 
-        return cls._session_q(filters, prefix) & _counted_q(prefix)
+        return cls._session_q(filters, prefix) & counted_q(prefix)
 
     def class_subjects(self, filters):
         """The supervised class subjects the filters select (no annotations)."""
@@ -830,7 +777,7 @@ class SupervisorSessionsSelector:
             )
             .annotate(
                 session_count=Count("sessions", filter=in_range),
-                empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
+                empty_count=Count("sessions", filter=in_range & missing_content_q("sessions__")),
                 delivered_count=Count("sessions", filter=delivered),
                 # per class subject: slots the academic calendar closed
                 holiday_count=Count("sessions", filter=self._holiday_q(filters, "sessions__")),
@@ -847,7 +794,7 @@ class SupervisorSessionsSelector:
 
         return self.class_subjects(filters).aggregate(
             session_count=Count("sessions", filter=in_range),
-            empty_count=Count("sessions", filter=in_range & _no_content_q("sessions__")),
+            empty_count=Count("sessions", filter=in_range & missing_content_q("sessions__")),
             teacher_count=Count("teacher_assignment__teacher", distinct=True),
             last_date=Max("sessions__date", filter=in_range),
             holiday_count=Count("sessions", filter=self._holiday_q(filters, "sessions__")),
@@ -1006,12 +953,7 @@ class SupervisorSessionsSelector:
     def attendance_summary(self, session):
         """Attendance counts per status for ``session`` (one query)."""
 
-        return Attendance.objects.filter(session=session).aggregate(
-            total=Count("id"),
-            present=Count("id", filter=Q(status=Attendance.AttendanceStatus.PRESENT)),
-            absent=Count("id", filter=Q(status=Attendance.AttendanceStatus.ABSENT)),
-            late=Count("id", filter=Q(status=Attendance.AttendanceStatus.LATE)),
-        )
+        return Attendance.objects.filter(session=session).status_counts()
 
 
 class SupervisorTeachersSelector:
@@ -1084,10 +1026,10 @@ class SupervisorTeachersSelector:
         return (
             teachers.select_related("staff__user")
             .annotate(
-                session_count=Count(sessions, filter=_counted_q(f"{sessions}__")),
-                empty_count=Count(sessions, filter=_no_content_q(f"{sessions}__")),
+                session_count=Count(sessions, filter=counted_q(f"{sessions}__")),
+                empty_count=Count(sessions, filter=missing_content_q(f"{sessions}__")),
                 # a holiday is not activity
-                last_session_date=Max(f"{sessions}__date", filter=_counted_q(f"{sessions}__")),
+                last_session_date=Max(f"{sessions}__date", filter=counted_q(f"{sessions}__")),
             )
             .order_by(*_ordering(sort, self.SORT_FIELDS, self.DEFAULT_SORT))
         )
