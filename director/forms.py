@@ -6,7 +6,7 @@ Like the supervisor's filters, invalid input never breaks a page: the
 field shows its error and is not applied. The date inputs always show
 the range in effect; dates that differ from the selected preset's range
 make it a custom range (so editing a date works without JavaScript), and
-a custom range without dates falls back to the year so far.
+a custom range without dates falls back to the default range.
 """
 
 from dataclasses import dataclass
@@ -18,6 +18,11 @@ from django import forms
 from academic_calendar.services import to_gregorian, to_jalali
 from analytics import periods
 from core.forms import DATE_INPUT_ATTRS, JalaliDateField, ObjectChoiceField
+
+#: The range a page opens with: this Jalali month. "Since the start of the
+#: academic year" stays a preset, but it is the slowest view late in the
+#: year (docs/apps/director.md §8), so it is not what every visit pays for.
+DEFAULT_PERIOD = periods.MONTH
 
 
 @dataclass(frozen=True)
@@ -91,7 +96,7 @@ class DirectorFilterForm(forms.Form):
         data = data.copy()
         if not data.get("period"):
             has_dates = data.get("date_from") or data.get("date_to")
-            data["period"] = periods.CUSTOM if has_dates else periods.YEAR
+            data["period"] = periods.CUSTOM if has_dates else DEFAULT_PERIOD
         super().__init__(data)
         self.year = year
         self.today = today
@@ -117,7 +122,7 @@ class DirectorFilterForm(forms.Form):
     def filters(self):
         self.is_valid()   # runs the cleaning; errors only drop their field
 
-        period = self._value("period") or periods.YEAR
+        period = self._value("period") or DEFAULT_PERIOD
         date_from, date_to = self._value("date_from"), self._value("date_to")
         typed = (
             to_gregorian(date_from) if date_from else None,
@@ -132,7 +137,7 @@ class DirectorFilterForm(forms.Form):
             end = typed[1] or self.today
         else:
             if period == periods.CUSTOM:
-                period = periods.YEAR
+                period = DEFAULT_PERIOD
             start, end = periods.period_range(period, self.today, self.year)
 
         # Show the range in effect (unless a date was rejected: then the

@@ -13,7 +13,7 @@ from django.test import override_settings
 from django.urls import reverse
 
 from academic_calendar import services as calendar
-from analytics.tests import AS_OF, SUNDAY_1, SUNDAY_2, THURSDAY, Fixture, J
+from analytics.tests import AS_OF, SUNDAY_1, SUNDAY_2, THURSDAY, Fixture, J, at
 from attendance.models import Attendance
 from core.templatetags.jalali_tags import fa_digits
 from core.testing import (
@@ -71,7 +71,7 @@ class DashboardTests(DirectorPageTestCase):
         self.session(self.math, SUNDAY_1, self.bell_2, SchoolSession.Status.CANCELED)
         make_enrollment(make_student(), self.class_b)
 
-        response = self.get("dashboard")
+        response = self.get("dashboard", period="year")
         kpis = self.kpis(response)
 
         self.assertEqual(kpis["execution_rate"].value, 100 / 6)       # 1 of 6 slots
@@ -389,10 +389,30 @@ class FilterTests(DirectorPageTestCase):
     def test_presets(self):
         today = AS_OF.date()
 
-        self.assertEqual((self.scope().start, self.scope().end), (J(1405, 7, 1).togregorian(), today))
+        self.assertEqual(self.scope(period="year").start, J(1405, 7, 1).togregorian())
         self.assertEqual(self.scope(period="today").start, today)
         self.assertEqual(self.scope(period="week").start, J(1405, 7, 11).togregorian())
         self.assertEqual(self.scope(period="month").start, J(1405, 7, 1).togregorian())
+
+    def test_every_page_opens_on_this_jalali_month(self):
+        # In Aban, "this month" and "since the start of the year" differ.
+        aban = at(J(1405, 8, 10))
+        with mock.patch("django.utils.timezone.now", lambda: aban):
+            self.client.force_login(make_user(User.Roles.DIRECTOR))
+            for page in ("dashboard", "execution", "attendance"):
+                with self.subTest(page=page):
+                    response = self.get(page)
+                    self.assertEqual(response.context["filters"].period, "month")
+                    self.assertEqual(
+                        (response.context["scope"].start, response.context["scope"].end),
+                        (J(1405, 8, 1).togregorian(), aban.date()),
+                    )
+                    self.assertIn("period=month", response.context["director_query"])
+
+            year = self.get("dashboard", period="year")
+            self.assertEqual(year.context["scope"].start, J(1405, 7, 1).togregorian())
+            # A custom range without dates falls back to this month too.
+            self.assertEqual(self.get("dashboard", period="custom").context["filters"].period, "month")
 
     def test_typed_dates_make_a_custom_range(self):
         response = self.get("dashboard", period="week", date_from="۱۴۰۵/۰۷/۰۴", date_to="1405-07-08")

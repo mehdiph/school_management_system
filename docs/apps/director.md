@@ -38,7 +38,7 @@ Branch comparison is first-class: every page has a branch filter (all / each bra
 
 A plain GET form above everything it scopes (`director/forms.py`), so every view is a link and works without JavaScript:
 
-* **Presets** (links): today, this week (from Saturday), this Jalali month, since the start of the academic year (default).
+* **Presets** (links): today, this week (from Saturday), **this Jalali month (the default every page opens with)**, since the start of the academic year. The year-to-date view is the slowest late in the year (§8), so it is a choice rather than what every visit pays for (`director.forms.DEFAULT_PERIOD`).
 * **Custom range**: two Jalali dates (typed in any digits, or picked with the project's persian-datepicker). The inputs always show the range in effect; dates that differ from the selected preset make the range custom. A range is clamped to the academic year and to today; a range entirely in the future shows an empty state.
 * **Branch** (all / each active branch) and **grade** (all / each active grade).
 * Invalid input (an impossible date, an end before the start, an unknown branch) is reported above the filters and not applied; the page still renders.
@@ -49,7 +49,7 @@ Page-specific parameters: `view` (execution: `breakdown`, `teachers`, `subjects`
 ### 3.2 Dashboard
 
 * **KPI cards**: active students (distinct students with an active enrollment in an active class of the year), classes (active classes), teachers (with an active assignment teaching an active class subject of an active class — as the supervisor counts them), and the **attendance**, **execution** and **content** rates (definitions in §4).
-  * The three rates show the change vs the **previous period** of as many teaching days, in percentage points with ↑ / ↓ and a sign (never color alone). When that period is incomplete (start of the year) the card says «داده‌ی دوره‌ی قبل کافی نیست»; a range starting on the first day of the year has «بدون دوره‌ی قبلی».
+  * The three rates show the change vs the **previous period** of as many teaching days, in percentage points with ↑ / ↓ and a sign (never color alone). When that period is incomplete (start of the year) the card says «داده‌ی دوره‌ی قبل کافی نیست»; a range starting on the first day of the year (this month, in Mehr) has «بدون دوره‌ی قبلی».
   * The three counts have **no change indicator**: enrollments and assignments keep no status history, so "how many last month" cannot be answered faithfully (Phase 2, §9).
 * **Alerts** (§5): four cards, each with its count, up to five items and a link to the page that explains it.
 * **Branches side by side**: for each active branch (whatever the branch filter; the selected one is highlighted), in the same range and grade: students, classes, teachers, attendance / execution / content rates, unregistered slots, slots lost to closures.

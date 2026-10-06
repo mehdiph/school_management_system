@@ -108,8 +108,8 @@ There is no homework rate: `SessionContent.homework` is required and teachers wr
 | --- | --- |
 | `today` | today |
 | `week` | Saturday of this week .. today |
-| `month` | the 1st of this **Jalali** month .. today |
-| `year` (default) | the start of the academic year .. today |
+| `month` | the 1st of this **Jalali** month .. today (the director panel's default) |
+| `year` | the start of the academic year .. today |
 | `custom` | the typed Jalali dates |
 
 ---
