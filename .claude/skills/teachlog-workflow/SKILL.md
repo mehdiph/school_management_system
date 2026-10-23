@@ -107,3 +107,5 @@ Write `docs/plans/YYYY-MM-<slug>.md` with these sections:
    in the admin, who to brief)
 
 State clearly at the top whether the work is committed, pushed or deployed.
+
+Also write the plan to docs/plans/YYYY-MM-<slug>-plan.md before stopping for approval.
