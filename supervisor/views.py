@@ -1,8 +1,10 @@
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, render
 
+from academic_calendar import services as calendar
 from teaching.models import SchoolSession, SessionContent
 
 from .forms import SessionFilterForm, SessionPeriodForm, TeacherFilterForm
@@ -127,22 +129,17 @@ def attention_list(request):
 @require_supervisor
 def attendance(request):
     """
-    Supervisor's per-class attendance page: the latest registered
-    session for the selected class, its attendance rows and summary.
+    Supervisor's daily attendance page for a day (``?date=``, Jalali,
+    default today): every class with its sheet taken or not -- the ones
+    still missing highlighted, each linking to its sheet
+    (``attendance:daily_sheet``) -- and, for the selected class
+    (``?class=``), the students to follow up that day.
 
-    All querying lives in ``SupervisorAttendanceSelector``; this view
-    only reads GET params and renders. ``class`` is the only param the
-    selector uses -- a tampered/foreign id simply fails to resolve
-    (see ``SupervisorAttendanceSelector.resolve_class``) and falls back
-    to the supervisor's first allowed class, it never raises or leaks
-    another class's data.
-
-    ``status``/``search`` are *not* used to filter the queryset: class
-    rosters are small (a handful to ~30 students), so filtering them in
-    the browser (see attendance.js) avoids a DB round trip per
-    keystroke/click for no real benefit. They're only read here to
-    preserve the toolbar's state across a page reload (e.g. the
-    "بروزرسانی" button) or a shared link.
+    All querying lives in ``SupervisorAttendanceSelector``. A tampered or
+    foreign ``class`` id simply fails to resolve and falls back to the
+    supervisor's first class. ``status``/``search`` only filter the
+    follow-up list in the browser (see attendance.js); they are read here
+    to keep the toolbar's state across a reload or a shared link.
     """
 
     selector = SupervisorAttendanceSelector(request.supervisor)
@@ -153,7 +150,14 @@ def attendance(request):
     except ValueError:
         class_id = None
 
-    context = selector.get_attendance_page_data(class_id)
+    day = None
+    if request.GET.get("date"):
+        try:
+            day = calendar.to_gregorian(calendar.parse_jalali_date(request.GET["date"]))
+        except ValueError:
+            messages.error(request, "تاریخ واردشده معتبر نیست؛ حضور و غیاب امروز نمایش داده شد.")
+
+    context = selector.get_attendance_page_data(class_id, day)
     context["current_status"] = request.GET.get("status", "all")
     context["search_query"] = request.GET.get("search", "")
 

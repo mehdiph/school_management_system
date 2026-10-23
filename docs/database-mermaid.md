@@ -35,7 +35,7 @@ erDiagram
     Bell |o--o{ SchoolSession : "slot bell"
     CalendarEvent |o--o{ SchoolSession : "cancelled by"
     SchoolSession ||--o| SessionContent : "content"
-    SchoolSession ||--o{ Attendance : ""
+    SchoolSession ||--o{ SessionAttendance : "archive (before the cutoff)"
 
     AcademicYear ||--o{ CalendarEvent : ""
     CalendarEvent }o--o{ Branch : "scope: branches (empty = all)"
@@ -46,7 +46,12 @@ erDiagram
     StudentProfile ||--o{ StudentEnrollment : ""
     SchoolClass ||--o{ StudentEnrollment : ""
     AcademicYear ||--o{ StudentEnrollment : ""
-    StudentEnrollment ||--o{ Attendance : ""
+    StudentEnrollment ||--o{ SessionAttendance : ""
+    SchoolClass ||--o{ DailyAttendanceSheet : "one per day"
+    User ||--o{ DailyAttendanceSheet : "taken_by"
+    DailyAttendanceSheet ||--o{ DailyAttendance : "records"
+    StudentEnrollment ||--o{ DailyAttendance : ""
+    User |o--o{ DailyAttendance : "updated_by"
 
     SupervisorProfile ||--o{ SupervisorClass : "supervises"
     SchoolClass ||--o{ SupervisorClass : ""
@@ -189,11 +194,26 @@ erDiagram
         jdate enrollment_date
         string status
     }
-    Attendance {
+    SessionAttendance {
         int session_id FK "never an HL session"
         int student_enrollment_id FK "unique per session"
         string status "present / absent / late"
         text description
+        datetime created_at
+    }
+    DailyAttendanceSheet {
+        int school_class_id FK "unique with date"
+        jdate date
+        int taken_by_id FK
+        datetime created_at
+    }
+    DailyAttendance {
+        int sheet_id FK "unique with student_enrollment"
+        int student_enrollment_id FK
+        string status "present / absent / late / excused"
+        text description
+        int updated_by_id FK "nullable"
+        datetime updated_at
     }
     SupervisorProfile {
         int user_id FK "one-to-one"
@@ -214,3 +234,11 @@ erDiagram
 | `SchoolSession` | `unique_session_number_per_class_subject` | numbers are unique per class subject (NULLs never collide) |
 | `SchoolSession` | `unique_session_per_slot` | one session per `(class_subject, date, bell)` when `bell` is set |
 | `SchoolSession` | `session_number_only_when_counted` | `status = 'HL'` ⇔ `session_number IS NULL` |
+
+## Attendance constraints at a glance
+
+| Table | Constraint | Meaning |
+| --- | --- | --- |
+| `DailyAttendanceSheet` | `unique_daily_attendance_sheet_per_class_day` | one sheet per `(school_class, date)` |
+| `DailyAttendance` | `unique_daily_attendance_per_sheet` | one record per `(sheet, student_enrollment)` |
+| `SessionAttendance` | `unique_attendance_per_session` | one record per `(session, student_enrollment)`; table `attendance_attendance` (archive, read-only) |

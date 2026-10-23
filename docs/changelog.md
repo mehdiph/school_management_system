@@ -26,6 +26,21 @@
 
 ## Added
 
+### Daily Attendance (grade supporter)
+
+- Attendance is taken once a day per class by the grade supporter («پشتیبان»), from 1 Aban 1405 (`ATTENDANCE_DAILY_START_DATE`): new `DailyAttendanceSheet` (one per class and day) and `DailyAttendance` (one per student; present / absent / late / excused, description, who changed it and when). Migrations `attendance` 0003–0005.
+- Sheet page `/attendance/daily/<class id>/?date=`: everyone «حاضر» by default, only the exceptions marked; saving twice edits the same sheet; a later change (e.g. absent → late) records who made it. Only the class's supporter, superusers and staff admins of its branch with `attendance.change_dailyattendancesheet` (others 403). A sheet only on days the class's timetable has an open lesson, from the cutoff to today.
+- Supervisor «حضور و غیاب» page rebuilt for the morning routine: every class with «ثبت شده / ثبت نشده / تعطیل / بدون کلاس» for a chosen day (today by default), missing ones highlighted and linked to their sheet; the follow-up list of one class (absent, late, excused, with phone numbers). Dashboard card «حضور و غیاب امروز».
+- `attendance.services`: the one place that reads the per-session archive before the cutoff and the daily sheets after it (`get_absences`, `attendance_counts`, `student_tallies`, `session_counts`, and the engine's tallies).
+- Admin: daily sheets with their records (branch-scoped).
+- Docs: `docs/apps/attendance.md`, ADR-022, report `docs/plans/2026-10-daily-attendance.md`.
+
+## Changed (daily attendance)
+
+- Teachers no longer take attendance: saving a session goes back to the session list, the session list's «حضور و غیاب» button is gone, and the per-session attendance page is a read-only archive (403 for teachers for sessions from the cutoff on; supervisors are sent to the daily sheet).
+- `Attendance` is renamed `SessionAttendance` (same table, every row kept, read-only; view-only admin). Permission codenames follow (`*_sessionattendance`); existing grants are kept.
+- Attendance metrics (director panel, supervisor dashboard, session drawer) read daily sheets from the cutoff on: «غیبت موجه» counts as an absence; "attendance recorded" counts class-days with a sheet; the director's alert and list «جلسات بدون حضور و غیاب» became «روزهای بدون حضور و غیاب»; daily attendance appears at class level and above, not per subject or teacher.
+
 ### Director Panel (Phase 1, read-only analytics)
 
 - New role «مدیر مدرسه» (`User.Roles.DIRECTOR`, migration `accounts/0004_director_role`, choices only); the system admin's role is relabelled «مدیر سامانه»

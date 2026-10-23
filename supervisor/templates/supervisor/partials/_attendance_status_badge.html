@@ -1,0 +1,4 @@
+{% comment %}
+An attendance status as a badge (colour + text). Context: status (present /
+absent / late / excused), label (its Persian name).
+{% endcomment %}{% if status == "present" %}<span class="badge badge--success">{{ label }}</span>{% elif status == "absent" %}<span class="badge badge--danger">{{ label }}</span>{% elif status == "late" %}<span class="badge badge--warning">{{ label }}</span>{% else %}<span class="badge badge--info">{{ label }}</span>{% endif %}

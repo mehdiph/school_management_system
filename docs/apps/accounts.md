@@ -171,7 +171,7 @@ The role determines:
 Current roles (`User.Roles`):
 
 * Teacher (`teacher`)
-* Supervisor (`supervisor`, «پشتیبان»)
+* Supervisor (`supervisor`, «پشتیبان» / grade supporter): oversees the classes assigned through `SupervisorClass` (one grade, one branch) and, since 1 Aban 1405, takes their **daily attendance** (`docs/apps/attendance.md`). Teachers no longer take attendance.
 * Student (`student`)
 * School director (`director`, «مدیر مدرسه»): one person who oversees both branches through the read-only director panel (`docs/apps/director.md`). No profile row: the role alone gives access.
 * System admin (`admin`, «مدیر سامانه»): enters and edits the data in the Django admin. Relabelled from «مدیر» in October 2026 so it cannot be confused with the director.

@@ -1,0 +1,98 @@
+{% extends panel_base|default:"base.html" %}
+{% load static report_tags session_tags jalali_tags %}
+
+{% block title %}حضور و غیاب جلسه - {{ class_subject.subject.name }}{% endblock %}
+{% block page_title %}حضور و غیاب{% endblock %}
+
+{% comment %}
+The archived attendance of one session (attendance.views.session_attendance),
+read-only: per-session attendance ended when daily attendance started
+(settings.ATTENDANCE_DAILY_START_DATE). Same shell as the session pages.
+{% endcomment %}
+{% block body_class %}teaching-page attendance-page{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'teaching/css/teaching_shell.css' %}">
+<link rel="stylesheet" href="{% static 'attendance/css/attendance.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+    {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+{% with school_class=class_subject.school_class %}
+<div class="at">
+    <div class="at-card">
+        <header class="at-header">
+            <span class="at-header__icon" aria-hidden="true"><i class="fas fa-box-archive"></i></span>
+            <div class="at-header__text">
+                <h1>حضور و غیاب جلسه (بایگانی)</h1>
+                <p>{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
+            </div>
+            {% if is_teacher %}
+            <a class="at-header__link" href="{% url 'teaching:session_list' class_subject.id %}">
+                <i class="fas fa-list" aria-hidden="true"></i>
+                <span>جلسات ثبت‌شده</span>
+            </a>
+            {% endif %}
+        </header>
+
+        <div class="at-body">
+            <dl class="at-info" aria-label="اطلاعات جلسه">
+                <div class="at-info__item">
+                    <dt><i class="fas fa-users" aria-hidden="true"></i> کلاس</dt>
+                    <dd>{{ school_class.grade.name }} {{ school_class.section }}</dd>
+                </div>
+                <div class="at-info__item">
+                    <dt><i class="fas fa-book" aria-hidden="true"></i> درس</dt>
+                    <dd>{{ class_subject.subject.name }}</dd>
+                </div>
+                <div class="at-info__item">
+                    <dt><i class="far fa-calendar" aria-hidden="true"></i> تاریخ</dt>
+                    <dd>{{ session.date|jalali_long_date }}</dd>
+                </div>
+                <div class="at-info__item">
+                    <dt><i class="fas fa-hashtag" aria-hidden="true"></i> جلسه</dt>
+                    <dd>جلسه {{ session.session_number|to_persian }}</dd>
+                </div>
+            </dl>
+
+            <p class="at-archive-note">
+                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                از {{ daily_start|jalali_date }} حضور و غیاب روزانه و توسط پشتیبان پایه ثبت می‌شود؛
+                حضور و غیاب جلسه‌های پیش از آن فقط برای مشاهده نگه داشته شده است.
+            </p>
+
+            {% if records %}
+            <p class="at-summary at-summary--static">
+                <span class="at-count at-count--present"><i class="fas fa-check" aria-hidden="true"></i> حاضر <b>{{ counts.present|to_persian }}</b></span>
+                <span class="at-count at-count--absent"><i class="fas fa-times" aria-hidden="true"></i> غایب <b>{{ counts.absent|to_persian }}</b></span>
+                <span class="at-count at-count--late"><i class="fas fa-clock" aria-hidden="true"></i> تأخیر <b>{{ counts.late|to_persian }}</b></span>
+                <span class="at-count at-count--total">کل <b>{{ counts.total|to_persian }}</b></span>
+            </p>
+            <ol class="at-list" aria-label="حضور و غیاب دانش‌آموزان">
+                {% for record in records %}
+                <li class="at-student" data-status="{{ record.status }}">
+                    <div class="at-student__head">
+                        <span class="at-student__num" aria-hidden="true">{{ forloop.counter|to_persian }}</span>
+                        <span class="at-student__name">{{ record.student_enrollment.student.user.get_full_name }}</span>
+                    </div>
+                    <div>
+                        <span class="at-status at-status--{{ record.status }}">{{ record.get_status_display }}</span>
+                        {% if record.description %}<p class="at-student__edited">{{ record.description }}</p>{% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <div class="at-empty">
+                <span class="at-empty__icon" aria-hidden="true"><i class="fas fa-user-slash"></i></span>
+                <h2>برای این جلسه حضور و غیابی ثبت نشده است</h2>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endwith %}
+{% endblock %}

@@ -190,8 +190,9 @@ def school_session_form(request, class_subject_id):
                     request,
                     f'جلسه {session.session_number} - {session.class_subject.subject.name} با موفقیت ثبت شد.'
                 )
-                # انتقال به صفحه حضور و غیاب همین جلسه
-                return redirect('attendance:attendance_form', session.id)
+                # Teachers no longer take attendance (the grade supporter
+                # takes it daily, attendance.services): back to the list.
+                return redirect('teaching:session_list', session.class_subject_id)
         # Invalid forms are re-rendered with their errors (and with every
         # value the teacher typed); the page shows an error summary.
     else:
@@ -252,7 +253,7 @@ def update_session(request, session_id):
         if session_form.is_valid() and content_form.is_valid():
             if _save_session(session_form, content_form) is not None:
                 messages.success(request, f'تغییرات جلسه {session.session_number} ذخیره شد.')
-                return redirect('attendance:attendance_form', session.id)
+                return redirect('teaching:session_list', session.class_subject_id)
     else:
         session_form = SchoolSessionForm(instance=session, class_subjects=class_subjects)
         content_form = SessionContentForm(instance=content)

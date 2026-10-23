@@ -77,6 +77,10 @@
 .class-picker select {
   flex: 1;
   min-width: 0;
+  /* a percentage width makes the select "compressible": its longest
+     option no longer sets the page's minimum width (it used to push the
+     page 60px wider than a phone screen) */
+  width: 100%;
 }
 
 .class-picker select:focus-visible {
@@ -478,4 +482,130 @@ a.phone-value:hover {
   .attendance-search {
     max-width: none;
   }
+}
+
+/* ==========================================================================
+   DAILY ATTENDANCE: day picker, overview of the classes, archive note
+   ========================================================================== */
+
+.day-picker input[type="text"] {
+  width: 9.5rem;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font: inherit;
+  text-align: center;
+}
+
+/* the date form keeps its room: on a phone the form, the day links and
+   the weekday each take a full row instead of squeezing the form */
+.day-picker .class-picker__form {
+  flex: 1 1 16rem;
+  flex-wrap: wrap;
+}
+
+.day-picker .class-picker__form input[type="text"] {
+  flex: 1 1 8rem;
+  min-width: 0;
+  max-width: 12rem;
+}
+
+@media (max-width: 768px) {
+  .day-picker .class-picker__form,
+  .day-picker__nav {
+    flex-basis: 100%;
+  }
+}
+
+.day-picker__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+.daily-overview,
+.followup-section {
+  margin-top: var(--space-6);
+}
+
+.followup-section,
+.followup-section #attendanceContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.followup-section .section-heading {
+  margin-bottom: 0;
+}
+
+.daily-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: var(--space-4);
+}
+
+.daily-class {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* still not taken: a thick danger edge + tint, and the «ثبت نشده» badge
+   says it in words (never colour alone) */
+.daily-class--missing {
+  border-color: var(--danger);
+  border-inline-start-width: 5px;
+  background: var(--danger-bg);
+}
+
+.daily-class.is-selected {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.daily-class__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.daily-class__top h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.daily-class__meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.daily-class__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-top: auto;
+}
+
+.text-danger {
+  color: var(--danger-text);
+}
+
+.archive-note {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 14px;
 }

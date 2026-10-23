@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The Supervisor app is the panel of the "پشتیبان": a staff member who oversees a set of classes of one grade in one branch. It shows what the teachers of those classes actually recorded (sessions, content, attendance) so the supervisor can follow up, and compare progress with the curriculum plan (بودجه‌بندی).
+The Supervisor app is the panel of the "پشتیبان" (grade supporter): a staff member who oversees a set of classes of one grade in one branch. It shows what the teachers of those classes actually recorded (sessions, content) so the supervisor can follow up, and compare progress with the curriculum plan (بودجه‌بندی).
 
-Everything in it is read-only: no page here changes data.
+Since 1 Aban 1405 (`ATTENDANCE_DAILY_START_DATE`) the supporter also **takes the daily attendance** of their classes, once a day at 8:30, and follows up the absent and late students the same morning. Recording happens on the attendance app's sheet page (`attendance:daily_sheet`, `docs/apps/attendance.md`); the panel shows which classes are recorded and links to it. Everything else in the panel is read-only.
 
 ---
 
@@ -45,7 +45,9 @@ The single source of truth for "what may this supervisor see". All page selector
 | `supervised_class_subjects(year)` | Active class subjects of active classes, optionally in one academic year |
 | `supervised_sessions()`           | Sessions of `supervised_class_subjects()`                               |
 | `academic_years()`                | Years the supervisor has classes in, plus the current year              |
-| `sessions()`, `attendance()`, `teachers()`, `student_enrollments()` | Used by the dashboard and attendance pages |
+| `sessions()`, `teachers()`, `student_enrollments()` | Used by the dashboard |
+
+Attendance is not read through the scope's own querysets any more but through `attendance.services` with `scope.classes()` (or one in-scope class) as the target, so the cutoff between archived per-session records and daily sheets is applied in one place. `attendance.permissions.can_record_daily_attendance` uses `SupervisorScope.classes()` to decide whether a supervisor may take a class's attendance.
 
 Rules:
 
@@ -61,20 +63,20 @@ Rules:
 | ---------------------------------------------------- | ------------------------ | ------------------------ |
 | `/supervisor/`                                       | `dashboard`              | `dashboard`              |
 | `/supervisor/attention/`                             | `attention_list`         | `attention_list`         |
-| `/supervisor/attendance/`                            | `attendance`             | `attendance`             |
+| `/supervisor/attendance/?date=&class=`               | `attendance`             | `attendance`             |
 | `/supervisor/sessions/`                              | `sessions`               | `training_sessions`      |
 | `/supervisor/sessions/class-subject/<pk>/timeline/`  | `class_subject_timeline` | `class_subject_timeline` |
 | `/supervisor/sessions/<pk>/`                         | `session_detail`         | `session_detail`         |
 | `/supervisor/teachers/`                              | `teachers`               | `supervised_teachers`    |
 
-The sidebar items «جلسات آموزشی» and «معلمان من» (`template/partials/sidebar.html`) link to the last two pages. «جلسات آموزشی» stays active on the timeline and session detail pages.
+The sidebar items «جلسات آموزشی» and «معلمان من» (`template/partials/sidebar.html`) link to the last two pages; «حضور و غیاب» links to the daily attendance page. The sheet itself is `/attendance/daily/<class id>/?date=` (attendance app). «جلسات آموزشی» stays active on the timeline and session detail pages.
 
 ### Academic calendar (holidays)
 
 Holiday sessions (status `HL`, created by the academic calendar for closed slots) are **never counted** here and closed slots are **never expected** (all through `academic_calendar.services`; see [academic_calendar.md §8.3](academic_calendar.md#83-supervisor)):
 
-* **Dashboard / attendance rate**: «نرخ حضور دانش‌آموزان» is the attendance rate every panel uses (`analytics.definitions.attendance_rate`): records that are not «غایب» (present **and late**) over all records, counting only the records of held and compensatory sessions. It used to count «حاضر» only, so a late student lowered it; the director dashboard shows the same number for the same classes.
-* **Dashboard / «نیازمند پیگیری»**: a scheduled slot is matched to a session by class subject + date + **bell**, so two bells of one subject are two expected sessions; a legacy session without a bell covers the day's first uncovered bell. Closed slots, Thursdays and Fridays are never reported missing nor counted in «امروز». Statistics, recent sessions and the attendance page's latest session skip holidays.
+* **Dashboard / attendance rate**: «نرخ حضور دانش‌آموزان» is the attendance rate every panel uses (`analytics.definitions.attendance_rate`): present **and late** records over all records — «غایب» and «غیبت موجه» are absences — read through `attendance.services.attendance_counts` over the supervisor's classes: the archived records of held and compensatory sessions before the cutoff, the daily sheets from it on. It used to count «حاضر» only, so a late student lowered it; the director dashboard shows the same number for the same classes.
+* **Dashboard / «نیازمند پیگیری»**: a scheduled slot is matched to a session by class subject + date + **bell**, so two bells of one subject are two expected sessions; a legacy session without a bell covers the day's first uncovered bell. Closed slots, Thursdays and Fridays are never reported missing nor counted in «امروز». Statistics and recent sessions skip holidays. The daily attendance overview shows a class whose every lesson of the day is closed as «تعطیل» (with the event), and expects no sheet for it.
 * **Training sessions**: counts, KPIs, first/last dates and coverage exclude holidays; a sortable «تعطیل» column shows each class subject's sessions cancelled by closures. The timeline shows holidays in place (no number, the event as the reason) and measures gaps between counted sessions only.
 * **Teachers**: session count and last activity ignore holidays.
 
@@ -114,7 +116,33 @@ Invalid values never break the page: the field shows its error and is ignored.
 
 **Timeline**: «جلسات» on a row expands it and loads the class subject's sessions (with the active date range and status) as a vertical timeline, in teaching order (date, then bell). Holidays appear in place with «بدون شماره» and their reason; gaps are measured between counted sessions only. Each item shows the number, Jalali date and weekday, status badge, title, the start of the content (two lines), and markers for homework / activity / notes. Sessions without content and gaps longer than `SUPERVISOR_SESSION_GAP_WARNING_DAYS` (default 14) between consecutive sessions are highlighted. Without JS the button is a link to the full timeline page.
 
-**Session detail**: a session title opens a drawer from the left with the full content, homework, activity, notes and attendance counts (total / present / absent / late, no student list). Without JS it is a full page.
+**Session detail**: a session title opens a drawer from the left with the full content, homework, activity, notes and attendance counts (total / present / absent / late, no student list): the session's own archived records before the attendance cutoff; from it on, the class's **daily** sheet of that day («حضور و غیاب روزانه‌ی کلاس در این روز», with «غیبت موجه»), since a session no longer has attendance of its own (`attendance.services.session_counts`). Without JS it is a full page.
+
+---
+
+### Daily Attendance — حضور و غیاب روزانه (`attendance/`)
+
+The supporter's morning page. `?date=` (Jalali; default today, an invalid value falls back to today with a message), «روز قبل / روز بعد / امروز» links, and `?class=` for the follow-up list.
+
+**Overview «کلاس‌های من»** (from the cutoff on): one card per active class of the supervisor in the academic year of that day, with its status for the day:
+
+| Status | When | Card |
+| --- | --- | --- |
+| «ثبت شده» | the sheet exists | absent / late / excused / total counts, «ویرایش» |
+| «ثبت نشده» | the class has an open lesson that day and no sheet | **highlighted** (danger edge and tint, the badge says it in words), «ثبت حضور و غیاب» |
+| «تعطیل» | every lesson of the class that day is closed by the calendar | the event |
+| «بدون کلاس» | the timetable has no lesson for the class that day | — |
+| «روز آینده» | after today | — |
+
+Which classes take attendance on a day comes from their weekly timetable and the calendar (`attendance.services.planned_class_days`), the same rule the sheet page enforces. The heading says «x از y کلاس ثبت شده» and how many are still missing. Every card links to the class's sheet for that day and to its follow-up list.
+
+A day **before the cutoff** has no overview; a note says attendance was per session then, and the follow-up list reads the archive (with the session's subject and bell).
+
+**Follow-up «پیگیری غیبت و تأخیر»**: for the selected class (a foreign or invalid id falls back to the first class), the counts of the day (records, absent, late, excused) and every student who was not present (`attendance.services.get_absences`): status badge, time recorded, phone number (a `tel:` link) and «پیگیری» (opens the follow-up dialog; UI only). Status pills (همه / غایب / تأخیر / موجه) and the name search filter the list in the browser. A class whose sheet is missing offers «ثبت حضور و غیاب».
+
+**Dashboard card «حضور و غیاب امروز»** (from the cutoff on): «x از y» classes recorded today, the sections of the classes still missing (the card is outlined in red while any is), and a link to the page.
+
+This page replaced the former one, which showed the attendance of the most recently recorded session of a class.
 
 ---
 
@@ -135,7 +163,7 @@ Statistics only count the teacher's sessions in the supervisor's classes (and th
 | Class                          | Used by                                              |
 | ------------------------------ | ---------------------------------------------------- |
 | `SupervisorDashboardSelector`  | Dashboard, attention list                            |
-| `SupervisorAttendanceSelector` | Attendance page                                      |
+| `SupervisorAttendanceSelector` | Daily attendance page (`overview`, `summarize`, `get_attendance_page_data`) and the dashboard's today card (`today_summary`) |
 | `SupervisorSessionsSelector`   | Training sessions page, timeline, session detail     |
 | `SupervisorTeachersSelector`   | Supervised teachers page                             |
 
@@ -164,6 +192,7 @@ The timeline and detail views render either a full page or, with `?partial=1`, o
 | `partials/_teacher_card.html`                    | Cards view of the teachers page                 |
 | `partials/_teacher_activity.html`                | Last-session marker (cards and table)           |
 | `partials/_session_status_badge.html`            | Status as colour + icon + text                  |
+| `partials/_attendance_status_badge.html`         | Attendance status as colour + text (follow-up list) |
 | `partials/_filter_field.html`                    | Labelled filter field with its errors           |
 | `partials/_pagination.html`                      | Previous / next, keeping every other GET parameter (`{% querystring %}`) |
 | `partials/_session_drawer.html`                  | The drawer shell, loading and error templates   |
@@ -179,6 +208,8 @@ Template filter: `{% load supervisor_tags %}` → `relative_days` («امروز�
 | `css/panel.css`              | Shared: filter bar, cards, tables that become stacked cards on phones, chips, pagination, loading/error |
 | `css/sessions.css`           | Coverage bar, expandable rows, timeline, drawer, session detail          |
 | `css/teachers.css`           | Teacher card grid and inactivity marker                                  |
+| `css/attendance.css`         | Daily attendance page: day picker, class overview cards («ثبت نشده» highlight), follow-up list and dialog |
+| `js/attendance.js`           | Class select submits, status pills and name search over the follow-up list, follow-up dialog |
 | `js/session_drawer.js`       | `SupervisorPartials.load()` (loading indicator, error + retry) and the session drawer (Esc, focus trap, focus returns to the link) |
 | `js/sessions.js`             | Expandable rows, Jalali date pickers, year change re-submits             |
 | `js/teachers.js`             | Debounced search submit, selects submit on change                         |
@@ -210,8 +241,9 @@ Both are optional and read with `getattr(settings, ...)`.
 
 ## Tests
 
-* `supervisor/tests.py`: dashboard, attention list and attendance pages, `SupervisorScope`.
+* `supervisor/tests.py`: dashboard, attention list, the attendance page on a day before the cutoff (archive), `SupervisorScope`.
 * `supervisor/test_training_sessions.py`: access (login redirect, 403), scoping (404 outside the scope, filter options), counts, filters (dates, Persian digits, invalid input, range shortcuts, academic year, `?teacher=`), sorting and paging, partial vs full rendering, query counts.
+* `supervisor/test_daily_attendance.py`: the overview statuses (recorded, missing, closed, no lessons, archive, future), the page (links to the sheets, the highlighted class, the follow-up list, the default day, a flat query count), the dashboard card and rate across the cutoff, the session drawer after the cutoff.
 * `supervisor/test_calendar.py`: missing sessions per bell (and the legacy fallback), closed slots never missing or scheduled, coverage without holidays, the holiday column and KPI, the timeline with holidays.
 
 ---

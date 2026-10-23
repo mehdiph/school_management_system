@@ -22,7 +22,7 @@ from django.db.models import QuerySet
 from django.test import TestCase
 
 from academic_calendar import services
-from attendance.models import Attendance
+from attendance.models import SessionAttendance
 from core.testing import (
     make_academic_year,
     make_assignment,
@@ -318,9 +318,9 @@ class DeactivationTests(CalendarTestCase):
         with_content, with_attendance = SchoolSession.objects.holidays().order_by('bell__order')
         SessionContent.objects.create(session=with_content, title='t', content='c', homework='h')
         enrollment = make_enrollment(make_student(), self.school_class)
-        # Attendance.save() refuses holidays; old data may still have some
-        Attendance.objects.bulk_create([
-            Attendance(session=with_attendance, student_enrollment=enrollment)
+        # SessionAttendance.save() refuses holidays; old data may still have some
+        SessionAttendance.objects.bulk_create([
+            SessionAttendance(session=with_attendance, student_enrollment=enrollment)
         ])
 
         result = services.deactivate_event(self.event_)

@@ -17,14 +17,29 @@ outside_timetable HD / CD sessions that fill no slot (legacy data)
 conflicts      non-holiday sessions in closed slots
 delivered      HD + JB sessions (whatever slot they are in)
 
+Attendance (``attendance.services``: per session before the cutoff,
+per class and day from it on)
+attendance_expected  delivered sessions before the cutoff + expected
+                     class-days from it on
+with_attendance      of those, sessions with >= 1 record + class-days
+                     with a daily sheet
+attendance_total     records: of delivered sessions before the cutoff,
+                     of daily sheets from it on
+absent / late / excused  records by status (excused: daily only)
+
 Rates (percentages; None when the denominator is 0)
 -----
 execution_rate           held / expected
 makeup_coverage          compensatory / (lost_to_closures + cancelled)
 content_rate             delivered with content / delivered
-attendance_recorded_rate delivered with >= 1 attendance record / delivered
-attendance_rate          (records - absent) / records, on delivered sessions
-late_rate                late records / records, on delivered sessions
+attendance_recorded_rate with_attendance / attendance_expected
+attendance_rate          (records - absent - excused) / records
+late_rate                late records / records
+
+Daily attendance belongs to a class, not to a class subject: only the
+class-level keys (``by_school``, ``by_branch``, ``by_grade``,
+``by_class``, ``by_day``; marked ``per_class``) group class-days. Groups
+by class subject or teacher hold the archived per-session attendance only.
 """
 
 from collections import defaultdict
@@ -54,10 +69,12 @@ class Breakdown:
     conflicts: int = 0
     delivered: int = 0
     with_content: int = 0
+    attendance_expected: int = 0
     with_attendance: int = 0
     attendance_total: int = 0
     absent: int = 0
     late: int = 0
+    excused: int = 0
 
     def add_outcome(self, outcome):
         self.expected += 1
@@ -84,10 +101,21 @@ class Breakdown:
         if row.status in DELIVERED_STATUSES:
             self.delivered += 1
             self.with_content += row.has_content
-            self.with_attendance += row.attendance_total > 0
+            if row.takes_attendance:
+                self.attendance_expected += 1
+                self.with_attendance += row.attendance_total > 0
             self.attendance_total += row.attendance_total
             self.absent += row.absent
             self.late += row.late
+
+    def add_class_day(self, row):
+        if row.expected:
+            self.attendance_expected += 1
+            self.with_attendance += row.has_sheet
+        self.attendance_total += row.total
+        self.absent += row.absent
+        self.late += row.late
+        self.excused += row.excused
 
     def __add__(self, other):
         return Breakdown(**{
@@ -110,11 +138,17 @@ class Breakdown:
 
     @property
     def attendance_recorded_rate(self):
-        return rate(self.with_attendance, self.delivered)
+        return rate(self.with_attendance, self.attendance_expected)
+
+    @property
+    def absences(self):
+        """Absent and excused records: the student was not in class."""
+
+        return self.absent + self.excused
 
     @property
     def attendance_rate(self):
-        return attendance_rate(self.attendance_total, self.absent)
+        return attendance_rate(self.attendance_total, self.absences)
 
     @property
     def late_rate(self):
@@ -122,7 +156,13 @@ class Breakdown:
 
     @property
     def attended(self):
-        return self.attendance_total - self.absent
+        return self.attendance_total - self.absences
+
+    @property
+    def missing_attendance(self):
+        """Expected sessions / class-days without any attendance."""
+
+        return self.attendance_expected - self.with_attendance
 
     @property
     def is_empty(self):
@@ -133,6 +173,10 @@ class Breakdown:
 
 
 # -- grouping keys: (class subject, Gregorian date) -> group --------------
+#
+# A key marked ``per_class`` only reads ``cs.school_class`` /
+# ``cs.school_class_id`` (and the day), so it can group a class-day too:
+# :func:`breakdowns` passes it a ``ClassUnit`` in place of a class subject.
 
 def by_school(cs, day):
     return None
@@ -162,11 +206,36 @@ def by_day(cs, day):
     return day
 
 
+for _key in (by_school, by_branch, by_grade, by_class, by_day):
+    _key.per_class = True
+
+
+class ClassUnit:
+    """
+    A class standing in for a class subject when a class-day is grouped
+    or filtered: it has the class (``school_class``, ``school_class_id``)
+    and nothing that belongs to one subject.
+    """
+
+    __slots__ = ("school_class",)
+
+    def __init__(self, school_class):
+        self.school_class = school_class
+
+    @property
+    def school_class_id(self):
+        return self.school_class.pk
+
+
 def breakdowns(result, key, *, start=None, end=None, where=None):
     """
     ``{group: Breakdown}`` of ``result``, grouped by ``key(cs, day)``,
     only for days in ``start``..``end`` (Gregorian, inclusive; None = the
     whole result) and class subjects ``where(cs)`` accepts.
+
+    Class-days (daily attendance) are added only for a ``per_class`` key,
+    with a ``ClassUnit`` as ``cs`` (``where`` must then only read the
+    class, as every caller's filter does).
     """
 
     groups = defaultdict(Breakdown)
@@ -187,6 +256,12 @@ def breakdowns(result, key, *, start=None, end=None, where=None):
         cs = class_subjects[row.class_subject_id]
         if accepted(row.date, cs):
             groups[key(cs, row.date)].add_session(row)
+    if result.class_days and getattr(key, "per_class", False):
+        units = {pk: ClassUnit(school_class) for pk, school_class in result.classes.items()}
+        for row in result.class_days:
+            unit = units[row.school_class_id]
+            if accepted(row.date, unit):
+                groups[key(unit, row.date)].add_class_day(row)
     return dict(groups)
 
 

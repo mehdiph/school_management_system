@@ -1,7 +1,7 @@
 /*
- * Attendance (attendance/attendance_management.html)
+ * Daily attendance sheet (attendance/daily_sheet.html)
  *
- *  - live counters: present / absent / late / not recorded, in Persian
+ *  - live counters: present / absent / late / excused / not recorded, in Persian
  *    digits, recomputed from the radios themselves (so they are right on
  *    first load, in edit mode, and after the browser restores the form)
  *  - «همه حاضر» (mark everyone present)
@@ -25,7 +25,7 @@
   if (!rows.length) return;
 
   // statuses that usually need a word of explanation
-  var NOTE_STATUSES = ["absent", "late"];
+  var NOTE_STATUSES = ["absent", "late", "excused"];
   var UNSET = "unset";
 
   var summary = document.getElementById("attendanceSummary");

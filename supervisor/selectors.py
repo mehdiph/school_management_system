@@ -28,7 +28,7 @@ from django.db.models import BooleanField, Count, ExpressionWrapper, F, Max, Min
 from django.db.models.functions import Substr
 from django.utils import timezone
 
-from attendance.models.attendance import Attendance
+from attendance import services as attendance
 from school.models import ClassSubject, SchoolClass, Subject
 from school.models.academic_year import AcademicYear
 from scheduling.models.class_schedule import ClassSchedule
@@ -123,11 +123,6 @@ class SupervisorScope:
     def student_enrollments(self):
         return StudentEnrollment.objects.filter(
             school_class__in=self.classes(),
-        ).distinct()
-
-    def attendance(self):
-        return Attendance.objects.filter(
-            session__in=self.sessions(),
         ).distinct()
 
     def teachers(self):
@@ -270,13 +265,14 @@ class SupervisorDashboardSelector:
 
     def attendance_statistics(self):
         """
-        Counts per status over the records of delivered sessions, and
+        Counts per status over the attendance of the supervisor's classes
+        (the archived records of delivered sessions before the cutoff, the
+        daily sheets from it on: ``attendance.services``), and
         ``present_rate``: the attendance rate every panel uses (late
-        counts as attended, see ``analytics.definitions``), 0 without
-        records.
+        counts as attended, absent and excused do not), 0 without records.
         """
 
-        aggregates = self.scope.attendance().delivered().status_counts()
+        aggregates = attendance.attendance_counts(self.scope.classes())
         aggregates["present_rate"] = aggregates["rate"] or 0
         return aggregates
 
@@ -463,130 +459,154 @@ class SupervisorDashboardSelector:
             "attendance_statistics": self.attendance_statistics(),
             "attention_items": self.attention_items(),
             "today_schedule_count": self.today_schedule_count(),
+            "daily_attendance": SupervisorAttendanceSelector(self.supervisor).today_summary(),
         }
+
+
+@dataclass
+class ClassAttendanceDay:
+    """One class on one day of the daily attendance overview."""
+
+    RECORDED = "recorded"       # the sheet is taken
+    MISSING = "missing"         # the class has lessons, the sheet is not taken
+    CLOSED = "closed"           # every lesson of the day closed by the calendar
+    NO_LESSONS = "no_lessons"   # nothing in the timetable that day
+    ARCHIVE = "archive"         # before the cutoff: per-session attendance
+    FUTURE = "future"
+
+    school_class: SchoolClass
+    status: str
+    closure: object = None      # the closing CalendarEvent (CLOSED)
+    counts: dict = None         # total / absent / late / excused (RECORDED)
+
+    @property
+    def needs_attention(self):
+        return self.status == self.MISSING
 
 
 class SupervisorAttendanceSelector:
     """
-    Query/data layer for the supervisor's per-class attendance page.
+    Daily attendance of the supervisor's classes: which classes have their
+    sheet on a day (the overview the attendance page opens with, today by
+    default), and the records to follow up for one class on that day.
 
-    ``Attendance`` rows belong to a ``SchoolSession`` (one class_subject,
-    one date), not directly to a ``SchoolClass`` -- a class can have
-    several class_subjects (subjects/teachers), each with its own
-    session stream. So "this class's attendance" here means: the most
-    recently registered session across all of the class's subjects,
-    and that session's attendance rows -- the same "latest activity"
-    notion ``SupervisorDashboardSelector.recent_sessions()`` uses.
+    Attendance is read through ``attendance.services``, so a day before
+    ``settings.ATTENDANCE_DAILY_START_DATE`` shows the archived
+    per-session records instead (read-only; that day has no sheets).
 
-    Like ``SupervisorDashboardSelector``, every query is derived from
-    ``SupervisorScope`` so a caller can never reach data outside the
-    supervisor's branch/grade/assigned classes -- in particular,
-    ``resolve_class()`` is the only way a client-supplied ``class_id``
-    may be turned into a ``SchoolClass``; nothing here ever does
-    ``SchoolClass.objects.get(pk=...)`` directly.
+    Every query is derived from ``SupervisorScope``: a client-supplied
+    ``class`` id is looked up among :meth:`classes`, so a tampered or
+    foreign id never reaches another class's data (it falls back to the
+    first class).
     """
 
-    def __init__(self, supervisor):
+    def __init__(self, supervisor, today=None):
         self.supervisor = supervisor
         self.scope = SupervisorScope(supervisor)
+        self.today = today or timezone.localdate()
 
-    def classes(self):
-        """The classes this supervisor is allowed to pick from."""
+    def classes(self, day):
+        """The supervisor's active classes of the academic year ``day`` is in."""
 
+        jalali = jdatetime.date.fromgregorian(date=day)
         return (
             self.scope.classes()
-            .select_related("grade", "branch")
+            .filter(is_active=True, year__start_date__lte=jalali, year__end_date__gte=jalali)
+            .select_related("grade", "branch", "year")
             .order_by("grade__level", "section")
         )
 
-    def resolve_class(self, class_id):
+    def overview(self, day):
         """
-        ``class_id`` -> in-scope ``SchoolClass``, or ``None``.
-
-        Filtering through ``self.classes()`` (rather than looking the
-        class up directly) is what makes a tampered/foreign class_id
-        harmless: if it doesn't belong to this supervisor's scope, it
-        simply doesn't match and ``None`` comes back.
+        ``[ClassAttendanceDay]`` for every class of :meth:`classes` on
+        ``day``. A class has lessons on a day when its weekly timetable
+        has an open slot (``attendance.services.planned_class_days``).
+        Three queries (classes, timetable, sheets) on a daily day.
         """
 
-        if class_id is None:
-            return None
+        classes = list(self.classes(day))
+        if not classes:
+            return []
+        if not attendance.is_daily(day):
+            return [ClassAttendanceDay(c, ClassAttendanceDay.ARCHIVE) for c in classes]
+        if day > self.today:
+            return [ClassAttendanceDay(c, ClassAttendanceDay.FUTURE) for c in classes]
 
-        return self.classes().filter(pk=class_id).first()
+        ids = [c.pk for c in classes]
+        planned = attendance.planned_class_days(day, day, SchoolClass.objects.filter(pk__in=ids))
+        sheets = {
+            class_id: {"total": total, "absent": absent, "late": late, "excused": excused}
+            for class_id, _, total, absent, late, excused
+            in attendance.class_day_tallies(day, day, ids)
+        }
 
-    def latest_session(self, school_class):
-        """The most recently registered session for ``school_class``."""
+        rows = []
+        for school_class in classes:
+            key = (school_class.pk, day)
+            if school_class.pk in sheets:
+                row = ClassAttendanceDay(
+                    school_class, ClassAttendanceDay.RECORDED, counts=sheets[school_class.pk]
+                )
+            elif key not in planned:
+                row = ClassAttendanceDay(school_class, ClassAttendanceDay.NO_LESSONS)
+            elif planned[key] is not None:
+                row = ClassAttendanceDay(school_class, ClassAttendanceDay.CLOSED, closure=planned[key])
+            else:
+                row = ClassAttendanceDay(school_class, ClassAttendanceDay.MISSING)
+            rows.append(row)
+        return rows
 
-        if school_class is None:
-            return None
+    @staticmethod
+    def summarize(rows):
+        """How many classes take attendance that day, how many are done, which are not."""
 
-        return (
-            self.scope.sessions()
-            .counted()
-            .filter(class_subject__school_class=school_class)
-            .select_related(
-                "class_subject",
-                "class_subject__subject",
-                "class_subject__school_class",
-                "class_subject__school_class__grade",
-                "class_subject__school_class__branch",
-            )
-            .order_by("-date", "-session_number")
-            .first()
+        due = [row for row in rows if row.status in (ClassAttendanceDay.RECORDED, ClassAttendanceDay.MISSING)]
+        missing = [row for row in due if row.needs_attention]
+        return {"due": len(due), "recorded": len(due) - len(missing), "missing": missing}
+
+    def today_summary(self):
+        """The dashboard's «حضور و غیاب امروز» card."""
+
+        rows = self.overview(self.today)
+        return {
+            **self.summarize(rows),
+            "is_daily": attendance.is_daily(self.today),
+            "daily_start": attendance.daily_start(),
+        }
+
+    def get_attendance_page_data(self, class_id, day=None):
+        """
+        Everything the attendance page needs for ``day`` (default today):
+        the overview, and for the selected class (``class_id`` if it is one
+        of the supervisor's, else the first) its counts and the records to
+        follow up (absent, late, excused).
+        """
+
+        day = day or self.today
+        rows = self.overview(day)
+        classes = [row.school_class for row in rows]
+        selected_class = next((c for c in classes if c.pk == class_id), None) or (
+            classes[0] if classes else None
         )
-
-    def attendance_rows(self, session):
-        """Attendance rows for ``session``, with everything the template needs already joined in."""
-
-        if session is None:
-            return Attendance.objects.none()
-
-        return (
-            self.scope.attendance()
-            .filter(session=session)
-            .select_related(
-                "student_enrollment",
-                "student_enrollment__student",
-                "student_enrollment__student__user",
-            )
-            .order_by(
-                "student_enrollment__student__user__last_name",
-                "student_enrollment__student__user__first_name",
-            )
-        )
-
-    def summary(self, session):
-        """total/present/absent/late counts for ``session``, computed in the DB."""
-
-        if session is None:
-            return {"total": 0, "present": 0, "absent": 0, "late": 0, "rate": None}
-
-        return self.scope.attendance().filter(session=session).status_counts()
-
-    def get_attendance_page_data(self, class_id):
-        """
-        Everything the attendance view/template needs for one request,
-        in one call -- the view has no queries of its own.
-
-        ``classes`` is materialized once and reused to pick the selected
-        class (instead of calling ``resolve_class()``, which would run
-        its own query) -- a supervisor's class list is small, so doing
-        the id lookup in Python here saves a redundant round trip
-        without weakening the scoping: the list itself already came
-        from ``self.classes()``.
-        """
-
-        classes = list(self.classes())
-        classes_by_id = {school_class.pk: school_class for school_class in classes}
-        selected_class = classes_by_id.get(class_id) or (classes[0] if classes else None)
-        session = self.latest_session(selected_class)
+        selected_row = next((row for row in rows if row.school_class == selected_class), None)
 
         return {
+            "day": jdatetime.date.fromgregorian(date=day),
+            "today": jdatetime.date.fromgregorian(date=self.today),
+            "is_today": day == self.today,
+            "is_daily": attendance.is_daily(day),
+            "daily_start": attendance.daily_start(),
+            "previous_day": jdatetime.date.fromgregorian(date=day - timedelta(days=1)),
+            "next_day": (
+                jdatetime.date.fromgregorian(date=day + timedelta(days=1)) if day < self.today else None
+            ),
+            "overview": rows,
+            "overview_summary": self.summarize(rows),
             "classes": classes,
             "selected_class": selected_class,
-            "session": session,
-            "attendance_rows": self.attendance_rows(session),
-            "summary": self.summary(session),
+            "selected_row": selected_row,
+            "absences": attendance.get_absences(selected_class, day, day) if selected_class else [],
+            "summary": attendance.attendance_counts(selected_class, day, day) if selected_class else None,
         }
 
 
@@ -964,9 +984,13 @@ class SupervisorSessionsSelector:
         )
 
     def attendance_summary(self, session):
-        """Attendance counts per status for ``session`` (one query)."""
+        """
+        Attendance counts for ``session``: its own archived records before
+        the cutoff, the class's daily sheet of that day from it on
+        (``attendance.services.session_counts``; one query).
+        """
 
-        return Attendance.objects.filter(session=session).status_counts()
+        return attendance.session_counts(session)
 
 
 class SupervisorTeachersSelector:

@@ -499,11 +499,37 @@ Third-party CSS / JS / fonts are copied into `static/` (with their licence and a
 
 ---
 
+# ADR-022: Attendance Is Taken Daily by the Grade Supporter, Behind One Cutoff Service
+
+## Decision
+
+From `settings.ATTENDANCE_DAILY_START_DATE` (1 Aban 1405, 23 October 2026) attendance is **one sheet per class per day** (`DailyAttendanceSheet` / `DailyAttendance`), taken at 8:30 by the class's grade supporter (`SupervisorProfile` through `SupervisorScope`); superusers and staff admins with the permission of the class's branch may also take or correct it. Teachers no longer take attendance.
+
+The per-session attendance (`Attendance`) is renamed `SessionAttendance` and **archived**: same table (`db_table` pinned), every row kept, no data converted, read-only in the app (view-only admin, read-only page, 403 for teachers from the cutoff on).
+
+`attendance.services` is the only place that decides which source a date has: before the cutoff the archive (records of held and compensatory sessions), from it on the daily sheets. Every page, report and the analytics engine read attendance through it. Which days can have a sheet comes from the class's weekly timetable and the academic calendar (a day with at least one open lesson), the same rule as the engine's expected class-days.
+
+## Rationale
+
+* Some teachers teach every class and attendance is in fact taken once in the morning by the supporter, who follows absences up at once; a per-session record by each teacher no longer matches how the school works.
+* Converting old session records into daily ones would invent data (which session's status is "the day's"?). Archiving keeps history exactly as recorded.
+* A date setting rather than a hard-coded day lets the switch move if go-live slips, and lets tests place the cutoff inside their fixture.
+* One reader of the cutoff keeps ADR-019's promise: the director and a supporter still see the same number.
+
+## Consequences
+
+* Daily attendance belongs to a class, not to a class subject or teacher: per-subject and per-teacher attendance exist only before the cutoff. Metrics group class-days only by class-level keys.
+* Over a range that spans the cutoff, counts add missed sessions (before) and missed days (after); they are never converted.
+* «غیبت موجه» exists only in daily attendance and is an absence in every rate.
+* "Attendance recorded" means class-days with a sheet from the cutoff on; the director's list of missing attendance only lists class-days (archived gaps cannot be completed).
+* The planned daily summary table (ADR-019) needs a per (day, class) part for daily attendance.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:
 
-* Attendance Tracking
 * Assessment Management
 * Parent Portal
 * Notification System

@@ -4,7 +4,8 @@ The few rules every panel must agree on, written once.
 This module imports no model on purpose: ``core.querysets`` (which the
 models themselves import) uses it, and so do the supervisor selectors and
 the analytics engine. Status values are spelled out for the same reason
-(they are ``SchoolSession.Status`` / ``Attendance.AttendanceStatus``).
+(they are ``SchoolSession.Status`` / ``SessionAttendance.AttendanceStatus``
+/ ``DailyAttendance.Status``).
 
 * A session **counts** unless the academic calendar created it (``HL``).
 * A session was **delivered** (something was taught) when it is held
@@ -14,8 +15,12 @@ the analytics engine. Status values are spelled out for the same reason
   for it. Its fields are all required except ``activity`` / ``notes``, so
   the row's existence is the whole test; a missing row on a cancelled or
   holiday session is expected and never reported.
-* A student **attended** unless marked absent: late counts as attended
-  (the student was in class). Lateness is reported on its own.
+* A student **attended** when present or late (the student was in
+  class); absent and excused («غیبت موجه», daily attendance only) are
+  both **absences**. Lateness is reported on its own.
+* Which attendance a date has -- the teacher's per-session records
+  before ``settings.ATTENDANCE_DAILY_START_DATE``, the supporter's daily
+  sheets from then on -- is decided in ``attendance.services`` only.
 """
 
 from django.db.models import Q
@@ -36,6 +41,10 @@ REGISTRATION_GRACE_MINUTES = 15
 PRESENT = "present"
 ABSENT = "absent"
 LATE = "late"
+EXCUSED = "excused"
+
+#: Statuses that are an absence: the student was not in class.
+ABSENCE_STATUSES = (ABSENT, EXCUSED)
 
 
 def counted_q(prefix=""):
@@ -70,13 +79,14 @@ def rate(part, whole):
     return part * 100 / whole
 
 
-def attendance_rate(total, absent):
+def attendance_rate(total, absences):
     """
     The share of attendance records that are not absences (present +
-    late), as a percentage; None without records.
+    late), as a percentage; None without records. ``absences`` is absent
+    plus excused records.
     """
 
-    return rate(total - absent, total)
+    return rate(total - absences, total)
 
 
 def rounded(value):

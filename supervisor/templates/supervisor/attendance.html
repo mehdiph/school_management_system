@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% load static report_tags %}
+{% load static report_tags jalali_tags %}
 
-{% block title %}حضور و غیاب | سامانه مدیریت مدرسه{% endblock %}
+{% block title %}حضور و غیاب روزانه | سامانه مدیریت مدرسه{% endblock %}
 
 {% block styles %}
 <link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
@@ -17,8 +17,8 @@
 
 <header class="dashboard-header">
   <div class="dashboard-header__text">
-    <h1>حضور و غیاب</h1>
-    <p>بررسی وضعیت حضور دانش‌آموزان و پیگیری غیبت و تأخیر</p>
+    <h1>حضور و غیاب روزانه</h1>
+    <p>ثبت حضور و غیاب کلاس‌ها ساعت ۸:۳۰ و پیگیری غیبت و تأخیر</p>
   </div>
   <button type="button" class="btn btn--outline btn--small" id="refreshBtn">
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.36"></path><path d="M21 4v5h-5"></path></svg>
@@ -26,80 +26,144 @@
   </button>
 </header>
 
-<!-- Class picker -->
-<section class="class-picker" aria-label="انتخاب کلاس">
-  <form method="get" id="classForm" class="class-picker__form">
-    <label for="classSelect">کلاس</label>
-    <select id="classSelect" name="class">
-      {% for class in classes %}
-      <option value="{{ class.id }}" {% if selected_class.id == class.id %}selected{% endif %}>
-        پایه {{ class.grade.name }} — کلاس {{ class.section }} — شعبه {{ class.branch.name }}
-      </option>
-      {% endfor %}
-    </select>
+<!-- Day picker -->
+<section class="class-picker day-picker" aria-label="انتخاب روز">
+  <form method="get" class="class-picker__form" id="dayForm">
+    <label for="dayInput">روز</label>
+    <input type="text" id="dayInput" name="date" value="{{ day|date:'Y/m/d' }}" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="1405/08/01">
+    {% if selected_class %}<input type="hidden" name="class" value="{{ selected_class.id }}">{% endif %}
+    <button type="submit" class="btn btn--outline btn--small">نمایش</button>
   </form>
-  {% if session %}
-  <span class="class-picker__session-date">جلسه {{ session.date|date:"Y/m/d"|to_persian }}</span>
-  {% endif %}
+  <nav class="day-picker__nav" aria-label="روزهای دیگر">
+    <a class="btn btn--outline btn--small" href="?date={{ previous_day|date:'Y/m/d' }}{% if selected_class %}&class={{ selected_class.id }}{% endif %}">روز قبل</a>
+    {% if next_day %}<a class="btn btn--outline btn--small" href="?date={{ next_day|date:'Y/m/d' }}{% if selected_class %}&class={{ selected_class.id }}{% endif %}">روز بعد</a>{% endif %}
+    {% if not is_today %}<a class="btn btn--primary btn--small" href="?{% if selected_class %}class={{ selected_class.id }}{% endif %}">امروز</a>{% endif %}
+  </nav>
+  <span class="class-picker__session-date">{{ day|jalali_date:"weekday" }}</span>
 </section>
 
 {% if not classes %}
 
   <section class="empty-state">
-    <p>هیچ کلاسی برای شما تعریف نشده است.</p>
+    <p>هیچ کلاسی برای شما در این سال تحصیلی تعریف نشده است.</p>
   </section>
 
 {% else %}
 
-  <!-- Loading skeleton: hidden by default, toggled on briefly by JS
-       while the class filter / refresh button submits the page -- see
-       attendance.js. -->
-  <div class="attendance-skeleton" id="attendanceSkeleton" hidden aria-hidden="true">
-    <div class="summary-cards summary-cards--attendance">
-      <div class="skeleton-block skeleton-block--card"></div>
-      <div class="skeleton-block skeleton-block--card"></div>
-      <div class="skeleton-block skeleton-block--card"></div>
-      <div class="skeleton-block skeleton-block--card"></div>
-    </div>
-    <div class="skeleton-block skeleton-block--row"></div>
-    <div class="skeleton-block skeleton-block--row"></div>
-    <div class="skeleton-block skeleton-block--row"></div>
-    <div class="skeleton-block skeleton-block--row"></div>
-  </div>
-
-  <div id="attendanceContent">
-
-  {% if not selected_class %}
-
-    <section class="empty-state">
-      <p>لطفاً یک کلاس را انتخاب کنید.</p>
-    </section>
-
+  {% if not is_daily %}
+  <p class="archive-note">
+    حضور و غیاب روزانه از {{ daily_start|jalali_date }} شروع شده است. حضور و غیاب این روز را معلم‌ها در هر جلسه ثبت کرده‌اند؛
+    فهرست پیگیری زیر از بایگانی آن خوانده می‌شود و قابل ویرایش نیست.
+  </p>
   {% else %}
 
-    <!-- Summary -->
-    <section class="summary-cards summary-cards--attendance" aria-label="خلاصه وضعیت کلاس">
+  <!-- Overview: every class, sheet taken or not -->
+  <section class="daily-overview" aria-labelledby="overviewTitle">
+    <div class="section-heading">
+      <div>
+        <h2 id="overviewTitle">کلاس‌های من</h2>
+        <p>
+          {% if overview_summary.due %}
+            {{ overview_summary.recorded|to_persian }} از {{ overview_summary.due|to_persian }} کلاس ثبت شده
+            {% if overview_summary.missing %} · <strong class="text-danger">{{ overview_summary.missing|length|to_persian }} کلاس هنوز ثبت نشده</strong>{% endif %}
+          {% else %}
+            در این روز هیچ کلاسی طبق برنامه‌ی هفتگی کلاس ندارد.
+          {% endif %}
+        </p>
+      </div>
+    </div>
 
+    <div class="daily-overview__grid">
+      {% for row in overview %}
+      {% with school_class=row.school_class %}
+      <article class="daily-class{% if row.needs_attention %} daily-class--missing{% endif %}{% if selected_class.id == school_class.id %} is-selected{% endif %}">
+        <div class="daily-class__top">
+          <h3>پایه {{ school_class.grade.name }} — کلاس {{ school_class.section }}</h3>
+          {% if row.status == "recorded" %}<span class="badge badge--success">ثبت شده</span>
+          {% elif row.status == "missing" %}<span class="badge badge--danger">ثبت نشده</span>
+          {% elif row.status == "closed" %}<span class="badge badge--gray">تعطیل</span>
+          {% elif row.status == "future" %}<span class="badge badge--gray">روز آینده</span>
+          {% else %}<span class="badge badge--gray">بدون کلاس</span>{% endif %}
+        </div>
+        <p class="daily-class__meta">
+          {% if row.status == "recorded" %}
+            غایب {{ row.counts.absent|to_persian }} · تأخیر {{ row.counts.late|to_persian }} · موجه {{ row.counts.excused|to_persian }} · از {{ row.counts.total|to_persian }} نفر
+          {% elif row.status == "missing" %}
+            حضور و غیاب این کلاس هنوز ثبت نشده است.
+          {% elif row.status == "closed" %}
+            به‌دلیل «{{ row.closure.title }}»
+          {% elif row.status == "future" %}
+            حضور و غیاب روزهای آینده ثبت نمی‌شود.
+          {% else %}
+            طبق برنامه‌ی هفتگی در این روز کلاسی ندارد.
+          {% endif %}
+        </p>
+        <div class="daily-class__actions">
+          {% if row.status == "missing" %}
+            <a class="btn btn--primary btn--small" href="{% url 'attendance:daily_sheet' school_class.id %}?date={{ day|date:'Y/m/d' }}">ثبت حضور و غیاب</a>
+          {% elif row.status == "recorded" %}
+            <a class="btn btn--outline btn--small" href="{% url 'attendance:daily_sheet' school_class.id %}?date={{ day|date:'Y/m/d' }}">ویرایش</a>
+          {% endif %}
+          <a class="btn btn--outline btn--small" href="?date={{ day|date:'Y/m/d' }}&class={{ school_class.id }}#followup">پیگیری</a>
+        </div>
+      </article>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Follow-up of one class -->
+  <section class="followup-section" id="followup" aria-labelledby="followupSectionTitle">
+    <div class="section-heading">
+      <div>
+        <h2 id="followupSectionTitle">پیگیری غیبت و تأخیر</h2>
+        <p>دانش‌آموزان غایب، دارای تأخیر یا غیبت موجه در این روز</p>
+      </div>
+    </div>
+
+    <div class="class-picker">
+      <form method="get" id="classForm" class="class-picker__form">
+        <label for="classSelect">کلاس</label>
+        <select id="classSelect" name="class">
+          {% for class in classes %}
+          <option value="{{ class.id }}" {% if selected_class.id == class.id %}selected{% endif %}>
+            پایه {{ class.grade.name }} — کلاس {{ class.section }} — شعبه {{ class.branch.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="date" value="{{ day|date:'Y/m/d' }}">
+        <noscript><button type="submit" class="btn btn--outline btn--small">نمایش</button></noscript>
+      </form>
+    </div>
+
+    <!-- Loading skeleton: hidden by default, toggled on briefly by JS
+         while the class filter / refresh button submits the page -- see
+         attendance.js. -->
+    <div class="attendance-skeleton" id="attendanceSkeleton" hidden aria-hidden="true">
+      <div class="summary-cards summary-cards--attendance">
+        <div class="skeleton-block skeleton-block--card"></div>
+        <div class="skeleton-block skeleton-block--card"></div>
+        <div class="skeleton-block skeleton-block--card"></div>
+        <div class="skeleton-block skeleton-block--card"></div>
+      </div>
+      <div class="skeleton-block skeleton-block--row"></div>
+      <div class="skeleton-block skeleton-block--row"></div>
+    </div>
+
+    <div id="attendanceContent">
+
+    {% if summary %}
+    <section class="summary-cards summary-cards--attendance" aria-label="خلاصه وضعیت کلاس">
       <article class="stat-card">
         <div class="stat-card__icon stat-card__icon--indigo">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"></path><circle cx="9.5" cy="8" r="3.5"></circle></svg>
         </div>
         <div class="stat-card__body">
-          <span class="stat-card__title">کل دانش‌آموزان</span>
+          <span class="stat-card__title">{% if is_daily %}دانش‌آموزان ثبت‌شده{% else %}رکوردهای جلسه‌ها{% endif %}</span>
           <span class="stat-card__value">{{ summary.total|to_persian }}</span>
         </div>
       </article>
-
-      <article class="stat-card">
-        <div class="stat-card__icon stat-card__icon--success">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11 13.5 15.5 9"></path><rect x="3" y="4" width="18" height="16" rx="2"></rect></svg>
-        </div>
-        <div class="stat-card__body">
-          <span class="stat-card__title">حاضر</span>
-          <span class="stat-card__value">{{ summary.present|to_persian }}</span>
-        </div>
-      </article>
-
       <article class="stat-card">
         <div class="stat-card__icon stat-card__icon--danger">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M15 9l-6 6M9 9l6 6"></path></svg>
@@ -109,7 +173,6 @@
           <span class="stat-card__value">{{ summary.absent|to_persian }}</span>
         </div>
       </article>
-
       <article class="stat-card">
         <div class="stat-card__icon stat-card__icon--warning">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.2 3.2"></path></svg>
@@ -119,12 +182,20 @@
           <span class="stat-card__value">{{ summary.late|to_persian }}</span>
         </div>
       </article>
-
+      <article class="stat-card">
+        <div class="stat-card__icon stat-card__icon--indigo">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5 11 13.5 15.5 9"></path><rect x="3" y="4" width="18" height="16" rx="2"></rect></svg>
+        </div>
+        <div class="stat-card__body">
+          <span class="stat-card__title">غیبت موجه</span>
+          <span class="stat-card__value">{{ summary.excused|to_persian }}</span>
+        </div>
+      </article>
     </section>
+    {% endif %}
 
-    {% if attendance_rows %}
+    {% if absences %}
 
-      <!-- Toolbar -->
       <section class="attendance-toolbar">
         <div class="attendance-search">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
@@ -132,9 +203,9 @@
         </div>
         <div class="status-pills" role="group" aria-label="فیلتر وضعیت">
           <button type="button" class="status-pill{% if current_status == 'all' %} is-active{% endif %}" data-status-filter="all">همه</button>
-          <button type="button" class="status-pill{% if current_status == 'present' %} is-active{% endif %}" data-status-filter="present">حاضر</button>
           <button type="button" class="status-pill{% if current_status == 'absent' %} is-active{% endif %}" data-status-filter="absent">غایب</button>
           <button type="button" class="status-pill{% if current_status == 'late' %} is-active{% endif %}" data-status-filter="late">تأخیر</button>
+          {% if is_daily %}<button type="button" class="status-pill{% if current_status == 'excused' %} is-active{% endif %}" data-status-filter="excused">موجه</button>{% endif %}
         </div>
       </section>
 
@@ -148,46 +219,36 @@
                 <th scope="col">ردیف</th>
                 <th scope="col">دانش‌آموز</th>
                 <th scope="col">وضعیت</th>
+                {% if not is_daily %}<th scope="col">جلسه</th>{% endif %}
                 <th scope="col">ساعت ثبت</th>
                 <th scope="col">شماره تماس</th>
                 <th scope="col">عملیات</th>
               </tr>
             </thead>
             <tbody>
-              {% for row in attendance_rows %}
+              {% for row in absences %}
               {% with user=row.student_enrollment.student.user %}
               <tr class="attendance-row" data-status="{{ row.status }}" data-name="{{ user.get_full_name }}">
                 <td data-label="ردیف">{{ forloop.counter|to_persian }}</td>
                 <td data-label="دانش‌آموز" class="attendance-row__name">{{ user.get_full_name }}</td>
-                <td data-label="وضعیت">
-                  {% if row.status == "present" %}<span class="badge badge--success">حاضر</span>
-                  {% elif row.status == "absent" %}<span class="badge badge--danger">غایب</span>
-                  {% else %}<span class="badge badge--warning">تأخیر</span>{% endif %}
-                </td>
-                <td data-label="ساعت ثبت">{{ row.created_at|time:"H:i"|to_persian }}</td>
+                <td data-label="وضعیت">{% include "supervisor/partials/_attendance_status_badge.html" with status=row.status label=row.status_label %}</td>
+                {% if not is_daily %}<td data-label="جلسه">{{ row.session.class_subject.subject.name }}{% if row.session.bell %} · {{ row.session.bell.title }}{% endif %}</td>{% endif %}
+                <td data-label="ساعت ثبت">{{ row.recorded_at|time:"H:i"|to_persian }}</td>
                 <td data-label="شماره تماس">
-                  {% if row.status == "present" %}
-                    <span class="phone-hidden" aria-hidden="true">—</span>
-                  {% else %}
-                    <a href="tel:{{ user.phone_number }}" class="phone-value">{{ user.phone_number|to_persian }}</a>
-                  {% endif %}
+                  {% if user.phone_number %}<a href="tel:{{ user.phone_number }}" class="phone-value">{{ user.phone_number|to_persian }}</a>{% else %}<span class="muted-dash">—</span>{% endif %}
                 </td>
                 <td data-label="عملیات">
-                  {% if row.status != "present" %}
                   <button
                     type="button"
                     class="btn btn--outline btn--small"
                     data-followup-trigger
                     data-name="{{ user.get_full_name }}"
                     data-class="پایه {{ selected_class.grade.name }} — کلاس {{ selected_class.section }}"
-                    data-status="{{ row.get_status_display }}"
-                    data-date="{{ session.date|date:'Y/m/d'|to_persian }}"
-                    data-time="{{ row.created_at|time:'H:i'|to_persian }}"
+                    data-status="{{ row.status_label }}"
+                    data-date="{{ day|date:'Y/m/d'|to_persian }}"
+                    data-time="{{ row.recorded_at|time:'H:i'|to_persian }}"
                     data-phone="{{ user.phone_number }}"
                   >پیگیری</button>
-                  {% else %}
-                  <span class="muted-dash">—</span>
-                  {% endif %}
                 </td>
               </tr>
               {% endwith %}
@@ -198,35 +259,32 @@
 
         <!-- Mobile cards (same data) -->
         <div class="sessions-cards attendance-cards" id="attendanceCards">
-          {% for row in attendance_rows %}
+          {% for row in absences %}
           {% with user=row.student_enrollment.student.user %}
           <article class="session-card attendance-card" data-status="{{ row.status }}" data-name="{{ user.get_full_name }}">
             <div class="attendance-card__top">
               <h3 class="session-card__subject">{{ user.get_full_name }}</h3>
-              {% if row.status == "present" %}<span class="badge badge--success">حاضر</span>
-              {% elif row.status == "absent" %}<span class="badge badge--danger">غایب</span>
-              {% else %}<span class="badge badge--warning">تأخیر</span>{% endif %}
+              {% include "supervisor/partials/_attendance_status_badge.html" with status=row.status label=row.status_label %}
             </div>
             <div class="attendance-card__meta">
-              <span>ساعت ثبت: {{ row.created_at|time:"H:i"|to_persian }}</span>
-              {% if row.status != "present" %}<span class="phone-value">{{ user.phone_number|to_persian }}</span>{% endif %}
+              <span>ساعت ثبت: {{ row.recorded_at|time:"H:i"|to_persian }}</span>
+              {% if not is_daily %}<span>{{ row.session.class_subject.subject.name }}</span>{% endif %}
+              {% if user.phone_number %}<span class="phone-value">{{ user.phone_number|to_persian }}</span>{% endif %}
             </div>
-            {% if row.status != "present" %}
             <div class="attendance-card__actions">
-              <a href="tel:{{ user.phone_number }}" class="btn btn--outline btn--small">تماس</a>
+              {% if user.phone_number %}<a href="tel:{{ user.phone_number }}" class="btn btn--outline btn--small">تماس</a>{% endif %}
               <button
                 type="button"
                 class="btn btn--primary btn--small"
                 data-followup-trigger
                 data-name="{{ user.get_full_name }}"
                 data-class="پایه {{ selected_class.grade.name }} — کلاس {{ selected_class.section }}"
-                data-status="{{ row.get_status_display }}"
-                data-date="{{ session.date|date:'Y/m/d'|to_persian }}"
-                data-time="{{ row.created_at|time:'H:i'|to_persian }}"
+                data-status="{{ row.status_label }}"
+                data-date="{{ day|date:'Y/m/d'|to_persian }}"
+                data-time="{{ row.recorded_at|time:'H:i'|to_persian }}"
                 data-phone="{{ user.phone_number }}"
               >پیگیری</button>
             </div>
-            {% endif %}
           </article>
           {% endwith %}
           {% endfor %}
@@ -236,17 +294,23 @@
 
       </section>
 
+    {% elif selected_row.status == "missing" %}
+
+      <section class="empty-state">
+        <p>حضور و غیاب این کلاس برای این روز هنوز ثبت نشده است.</p>
+        <a class="btn btn--primary btn--small" href="{% url 'attendance:daily_sheet' selected_class.id %}?date={{ day|date:'Y/m/d' }}">ثبت حضور و غیاب</a>
+      </section>
+
     {% else %}
 
       <section class="empty-state">
-        <p>برای این کلاس هنوز حضور و غیابی ثبت نشده است.</p>
+        <p>غیبت یا تأخیری برای این کلاس در این روز ثبت نشده است.</p>
       </section>
 
     {% endif %}
 
-  {% endif %}
-
-  </div><!-- /#attendanceContent -->
+    </div><!-- /#attendanceContent -->
+  </section>
 
 {% endif %}
 

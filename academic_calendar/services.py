@@ -688,7 +688,7 @@ def sync_cancelled_sessions(start, end, event=None, class_subjects=None, academi
         if stale:
             removable = SchoolSession.objects.filter(
                 pk__in=stale,
-                attendances__isnull=True,
+                session_attendances__isnull=True,
                 session_contents__isnull=True,
             ).values_list("pk", flat=True)
             removable = list(removable)

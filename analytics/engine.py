@@ -12,7 +12,7 @@ One pass:
    query): never Thursday/Friday, only active class subjects of active
    classes on the dates they are taught.
 3. Every session of the scope in the range, as plain rows, with whether it
-   has content and its attendance tallies (one query).
+   has content and its archived attendance tallies (one query).
 4. Sessions are matched to slots with ``match_sessions`` -- over *all*
    slots, closed ones included, exactly as the calendar sync does, so a
    legacy bell-less session on a closed slot is a conflict for both.
@@ -35,25 +35,35 @@ Each session also gets a ``role``: it ``FILLS`` an expected slot, is in a
 ``CONFLICT`` slot, is ``PENDING`` (today's slot not over yet), or fills no
 slot at all (``""``): a compensatory session made up elsewhere, or an
 ``HD`` / ``CD`` session outside the timetable (legacy data).
+
+Attendance comes from ``attendance.services``, which reads the teacher's
+per-session archive before ``settings.ATTENDANCE_DAILY_START_DATE`` and
+the supporters' daily sheets from it on:
+
+* before the cutoff, each delivered session ``takes_attendance`` and
+  carries its own tallies;
+* from the cutoff on, attendance belongs to a class and a day: one
+  ``ClassDayRow`` per **expected class-day** (a day on which the class has
+  at least one expected slot -- open, and for today over plus the grace)
+  and per day with a sheet, with the sheet's tallies (one query).
 """
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
-from django.db.models import Count, DateField, Exists, OuterRef, Q
+from django.db.models import DateField, Exists, OuterRef
 from django.db.models.functions import Cast
 from django.utils import timezone
 
 from academic_calendar import services as calendar
-from attendance.models import Attendance
+from attendance import services as attendance
 from school.models import ClassSubject
 from teaching.models import SchoolSession, SessionContent
 
 from .definitions import (
-    ABSENT,
     CANCELLED,
+    DELIVERED_STATUSES,
     HOLIDAY,
-    LATE,
     REGISTRATION_GRACE_MINUTES,
 )
 
@@ -91,6 +101,22 @@ class SessionRow:
     absent: int = 0
     late: int = 0
     role: str = ""
+    # a delivered session before the cutoff: attendance was taken in it
+    takes_attendance: bool = False
+
+
+@dataclass(slots=True)
+class ClassDayRow:
+    """Daily attendance of one class on one day (from the cutoff on)."""
+
+    school_class_id: int
+    date: date              # Gregorian
+    expected: bool = False  # the class had an expected slot that day
+    has_sheet: bool = False
+    total: int = 0
+    absent: int = 0
+    late: int = 0
+    excused: int = 0
 
 
 @dataclass(slots=True)
@@ -122,6 +148,13 @@ class EngineResult:
     outcomes: list = field(default_factory=list)
     sessions: list = field(default_factory=list)
     conflicts: list = field(default_factory=list)
+    class_days: list = field(default_factory=list)
+
+    @property
+    def classes(self):
+        """``{pk: SchoolClass}`` of the scope's class subjects."""
+
+        return {cs.school_class_id: cs.school_class for cs in self.class_subjects.values()}
 
 
 def _deadline(day, bell):
@@ -145,10 +178,11 @@ def load_class_subjects(scope):
 def session_rows(scope, with_attendance=True):
     """
     Every session of the scope in its range (holidays included): one
-    query, plus one for the attendance tallies. The tallies are a separate
-    grouped aggregate over the attendance records rather than a join on
-    the sessions: on a year of a whole school (a million records) that is
-    about twice as fast.
+    query, plus one for the archived attendance tallies of the range's
+    part before the cutoff (none when it is all after). The tallies are a
+    separate grouped aggregate over the attendance records rather than a
+    join on the sessions: on a year of a whole school (a million records)
+    that is about twice as fast.
     """
 
     in_range = {
@@ -170,17 +204,14 @@ def session_rows(scope, with_attendance=True):
     )
     rows = [SessionRow(*values) for values in sessions]
 
+    cutoff = attendance.daily_start()
+    for row in rows:
+        row.takes_attendance = row.status in DELIVERED_STATUSES and row.date < cutoff
+
     if with_attendance and rows:
         by_pk = {row.pk: row for row in rows}
-        tallies = (
-            Attendance.objects.filter(**{f"session__{name}": value for name, value in in_range.items()})
-            .order_by()
-            .values_list("session_id")
-            .annotate(
-                total=Count("id"),
-                absent=Count("id", filter=Q(status=ABSENT)),
-                late=Count("id", filter=Q(status=LATE)),
-            )
+        tallies = attendance.session_tallies(
+            scope.start, scope.end, **scope.class_subject_filter("session__class_subject__")
         )
         for session_id, total, absent, late in tallies:
             row = by_pk.get(session_id)
@@ -189,9 +220,40 @@ def session_rows(scope, with_attendance=True):
     return rows
 
 
+def class_day_rows(scope, result):
+    """
+    Daily attendance per class and day, from the cutoff on: every expected
+    class-day (a day with at least one expected slot of the class in
+    ``result.outcomes``) and every day with a sheet -- today's sheet is
+    taken in the morning, before any slot of the day is expected -- with
+    the sheet's tallies. One query (none before the cutoff).
+    """
+
+    cutoff = attendance.daily_start()
+    class_subjects = result.class_subjects
+    rows = {}
+    for outcome in result.outcomes:
+        if outcome.date >= cutoff:
+            class_id = class_subjects[outcome.class_subject_id].school_class_id
+            if (class_id, outcome.date) not in rows:
+                rows[(class_id, outcome.date)] = ClassDayRow(class_id, outcome.date, expected=True)
+
+    class_ids = {cs.school_class_id for cs in class_subjects.values()}
+    for class_id, day, total, absent, late, excused in attendance.class_day_tallies(
+        scope.start, scope.end, class_ids
+    ):
+        row = rows.get((class_id, day))
+        if row is None:
+            row = rows[(class_id, day)] = ClassDayRow(class_id, day)
+        row.has_sheet = True
+        row.total, row.absent, row.late, row.excused = total, absent, late, excused
+    return sorted(rows.values(), key=lambda row: (row.date, row.school_class_id))
+
+
 def compute(scope, *, closures=None, with_attendance=True, class_subjects=None):
     """
-    The ``EngineResult`` of ``scope``. ``closures`` (a
+    The ``EngineResult`` of ``scope``; without attendance (no archived
+    tallies, no class-days) when ``with_attendance`` is False. ``closures`` (a
     ``calendar.Closures`` covering the range) and ``class_subjects`` (from
     :func:`load_class_subjects`) can be passed in when the caller already
     has them, so a page that needs them elsewhere loads them once.
@@ -239,4 +301,6 @@ def compute(scope, *, closures=None, with_attendance=True, class_subjects=None):
             outcome = CANCELLED_SLOT if session.status == CANCELLED else HELD_SLOT
         result.outcomes.append(SlotOutcome(cs_id, slot.date, slot.bell.pk, outcome, session))
 
+    if with_attendance:
+        result.class_days = class_day_rows(scope, result)
     return result

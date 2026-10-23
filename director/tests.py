@@ -13,8 +13,8 @@ from django.test import override_settings
 from django.urls import reverse
 
 from academic_calendar import services as calendar
-from analytics.tests import AS_OF, SUNDAY_1, SUNDAY_2, THURSDAY, Fixture, J, at
-from attendance.models import Attendance
+from analytics.tests import AS_OF, DAILY_FROM_SUNDAY_2, SUNDAY_1, SUNDAY_2, THURSDAY, Fixture, J, at
+from attendance.models import SessionAttendance
 from core.templatetags.jalali_tags import fa_digits
 from core.testing import (
     make_assignment,
@@ -29,7 +29,7 @@ from core.testing import (
     make_user,
 )
 from accounts.models import User
-from school.models import AcademicYear
+from school.models import AcademicYear, SchoolClass
 from scheduling.models import ClassSchedule
 from teaching.models import SchoolSession
 
@@ -49,15 +49,15 @@ class DirectorPageTestCase(Fixture):
 
     def attend(self, session, *statuses, school_class=None):
         for status in statuses:
-            Attendance.objects.create(
+            SessionAttendance.objects.create(
                 session=session,
                 student_enrollment=make_enrollment(make_student(), school_class or self.class_a),
                 status=status,
             )
 
 
-P, A, L = (Attendance.AttendanceStatus.PRESENT, Attendance.AttendanceStatus.ABSENT,
-           Attendance.AttendanceStatus.LATE)
+P, A, L = (SessionAttendance.AttendanceStatus.PRESENT, SessionAttendance.AttendanceStatus.ABSENT,
+           SessionAttendance.AttendanceStatus.LATE)
 
 
 class DashboardTests(DirectorPageTestCase):
@@ -207,18 +207,29 @@ class AlertTests(DirectorPageTestCase):
         with override_settings(DIRECTOR_ALERT_UNREGISTERED_SLOTS=2):
             self.assertEqual(self.alerts()["unregistered"].count, 1)
 
-    def test_held_sessions_without_attendance_after_a_day(self):
-        self.session(self.math, SUNDAY_1, self.bell_1)                                # old: listed
-        self.session(self.math, J(1405, 7, 13), self.bell_3, SchoolSession.Status.COMPENSATORY)  # 2 days: listed
-        self.session(self.math, J(1405, 7, 14), self.bell_3, SchoolSession.Status.COMPENSATORY)  # yesterday: not yet
-        self.session(self.math, SUNDAY_1, self.bell_2, SchoolSession.Status.CANCELED)  # cancelled: never
-        self.attend(self.session(self.physics, SUNDAY_1, self.bell_1), P, school_class=self.class_b)
+    @DAILY_FROM_SUNDAY_2
+    def test_class_days_without_a_daily_sheet_after_a_day(self):
+        make_schedule(self.math, ClassSchedule.DayChoices.MONDAY, self.bell_1)
+        make_schedule(self.math, ClassSchedule.DayChoices.TUESDAY, self.bell_1)
+        self.session(self.math, SUNDAY_1, self.bell_1)          # archive, no attendance: never listed
+        self.daily(self.class_b, SUNDAY_2, P)                   # taken: not listed
+        # Class A: Sunday 12 and Monday 13 listed, Tuesday 14 (yesterday) not yet.
 
         alert = self.alerts()["missing_attendance"]
 
+        self.assertEqual(alert.title, "روزهای بدون حضور و غیاب")
         self.assertEqual(alert.count, 2)
+        self.assertEqual([item["date"] for item in alert.items],
+                         [J(1405, 7, 13).togregorian(), SUNDAY_2.togregorian()])
         self.assertIn("#missing", alert.url)
         self.assertEqual(self.alerts(branch=self.branch_b.pk)["missing_attendance"].count, 0)
+
+    def test_archived_sessions_without_attendance_are_not_an_alert(self):
+        # Before the cutoff attendance was per session; it can no longer be
+        # completed, so a session without it is not listed.
+        self.session(self.math, SUNDAY_1, self.bell_1)
+
+        self.assertEqual(self.alerts()["missing_attendance"].count, 0)
 
     def test_conflicts_with_the_calendar(self):
         self.session(self.math, SUNDAY_2, self.bell_1)
@@ -349,9 +360,9 @@ class AttendancePageTests(DirectorPageTestCase):
         often = make_enrollment(make_student(), self.class_a)
         once = make_enrollment(make_student(), self.class_a)
         for session in (session_a, session_b):
-            Attendance.objects.create(session=session, student_enrollment=often, status=A)
-        Attendance.objects.create(session=session_a, student_enrollment=once, status=A)
-        Attendance.objects.create(session=session_b, student_enrollment=once, status=L)
+            SessionAttendance.objects.create(session=session, student_enrollment=often, status=A)
+        SessionAttendance.objects.create(session=session_a, student_enrollment=once, status=A)
+        SessionAttendance.objects.create(session=session_b, student_enrollment=once, status=L)
 
         response = self.get("attendance", branch=self.branch_a.pk)
         absentees = response.context["absentees"]
@@ -362,13 +373,39 @@ class AttendancePageTests(DirectorPageTestCase):
         self.assertEqual(rows[self.grade.name].attendance_total, 4)
         self.assertEqual(round(rows[self.grade.name].attendance_rate), 25)
 
+    @DAILY_FROM_SUNDAY_2
     def test_missing_attendance_list(self):
-        self.session(self.math, SUNDAY_1, self.bell_1)
+        self.session(self.math, SUNDAY_1, self.bell_1)          # archive: not listed
 
         response = self.get("attendance")
 
-        self.assertEqual(response.context["missing"]["count"], 1)
+        # Sunday 12: class A and class B have no sheet.
+        self.assertEqual(response.context["missing"]["count"], 2)
         self.assertContains(response, 'id="missing"')
+        self.assertContains(response, "روزهای بدون حضور و غیاب")
+
+    @DAILY_FROM_SUNDAY_2
+    def test_attendance_across_the_cutoff(self):
+        session = self.session(self.math, SUNDAY_1, self.bell_1)
+        often = make_enrollment(make_student(), self.class_a)
+        SessionAttendance.objects.create(session=session, student_enrollment=often, status=A)
+        sheet = self.daily(self.class_a, SUNDAY_2, P, L)
+        from attendance.models import DailyAttendance
+        DailyAttendance.objects.create(sheet=sheet, student_enrollment=often, status="excused")
+
+        response = self.get("attendance", period="year")
+        summary = response.context["summary"]
+        absentees = response.context["absentees"]
+
+        # 1 archived record + 3 daily ones; the archived absence and the
+        # excused day are both absences.
+        self.assertEqual((summary.attendance_total, summary.absences), (4, 2))
+        self.assertEqual(summary.attendance_rate, 50)
+        # The same student: one absent session before, one excused day after.
+        self.assertEqual([(s["absent"], s["excused"], s["total"]) for s in absentees], [(2, 1, 2)])
+        # Recorded: the archived session + class A's sheet, of that session
+        # and the two class-days of Sunday 12.
+        self.assertEqual((summary.with_attendance, summary.attendance_expected), (2, 3))
 
 
 class FormattingTests(DirectorPageTestCase):
@@ -522,3 +559,33 @@ class QueryCountTests(DirectorPageTestCase):
         ("attendance", (("class", "C"),)): 19,
     }
 
+
+    @DAILY_FROM_SUNDAY_2
+    def test_query_counts_across_the_attendance_cutoff(self):
+        """
+        With the year so far on both sides of the cutoff, a page that shows
+        attendance reads the archive *and* the daily sheets: one more
+        query for the class-day tallies (engine), and the attendance page
+        one more for the daily side of the top absentees.
+        """
+
+        def add_sheets():
+            for school_class in SchoolClass.objects.filter(year=self.year):
+                if not school_class.daily_attendance_sheets.filter(date=SUNDAY_2).exists():
+                    self.daily(school_class, SUNDAY_2, P, A)
+
+        self.add_data(1)
+        add_sheets()
+        before = self.counts()
+        self.add_data(5)
+        add_sheets()
+        after = self.counts()
+
+        self.assertEqual(after, before)
+        expected = dict(self.EXPECTED)
+        for key in expected:
+            if key[0] == "dashboard":
+                expected[key] += 1
+            elif key[0] == "attendance":
+                expected[key] += 2
+        self.assertEqual(before, expected)
