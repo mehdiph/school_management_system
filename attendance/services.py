@@ -17,6 +17,8 @@ Readers
 * :func:`student_tallies`: the same counts per student.
 * :func:`session_tallies` / :func:`class_day_tallies`: per session
   (archive) and per class and day (daily), for ``analytics.engine``.
+* :func:`class_day_statuses`: which classes took their daily attendance
+  on which days, and which were due to (the director's panel).
 
 Archived records count only for held and compensatory sessions, as they
 always have; every daily record counts. Across the cutoff, an absence is
@@ -39,7 +41,7 @@ from django.db.models.functions import Cast
 from django.utils import timezone
 
 from academic_calendar import services as calendar
-from analytics.definitions import ABSENT, EXCUSED, LATE, PRESENT, attendance_rate, rounded
+from analytics.definitions import ABSENT, EXCUSED, LATE, PRESENT, attendance_rate, rounded, slot_deadline
 from core.templatetags.jalali_tags import format_jalali
 from school.models import SchoolClass
 from student.models.student_enrollment import StudentEnrollment
@@ -115,6 +117,8 @@ def _target(target):
             Q(session__class_subject__school_class__in=target),
             Q(sheet__school_class__in=target),
         )
+    if isinstance(target, QuerySet) and target.model is StudentEnrollment:
+        return Q(student_enrollment__in=target), Q(student_enrollment__in=target)
     raise TypeError(f"attendance of what? {target!r}")
 
 
@@ -354,7 +358,35 @@ def class_day_tallies(start, end, class_ids):
 # Which days have daily attendance
 # ----------------------------------------------------------------------
 
-def planned_class_days(start, end, classes):
+def _planned(start, end, classes, closures=None):
+    """
+    ``{(class id, Gregorian day): (closing event or None, deadline or
+    None)}``: :func:`planned_class_days` plus, for a day with an open
+    slot, when its earliest-ending open slot is over (its bell's end plus
+    the registration grace, ``analytics.definitions.slot_deadline``).
+    """
+
+    slots = calendar.get_slots(start, end, class_subject__school_class__in=classes)
+    if not slots:
+        return {}
+    if closures is None:
+        closures = calendar.Closures.between(start, end)
+    days = {}
+    for slot in slots:
+        school_class = slot.class_subject.school_class
+        key = (school_class.pk, slot.date)
+        event = closures.event_for(slot.date, school_class, slot.bell)
+        if event is None:
+            deadline = slot_deadline(slot.date, slot.bell.end_time)
+            current = days.get(key)
+            if current is None or current[0] is not None or deadline < current[1]:
+                days[key] = (None, deadline)
+        elif key not in days:
+            days[key] = (event, None)
+    return days
+
+
+def planned_class_days(start, end, classes, closures=None):
     """
     ``{(class id, Gregorian day): closing event or None}`` for every day
     from ``start`` to ``end`` on which the weekly timetable plans at least
@@ -367,22 +399,86 @@ def planned_class_days(start, end, classes):
 
     The same rule as the analytics engine's expected class-days, which
     starts from the same slots and closures (and additionally waits, for
-    today, until the first open bell is over).
+    today, until the first open bell is over). ``closures`` (covering the
+    range) can be passed in when the caller has them already.
     """
 
-    slots = calendar.get_slots(start, end, class_subject__school_class__in=classes)
-    if not slots:
+    return {key: event for key, (event, _) in _planned(start, end, classes, closures).items()}
+
+
+@dataclass
+class ClassDay:
+    """Daily attendance of one class on one day, as :func:`class_day_statuses` sees it."""
+
+    RECORDED = "recorded"       # the sheet is taken
+    MISSING = "missing"         # the class was due to have one and has none
+    PENDING = "pending"         # today, before its first open bell is over (+ grace)
+    CLOSED = "closed"           # every lesson of the day closed by the calendar
+
+    school_class_id: int
+    date: date                  # Gregorian
+    status: str
+    closure: object = None      # the closing CalendarEvent (CLOSED)
+    total: int = 0              # the sheet's records (RECORDED)
+    absent: int = 0
+    late: int = 0
+    excused: int = 0
+
+    @property
+    def absences(self):
+        return self.absent + self.excused
+
+    @property
+    def is_due(self):
+        """The class has (or will have today) a lesson: it takes attendance."""
+
+        return self.status != self.CLOSED
+
+
+def class_day_statuses(start, end, classes, as_of=None, closures=None):
+    """
+    ``{(class id, Gregorian day): ClassDay}`` for the classes ``classes``
+    (instances or ids) over the part of ``start``..``end`` from the cutoff
+    to today -- every day on which the timetable plans a lesson for the
+    class (:func:`planned_class_days`) or the class has a sheet. A
+    (class, day) missing from the result had no lesson.
+
+    * a sheet makes the day **recorded** (whatever the timetable says
+      now, as on the supervisor's overview);
+    * every planned lesson closed by the calendar: **closed**;
+    * otherwise the class was due to take attendance: **missing** once
+      the day is over or, today, once its first open bell has ended plus
+      the registration grace -- the same moment the analytics engine
+      starts expecting that class-day -- and **pending** until then.
+
+    ``as_of`` (default now) decides "today". ``closures`` can be passed
+    in when the caller has the range's events already. Three queries
+    (timetable, sheets, events), none before the cutoff.
+    """
+
+    as_of = as_of or timezone.now()
+    today = timezone.localtime(as_of).date()
+    _, daily_part = split_range(start, end)
+    if daily_part is None:
         return {}
-    closures = calendar.Closures.between(start, end)
+    start, end = daily_part[0], min(daily_part[1] or today, today)
+    ids = sorted({getattr(c, "pk", c) for c in classes})
+    if start > end or not ids:
+        return {}
+
     days = {}
-    for slot in slots:
-        school_class = slot.class_subject.school_class
-        key = (school_class.pk, slot.date)
-        if days.get(key, "") is None:
-            continue  # an open slot already
-        event = closures.event_for(slot.date, school_class, slot.bell)
-        if event is None or key not in days:
-            days[key] = event
+    for (class_id, day), (event, deadline) in _planned(start, end, ids, closures).items():
+        if event is not None:
+            days[(class_id, day)] = ClassDay(class_id, day, ClassDay.CLOSED, closure=event)
+        elif day < today or as_of >= deadline:
+            days[(class_id, day)] = ClassDay(class_id, day, ClassDay.MISSING)
+        else:
+            days[(class_id, day)] = ClassDay(class_id, day, ClassDay.PENDING)
+
+    for class_id, day, total, absent, late, excused in class_day_tallies(start, end, ids):
+        days[(class_id, day)] = ClassDay(
+            class_id, day, ClassDay.RECORDED, total=total, absent=absent, late=late, excused=excused,
+        )
     return days
 
 

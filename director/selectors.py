@@ -1,81 +1,72 @@
 """
-Page data of the director panel.
+Page data of the director panel: the school's daily attendance at a glance.
 
-Every number here comes from ``analytics`` (``engine.compute`` +
-``metrics``): this module only decides *which* scope, window and grouping
-a page shows, and turns the results into rows for the templates. Views
-call one function per page and run no query of their own.
+Every count comes from ``attendance.services`` -- the same functions the
+supervisor's daily attendance page uses (``class_day_statuses`` over
+``planned_class_days`` and ``class_day_tallies``, ``student_tallies``,
+``get_absences``) -- and the supporters of a class from
+``supervisor.selectors.class_supervisors``. This module only picks the
+classes, the days and the thresholds, and turns the results into rows and
+sentences for the templates. Views call one function per page and run no
+query of their own.
 
-Bounded queries: each page loads its dimension tables once (current year,
-branches, grades), the year's calendar events once (``Closures``), runs
-the engine once over the union of the windows it needs (current range,
-previous period, alert window) and adds a fixed number of aggregate
-queries -- whatever the number of classes, sessions or records.
+Only daily attendance is shown: every range starts at
+``ATTENDANCE_DAILY_START_DATE`` at the earliest (``forms.daily_range``),
+so archived per-session records never mix in. «غیبت موجه» is an absence;
+late is attended and only shown on its own line.
+
+Bounded queries: each page loads the year and branches, the classes of the
+scope, the timetable and the calendar once, and a fixed number of grouped
+queries -- whatever the number of classes, students or records.
 """
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 
 from django.conf import settings
-from django.db.models import Count, Q
 from django.utils import timezone
 
 from academic_calendar import services as calendar
-from analytics import engine, metrics, periods
-from analytics.definitions import rate, rounded
-from analytics.scope import AnalyticsScope
-from core.templatetags.jalali_tags import MONTHS, fa_digits, format_jalali
-from attendance import services as attendance_services
-from school.models import AcademicYear, Branch, ClassSubject, Grade, SchoolClass
-from staff.models import TeacherAssignment
+from analytics import periods
+from analytics.definitions import EXCUSED, LATE, rate, rounded
+from attendance import services as attendance
+from attendance.services import ClassDay
+from core.templatetags.jalali_tags import MONTHS, WEEKDAYS, fa_digits, format_jalali
+from school.models import AcademicYear, Branch, SchoolClass
 from student.models.student_enrollment import StudentEnrollment
+from supervisor.selectors import class_supervisors
 
-from .forms import custom_range_query
+from .forms import daily_range
 
-#: Alert thresholds: read from settings each time (so they can be
-#: changed, and overridden in tests), with these defaults.
-ALERT_DEFAULTS = {
-    "DIRECTOR_ALERT_ATTENDANCE_RATE": 85,        # %, classes under it are listed
-    "DIRECTOR_ALERT_UNREGISTERED_SLOTS": 3,      # teachers with at least this many
-    "DIRECTOR_ALERT_WINDOW_TEACHING_DAYS": 7,    # both of the above look this far back
-    "DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS": 1,   # class-days older than this without a daily sheet
-}
-
-#: How many items an alert card lists (the rest is behind its link).
-ALERT_ITEMS = 5
-
-#: The same-subject comparison marks a class this many held sessions (or
-#: more) behind the class of its grade that held the most.
-SUBJECT_GAP_WARNING = 2
-
-TOP_ABSENTEES = 20
-MISSING_ATTENDANCE_ITEMS = 50
-UPCOMING_CLOSURE_DAYS = 30
+#: How far ahead the home page looks for the next school day (on a
+#: holiday) and for the next holiday.
+NEXT_SCHOOL_DAY_WITHIN = 14
+NEXT_HOLIDAY_WITHIN = 60
 
 
 def threshold(name):
-    return getattr(settings, name, ALERT_DEFAULTS[name])
+    """A policy value of the panel (``DIRECTOR_*`` in the settings), read on each request."""
+
+    return getattr(settings, name)
 
 
 # ----------------------------------------------------------------------
-# Dimensions
+# Dimensions and labels
 # ----------------------------------------------------------------------
 
 @dataclass
 class Dimensions:
-    """What every page needs before it can read its filters (three queries)."""
+    """What every page needs before it can read its filters (two queries)."""
 
     year: object
     branches: list
-    grades: list
 
     @classmethod
     def load(cls):
         return cls(
             year=AcademicYear.objects.filter(is_current=True).order_by("-start_date").first(),
             branches=list(Branch.objects.filter(is_active=True).order_by("order", "id")),
-            grades=list(Grade.objects.filter(is_active=True).order_by("level", "id")),
         )
 
 
@@ -85,747 +76,392 @@ def class_label(school_class):
     return fa_digits(f"{school_class.grade.name} {school_class.section}")
 
 
-def teacher_name(teacher):
-    user = teacher.staff.user
+def person_name(user):
     return user.get_full_name() or user.username
 
 
-def _units(dims, filters):
-    branch_ids = [filters.branch.pk] if filters.branch else [b.pk for b in dims.branches]
-    grade_ids = [filters.grade.pk] if filters.grade else [g.pk for g in dims.grades]
-    return periods.units(filters.year, branch_ids, grade_ids)
+def day_label(day):
+    """"۳ آبان": a chart axis label."""
+
+    jalali = calendar.to_jalali(day)
+    return fa_digits(f"{jalali.day} {MONTHS[jalali.month - 1]}")
 
 
-def _closures(year):
-    """The year's active events, loaded once per page."""
-
-    return calendar.Closures.between(year.start_date, year.end_date, academic_year=year)
+def weekday_name(day):
+    return WEEKDAYS[calendar.to_jalali(day).weekday()]
 
 
-def _in_branch(branch):
-    if branch is None:
-        return None
-    return lambda cs: cs.school_class.branch_id == branch.pk
+def scope_classes(year, branch=None):
+    """The active classes of the year (in ``branch``), in school order (one query)."""
 
-
-def _in_scope(filters):
-    """Class subjects in the filters' branch and grade."""
-
-    def accept(cs):
-        if filters.branch is not None and cs.school_class.branch_id != filters.branch.pk:
-            return False
-        if filters.grade is not None and cs.school_class.grade_id != filters.grade.pk:
-            return False
-        return True
-
-    return accept
-
-
-# ----------------------------------------------------------------------
-# Head counts (students, classes, teachers): no history, no comparison
-# ----------------------------------------------------------------------
-
-def head_counts(year, grade=None):
-    """
-    ``{branch_id: {"students", "classes", "teachers"}, None: totals}``:
-    students with an active enrollment in an active class of the year,
-    active classes, and teachers with an active assignment teaching an
-    active class subject of an active class (as the supervisor counts
-    them). A teacher in both branches is one teacher in the total. Five
-    queries.
-    """
-
-    class_q = Q(school_class__year=year, school_class__is_active=True)
-    if grade is not None:
-        class_q &= Q(school_class__grade=grade)
-
-    enrollments = StudentEnrollment.objects.filter(
-        class_q, status=StudentEnrollment.EnrollmentStatus.ACTIVE
-    )
-    teaching = ClassSubject.objects.filter(
-        class_q, is_active=True,
-        teacher_assignment__status=TeacherAssignment.AssignmentStatus.ACTIVE,
-    )
     classes = SchoolClass.objects.filter(year=year, is_active=True)
-    if grade is not None:
-        classes = classes.filter(grade=grade)
+    if branch is not None:
+        classes = classes.filter(branch=branch)
+    return list(
+        classes.select_related("grade", "branch")
+        .order_by("branch__order", "branch_id", "grade__level", "section", "pk")
+    )
 
-    counts = defaultdict(lambda: {"students": 0, "classes": 0, "teachers": 0})
 
-    for branch_id, n in (
-        enrollments.order_by().values_list("school_class__branch")
-        .annotate(n=Count("student", distinct=True))
-    ):
-        counts[branch_id]["students"] = n
-    for branch_id, n in (
-        teaching.order_by().values_list("school_class__branch")
-        .annotate(n=Count("teacher_assignment__teacher", distinct=True))
-    ):
-        counts[branch_id]["teachers"] = n
-    for branch_id, n in classes.order_by().values_list("branch").annotate(n=Count("id")):
-        counts[branch_id]["classes"] = n
+def _queryset(classes):
+    """``classes`` as a queryset for ``attendance.services`` (a subquery, no query of its own)."""
 
-    counts[None] = {
-        "students": enrollments.aggregate(n=Count("student", distinct=True))["n"],
-        "classes": sum(c["classes"] for key, c in counts.items() if key is not None),
-        "teachers": teaching.aggregate(n=Count("teacher_assignment__teacher", distinct=True))["n"],
-    }
-    return dict(counts)
+    return SchoolClass.objects.filter(pk__in=[c.pk for c in classes])
+
+
+def supporters(supervisors):
+    """The supporters of a class as one line, or «پشتیبان ندارد»."""
+
+    if not supervisors:
+        return ""
+    return "، ".join(person_name(s.user) for s in supervisors)
 
 
 # ----------------------------------------------------------------------
-# Dashboard
+# Students absent on several days
 # ----------------------------------------------------------------------
 
-@dataclass
-class Kpi:
-    key: str
-    title: str
-    value: object                 # int count, or a rate (float) / None
-    is_rate: bool = False
-    previous: object = None
-    delta: int | None = None      # percentage points vs the previous period
-    note: str = ""
-
-    @property
-    def direction(self):
-        if self.delta is None:
-            return ""
-        return "up" if self.delta > 0 else "down" if self.delta < 0 else "flat"
-
-
-def _kpi_rate(key, title, current, previous, complete):
-    value = getattr(current, key)
-    kpi = Kpi(key=key, title=title, value=value, is_rate=True)
-    if previous is None:
-        kpi.note = "بدون دوره‌ی قبلی"
-        return kpi
-    kpi.previous = getattr(previous, key)
-    if not complete:
-        kpi.note = "داده‌ی دوره‌ی قبل کافی نیست"
-    elif value is not None and kpi.previous is not None:
-        kpi.delta = rounded(value) - rounded(kpi.previous)
-    return kpi
-
-
-@dataclass
-class Alert:
-    key: str
-    title: str
-    description: str
-    count: int = 0
-    items: list = field(default_factory=list)   # [{"label", "detail", "url"}]
-    url: str = ""
-    level: str = "warning"
-
-
-def dashboard(dims, filters, as_of, urls):
+def frequent_absentees(classes, start, end):
     """
-    Everything the dashboard shows. ``urls`` builds the drill-down links
-    (``urls(page, query)``), so this module stays free of URL names.
+    Students of ``classes`` absent (absent or excused) on at least
+    ``DIRECTOR_FREQUENT_ABSENCE_DAYS`` days from ``start`` to ``end``,
+    most days first, each with those days (absent, excused and late, with
+    the supporter's description). Daily attendance only: the range starts
+    at the cutoff (``forms.daily_range``), and a daily record is one day.
+    One grouped query, plus one for the days when someone is listed.
     """
+
+    minimum = threshold("DIRECTOR_FREQUENT_ABSENCE_DAYS")
+    tallies = attendance.student_tallies(_queryset(classes), start, end)
+    listed = sorted(
+        ((pk, row) for pk, row in tallies.items() if row["absences"] >= minimum),
+        key=lambda item: (-item[1]["absences"], item[1]["last_name"], item[1]["first_name"], item[0]),
+    )
+
+    days = defaultdict(list)
+    if listed:
+        enrollments = StudentEnrollment.objects.filter(pk__in=[pk for pk, _ in listed])
+        for record in attendance.get_absences(enrollments, start, end):
+            days[record.student_enrollment.pk].append(record)
+
+    rows = []
+    for pk, row in listed:
+        rows.append({
+            "pk": pk,
+            "name": " ".join(filter(None, (row["first_name"], row["last_name"]))) or row["username"],
+            "class_label": fa_digits(f"{row['grade']} {row['section']}"),
+            "branch": row["branch"],
+            "absences": row["absences"],
+            "excused": row["excused"],
+            "late": row["late"],
+            "days": days.get(pk, []),
+        })
+    return {"rows": rows, "minimum": minimum}
+
+
+# ----------------------------------------------------------------------
+# Home page: today
+# ----------------------------------------------------------------------
+
+def _holiday_reason(today, closed):
+    """Why nobody takes attendance today: the weekend, the calendar, or no lessons."""
+
+    if calendar.is_weekend(today):
+        return f"امروز {weekday_name(today)} است؛ مدرسه تعطیل است."
+    titles = list(dict.fromkeys(day.closure.title for day in closed))
+    if titles:
+        return f"امروز تعطیل است: {'، '.join(titles)}."
+    return "امروز کلاسی در برنامه نیست."
+
+
+def _closes_part(event, dims, filters):
+    """Does ``event`` close only some of the scope (some grades, bells or branches)?"""
+
+    if event.grades.all() or event.bells.all():
+        return True
+    branch_ids = {b.pk for b in event.branches.all()}
+    if filters.branch is None and branch_ids:
+        return not {b.pk for b in dims.branches} <= branch_ids
+    return False
+
+
+def home(dims, filters, as_of):
+    """Everything the home page shows: today, in the selected branch (or all)."""
 
     year = filters.year
     today = timezone.localtime(as_of).date()
-    closures = _closures(year)
-    units = _units(dims, filters)
-
-    # The comparison block shows every branch: the engine runs over all
-    # of them, and the branch filter is applied when grouping.
-    scope = AnalyticsScope.build(year, filters.start, filters.end, as_of=as_of, grade=filters.grade)
-    previous = (
-        None if scope.is_empty
-        else periods.previous_period(year, scope.start, scope.end, closures, units)
-    )
-    window = periods.preceding_teaching_days(
-        year, today + timedelta(days=1), threshold("DIRECTOR_ALERT_WINDOW_TEACHING_DAYS"), closures, units,
-    )
-
-    # One engine run over the year so far serves every window of the page
-    # (the range, the previous period, the alert window) and the
-    # year-to-date alerts (conflicts, sessions without attendance).
-    hull = scope.with_range(year.start_date, today)
-    result = engine.compute(hull, closures=closures)
-    where = _in_branch(filters.branch)
-
-    current = (
-        metrics.Breakdown() if scope.is_empty
-        else metrics.total(result, start=scope.start, end=scope.end, where=where)
-    )
-    before = (
-        metrics.total(result, start=previous[0], end=previous[1], where=where) if previous else None
-    )
-    complete = bool(previous and previous[2])
-
-    counts = head_counts(year, filters.grade)
-    own = counts.get(filters.branch.pk if filters.branch else None, {})
-
-    kpis = [
-        Kpi("students", "دانش‌آموزان فعال", own.get("students", 0)),
-        Kpi("classes", "کلاس‌ها", own.get("classes", 0)),
-        Kpi("teachers", "معلمان", own.get("teachers", 0)),
-        _kpi_rate("attendance_rate", "نرخ حضور", current, before, complete),
-        _kpi_rate("execution_rate", "نرخ اجرای برنامه", current, before, complete),
-        _kpi_rate("content_rate", "ثبت محتوا", current, before, complete),
-    ]
-
-    comparison = []
-    for branch in dims.branches:
-        breakdown = (
-            metrics.Breakdown() if scope.is_empty
-            else metrics.total(
-                result, start=scope.start, end=scope.end,
-                where=lambda cs, b=branch: cs.school_class.branch_id == b.pk,
-            )
-        )
-        comparison.append({
-            "branch": branch,
-            "counts": counts.get(branch.pk, {"students": 0, "classes": 0, "teachers": 0}),
-            "breakdown": breakdown,
-            "is_selected": filters.branch is not None and filters.branch.pk == branch.pk,
-        })
-
-    return {
-        "scope": scope,
-        "current": current,
-        "previous_period": previous,
-        "kpis": kpis,
-        "comparison": comparison,
-        "calendar": calendar_summary(year, today, closures, units, filters),
-        "alerts": alerts(dims, filters, result, window, today, urls),
-        "teaching_days": len(periods.teaching_days(year, scope.start, scope.end, closures, units))
-        if not scope.is_empty else 0,
-    }
-
-
-def _affects(event, filters):
-    branches = {b.pk for b in event.branches.all()}
-    grades = {g.pk for g in event.grades.all()}
-    if filters.branch is not None and branches and filters.branch.pk not in branches:
-        return False
-    if filters.grade is not None and grades and filters.grade.pk not in grades:
-        return False
-    return True
-
-
-def calendar_summary(year, today, closures, units, filters):
-    """Teaching days so far / left, days lost to closures, and closures to come."""
-
-    year_end = calendar.to_gregorian(year.end_date)
-    upcoming = [
-        event for event in closures.events(today, today + timedelta(days=UPCOMING_CLOSURE_DAYS))
-        if _affects(event, filters)
-    ]
-    return {
-        "elapsed": len(periods.teaching_days(year, year.start_date, today, closures, units)),
-        "remaining": len(periods.teaching_days(year, today + timedelta(days=1), year_end, closures, units)),
-        "lost": len(periods.closed_days(year, year.start_date, today, closures, units)),
-        "upcoming": upcoming,
-        "upcoming_days": UPCOMING_CLOSURE_DAYS,
-    }
-
-
-def alerts(dims, filters, result, window, today, urls):
-    """The four alert cards, each linking to the page that explains it."""
-
-    branch_id = filters.branch.pk if filters.branch else None
-    grade_id = filters.grade.pk if filters.grade else None
-    where = _in_branch(filters.branch)
-    cards = []
-
-    # 1. Classes with a low attendance rate over the last teaching days.
-    rate_min = threshold("DIRECTOR_ALERT_ATTENDANCE_RATE")
-    low = Alert(
-        key="attendance",
-        title="کلاس‌های با حضور پایین",
-        description=f"نرخ حضور زیر {rate_min}٪ در {len(window)} روز آموزشی اخیر",
-        level="danger",
-    )
-    by_teacher = {}
-    if window:
-        classes = {cs.school_class_id: cs.school_class for cs in result.class_subjects.values()}
-        rows = metrics.breakdowns(result, metrics.by_class, start=window[0], end=window[-1], where=where)
-        flagged = sorted(
-            (
-                (classes[class_id], b) for class_id, b in rows.items()
-                if b.attendance_total and b.attendance_rate < rate_min
-            ),
-            key=lambda item: (item[1].attendance_rate, class_label(item[0])),
-        )
-        low.count = len(flagged)
-        low.items = [
-            {
-                "label": class_label(school_class),
-                "detail": f"{rounded(b.attendance_rate)}٪ · {b.absences} غیبت",
-                "sub": school_class.branch.name,
-                "url": urls("attendance", custom_range_query(
-                    window[0], window[-1], branch=school_class.branch_id,
-                    grade=school_class.grade_id, **{"class": school_class.pk},
-                )),
-            }
-            for school_class, b in flagged[:ALERT_ITEMS]
-        ]
-        low.url = urls("attendance", custom_range_query(window[0], window[-1], branch=branch_id, grade=grade_id))
-
-        # 2. Teachers with many unregistered slots in the same window.
-        minimum = threshold("DIRECTOR_ALERT_UNREGISTERED_SLOTS")
-        teachers = {cs.teacher_assignment.teacher_id: cs.teacher_assignment.teacher
-                    for cs in result.class_subjects.values()}
-        rows = metrics.breakdowns(result, metrics.by_teacher, start=window[0], end=window[-1], where=where)
-        by_teacher = sorted(
-            ((teachers[t], b) for t, b in rows.items() if b.unregistered >= minimum),
-            key=lambda item: (-item[1].unregistered, teacher_name(item[0])),
-        )
-    unregistered = Alert(
-        key="unregistered",
-        title="معلمان با جلسات ثبت‌نشده",
-        description=(
-            f"حداقل {threshold('DIRECTOR_ALERT_UNREGISTERED_SLOTS')} زنگ ثبت‌نشده در "
-            f"{len(window)} روز آموزشی اخیر"
-        ),
-        count=len(by_teacher),
-    )
-    if window:
-        query = custom_range_query(window[0], window[-1], branch=branch_id, grade=grade_id, view="teachers")
-        unregistered.url = urls("execution", query)
-        unregistered.items = [
-            {"label": teacher_name(teacher), "detail": f"{b.unregistered} زنگ", "url": unregistered.url}
-            for teacher, b in by_teacher[:ALERT_ITEMS]
-        ]
-    cards += [low, unregistered]
-
-    # 3. Class-days still without a daily sheet after the grace days, and
-    # 4. sessions recorded in closed slots -- both over the year so far,
-    # which ``result`` covers.
-    cards.append(missing_attendance_alert(filters, result, urls))
-    cards.append(conflicts_alert(filters, result, urls))
-    return cards
-
-
-def missing_attendance_alert(filters, result, urls):
-    missing = missing_attendance_rows(result, result.scope, _in_branch(filters.branch), limit=ALERT_ITEMS)
-    grace = threshold("DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS")
-    card = Alert(
-        key="missing_attendance",
-        title="روزهای بدون حضور و غیاب",
-        description=f"روز کلاسی که بیش از {grace} روز از آن گذشته و پشتیبان حضور و غیاب روزانه‌اش را ثبت نکرده است",
-        count=missing["count"],
-        url=urls("attendance", filters.query(period="year", date_from=None, date_to=None)) + "#missing",
-    )
-    for row in missing["rows"]:
-        card.items.append({
-            "label": row["class_label"],
-            "date": row["date"],
-            "detail": "",
-            "sub": row["branch"],
-            "url": card.url,
-        })
-    return card
-
-
-def conflicts_alert(filters, result, urls):
-    """
-    Sessions in closed slots, from the engine run over the year so far:
-    the same set ``academic_calendar.services.find_conflicts`` reports
-    (same matching, same active events), in the filters' branch.
-    """
-
-    accept = _in_branch(filters.branch)
-    conflicts = [
-        row for row in conflict_rows(result)
-        if accept is None or accept(row["class_subject"])
-    ]
-    card = Alert(
-        key="conflicts",
-        title="تداخل با تقویم آموزشی",
-        description="جلسه‌ی ثبت‌شده در زنگی که تقویم آموزشی تعطیل کرده است",
-        count=len(conflicts),
-        url=urls("execution", filters.query(period="year", date_from=None, date_to=None)) + "#conflicts",
-        level="danger",
-    )
-    for row in conflicts[:ALERT_ITEMS]:
-        card.items.append({
-            "label": f"{row['class_subject'].subject.name} · {row['class_label']}",
-            "date": row["date"],
-            "detail": row["event"].title,
-            "sub": row["class_subject"].school_class.branch.name,
-            "url": card.url,
-        })
-    return card
-
-
-# ----------------------------------------------------------------------
-# Drill-down (execution and attendance pages)
-# ----------------------------------------------------------------------
-
-LEVELS = ("branch", "grade", "class", "class_subject")
-
-
-@dataclass
-class DrillRow:
-    key: object
-    label: str
-    sub: str
-    breakdown: metrics.Breakdown
-    query: str = ""               # the next level's query string; "" = deepest
-
-
-def resolve_class(result, class_id):
-    """``?class=`` -> a class of the scope (no query), or None."""
-
-    for cs in result.class_subjects.values():
-        if str(cs.school_class_id) == str(class_id):
-            return cs.school_class
-    return None
-
-
-def drill_rows(dims, filters, result, school_class=None):
-    """
-    ``(level, rows)``: branches; with a branch, its grades; with a grade,
-    its classes; with a class, its class subjects -- each row with its
-    ``Breakdown`` and the query string of the level below.
-    """
-
-    groups = defaultdict(list)          # level key -> class subjects
-    for cs in result.class_subjects.values():
-        if school_class is not None and cs.school_class_id != school_class.pk:
-            continue
-        groups[cs.school_class_id].append(cs)
-
-    if school_class is not None:
-        level = "class_subject"
-        data = metrics.breakdowns(result, metrics.by_class_subject,
-                                  where=lambda cs: cs.school_class_id == school_class.pk)
-        css = sorted(groups.get(school_class.pk, []), key=lambda cs: (cs.subject.name, cs.pk))
-        rows = [
-            DrillRow(cs.pk, cs.subject.name, teacher_name(cs.teacher_assignment.teacher),
-                     data.get(cs.pk, metrics.Breakdown()))
-            for cs in css if cs.is_active or cs.pk in data
-        ]
-        return level, rows
-
-    if filters.grade is not None:
-        level = "class"
-        data = metrics.breakdowns(result, metrics.by_class)
-        classes = {}
-        for cs in result.class_subjects.values():
-            if cs.school_class.is_active or cs.school_class_id in data:
-                classes[cs.school_class_id] = cs.school_class
-        rows = [
-            DrillRow(c.pk, class_label(c), c.branch.name, data.get(c.pk, metrics.Breakdown()),
-                     filters.query(**{"class": c.pk}))
-            for c in sorted(classes.values(), key=lambda c: (c.branch.order, c.branch_id, c.section, c.pk))
-        ]
-        return level, rows
-
-    if filters.branch is not None:
-        level = "grade"
-        data = metrics.breakdowns(result, metrics.by_grade)
-        present = {cs.school_class.grade_id for cs in result.class_subjects.values()}
-        rows = [
-            DrillRow(g.pk, g.name, "", data.get(g.pk, metrics.Breakdown()), filters.query(grade=g.pk))
-            for g in dims.grades if g.pk in present or g.pk in data
-        ]
-        return level, rows
-
-    level = "branch"
-    data = metrics.breakdowns(result, metrics.by_branch)
-    rows = [
-        DrillRow(b.pk, b.name, "", data.get(b.pk, metrics.Breakdown()), filters.query(branch=b.pk))
-        for b in dims.branches
-    ]
-    return level, rows
-
-
-def breadcrumbs(filters, school_class, urls, page):
-    """The drill path: all branches > branch > grade > class."""
-
-    crumbs = [{"label": "همه‌ی شعبه‌ها", "url": urls(page, filters.query(branch=None, grade=None))}]
-    if filters.branch is not None:
-        crumbs.append({"label": filters.branch.name, "url": urls(page, filters.query(grade=None))})
-    if filters.grade is not None:
-        crumbs.append({"label": filters.grade.name, "url": urls(page, filters.query())})
-    if school_class is not None:
-        crumbs.append({"label": class_label(school_class), "url": ""})
-    crumbs[-1]["url"] = ""
-    return crumbs
-
-
-def _page_scope(filters, as_of):
-    return AnalyticsScope.build(
-        filters.year, filters.start, filters.end, as_of=as_of,
-        branch=filters.branch, grade=filters.grade,
-    )
-
-
-# ----------------------------------------------------------------------
-# Execution page
-# ----------------------------------------------------------------------
-
-EXECUTION_VIEWS = (
-    ("breakdown", "به تفکیک شعبه، پایه و کلاس"),
-    ("teachers", "به تفکیک معلم"),
-    ("subjects", "مقایسه‌ی درس‌ها در یک پایه"),
-)
-
-
-def execution(dims, filters, as_of, view, class_id, urls):
-    closures = _closures(filters.year)
-    scope = _page_scope(filters, as_of)
-    result = engine.compute(scope, closures=closures, with_attendance=False)
-    school_class = resolve_class(result, class_id) if class_id else None
-
+    tomorrow = today + timedelta(days=1)
+    classes = scope_classes(year, filters.branch)
     data = {
-        "scope": scope,
-        "summary": metrics.total(
-            result, where=(lambda cs: cs.school_class_id == school_class.pk) if school_class else None
-        ),
-        "teaching_days": 0 if scope.is_empty else len(
-            periods.teaching_days(filters.year, scope.start, scope.end, closures, _units(dims, filters))
-        ),
-        "school_class": school_class,
-        "conflicts": conflict_rows(result),
+        "day": today,
+        "is_daily": attendance.is_daily(today),
+        "daily_start": attendance.daily_start(),
+        "has_classes": bool(classes),
     }
 
-    if view == "teachers":
-        data["teacher_rows"] = teacher_rows(result)
-    elif view == "subjects":
-        data["subject_matrix"] = subject_matrix(result, filters) if filters.grade else None
-    else:
-        data["level"], data["rows"] = drill_rows(dims, filters, result, school_class)
-        data["breadcrumbs"] = breadcrumbs(filters, school_class, urls, "execution")
+    # One load of the calendar serves today, the next school day and the
+    # next holiday.
+    closures = calendar.Closures.between(
+        today, today + timedelta(days=NEXT_HOLIDAY_WITHIN), academic_year=year, branch=filters.branch,
+    )
+    upcoming = [
+        event for event in closures.events(tomorrow, today + timedelta(days=NEXT_HOLIDAY_WITHIN))
+        if calendar.to_gregorian(event.start_date) > today
+    ]
+    data["next_holiday"] = (
+        {
+            "event": upcoming[0],
+            "start": calendar.to_gregorian(upcoming[0].start_date),
+            "end": calendar.to_gregorian(upcoming[0].end_date),
+            "is_partial": _closes_part(upcoming[0], dims, filters),
+        }
+        if upcoming else None
+    )
+
+    if not data["is_daily"] or not classes:
+        return data
+
+    # This month's frequent absences, on a holiday too.
+    start, end, _ = daily_range(periods.MONTH, today, year)
+    data["month"] = {"start": start, "end": end}
+    data["frequent"] = frequent_absentees(classes, start, end) if start else None
+
+    days = attendance.class_day_statuses(today, today, classes, as_of, closures)
+    due = [day for day in days.values() if day.is_due]
+    closed = [day for day in days.values() if day.status == ClassDay.CLOSED]
+    by_id = {c.pk: c for c in classes}
+
+    if not due:
+        planned = attendance.planned_class_days(
+            tomorrow, today + timedelta(days=NEXT_SCHOOL_DAY_WITHIN), _queryset(classes), closures,
+        )
+        data["holiday"] = {
+            "reason": _holiday_reason(today, closed),
+            "next_school_day": min((day for (_, day), event in planned.items() if event is None), default=None),
+            "within": NEXT_SCHOOL_DAY_WITHIN,
+        }
+        return data
+
+    recorded = [day for day in due if day.status == ClassDay.RECORDED]
+    data["summary"] = {
+        "due": len(due),
+        "recorded": len(recorded),
+        "pending": sum(1 for day in due if day.status == ClassDay.PENDING),
+        "absences": sum(day.absences for day in recorded),
+        "excused": sum(day.excused for day in recorded),
+        "late": sum(day.late for day in recorded),
+    }
+    data["closed_classes"] = {
+        "count": len(closed),
+        "reasons": "، ".join(dict.fromkeys(day.closure.title for day in closed)),
+    }
+
+    supervisors = class_supervisors(list(by_id))
+    data["missing"] = [
+        {
+            "school_class": school_class,
+            "label": class_label(school_class),
+            "branch": school_class.branch.name,
+            "supporters": supporters(supervisors.get(school_class.pk)),
+        }
+        for school_class in classes
+        if getattr(days.get((school_class.pk, today)), "status", None) == ClassDay.MISSING
+    ]
+
+    data["absent_by_class"] = (
+        absent_by_class(classes, today) if any(day.absences or day.late for day in recorded) else []
+    )
     return data
 
 
-def teacher_rows(result):
-    """One row per teacher, worst execution rate first (no slots last)."""
-
-    teachers, subjects = {}, defaultdict(set)
-    for cs in result.class_subjects.values():
-        teacher = cs.teacher_assignment.teacher
-        teachers[teacher.pk] = teacher
-        if cs.is_active:
-            subjects[teacher.pk].add(f"{cs.subject.name} ({class_label(cs.school_class)})")
-
-    data = metrics.breakdowns(result, metrics.by_teacher)
-    rows = [
-        DrillRow(pk, teacher_name(teacher), "، ".join(sorted(subjects[pk])), data[pk])
-        for pk, teacher in teachers.items() if pk in data
-    ]
-    rows.sort(key=lambda row: (
-        row.breakdown.execution_rate is None,
-        row.breakdown.execution_rate if row.breakdown.execution_rate is not None else 0,
-        -row.breakdown.unregistered,
-        row.label,
-    ))
-    return rows
-
-
-def subject_matrix(result, filters):
+def absent_by_class(classes, day):
     """
-    Held sessions per subject (rows) and class (columns) of one grade, to
-    spot a class falling behind the others in the same subject. A cell
-    ``SUBJECT_GAP_WARNING`` or more held sessions behind the best class of
-    its row is marked.
+    Today's absent (absent or excused) and late students, grouped by
+    class in school order: ``[{"label", "branch", "absent": [records],
+    "late": [records], "excused"}]``. One query.
     """
 
-    data = metrics.breakdowns(result, lambda cs, day: (cs.subject_id, cs.school_class_id))
-    subjects, classes = {}, {}
-    for cs in result.class_subjects.values():
-        if cs.is_active or (cs.subject_id, cs.school_class_id) in data:
-            subjects[cs.subject_id] = cs.subject
-            classes[cs.school_class_id] = cs.school_class
-    classes = sorted(classes.values(), key=lambda c: (c.branch.order, c.branch_id, c.section, c.pk))
-
-    rows = []
-    for subject in sorted(subjects.values(), key=lambda s: (s.name, s.pk)):
-        cells = [(c, data.get((subject.pk, c.pk))) for c in classes]
-        best = max((cell.held for _, cell in cells if cell is not None), default=0)
-        rows.append({
-            "subject": subject,
-            "best": best,
-            "cells": [
-                {
-                    "school_class": school_class,
-                    "breakdown": cell,
-                    "gap": None if cell is None else best - cell.held,
-                    "is_behind": cell is not None and best - cell.held >= SUBJECT_GAP_WARNING,
-                }
-                for school_class, cell in cells
-            ],
-        })
-    return {"classes": classes, "rows": rows, "gap_warning": SUBJECT_GAP_WARNING}
-
-
-def conflict_rows(result):
-    rows = []
-    for conflict in sorted(result.conflicts, key=lambda c: (c.date, c.bell.order)):
-        cs = result.class_subjects[conflict.class_subject_id]
-        rows.append({
-            "date": conflict.date,
-            "bell": conflict.bell,
-            "class_subject": cs,
-            "class_label": class_label(cs.school_class),
-            "teacher": teacher_name(cs.teacher_assignment.teacher),
-            "event": conflict.event,
-            "status": conflict.session.status,
-        })
-    return rows
-
-
-# ----------------------------------------------------------------------
-# Attendance page
-# ----------------------------------------------------------------------
-
-def attendance(dims, filters, as_of, class_id, urls):
-    closures = _closures(filters.year)
-    scope = _page_scope(filters, as_of)
-    result = engine.compute(scope, closures=closures)
-    school_class = resolve_class(result, class_id) if class_id else None
-    in_class = (lambda cs: cs.school_class_id == school_class.pk) if school_class else None
-    units = _units(dims, filters)
-    if school_class is not None:
-        units = periods.units(filters.year, [school_class.branch_id], [school_class.grade_id])
-
-    level, rows = drill_rows(dims, filters, result, school_class)
-    return {
-        "scope": scope,
-        "teaching_days": 0 if scope.is_empty else len(
-            periods.teaching_days(filters.year, scope.start, scope.end, closures, units)
-        ),
-        "summary": metrics.total(result, where=in_class),
-        "school_class": school_class,
-        "level": level,
-        "rows": rows,
-        "breadcrumbs": breadcrumbs(filters, school_class, urls, "attendance"),
-        "trend": daily_trend(filters.year, scope, result, closures, units, in_class),
-        "absentees": [] if scope.is_empty else top_absentees(scope, school_class),
-        "absentee_limit": TOP_ABSENTEES,
-        "missing": missing_attendance_rows(result, scope, in_class),
-        "daily_start": attendance_services.daily_start(),
-    }
-
-
-def daily_trend(year, scope, result, closures, units, where=None):
-    """
-    One point per working day of the range: the attendance rate (None
-    without records) and whether the scope was closed that day -- a
-    closed day is marked, never plotted as zero.
-    """
-
-    if scope.is_empty:
-        return {"points": [], "has_data": False}
-
-    data = metrics.breakdowns(result, metrics.by_day, where=where)
-    closed = set(periods.closed_days(year, scope.start, scope.end, closures, units))
-    events = {}
-    for day in closed:
-        for event in closures.events(day, day):
-            events.setdefault(day, event.title)
-
-    days = sorted(
-        {d for d in calendar.date_range(scope.start, scope.end) if not calendar.is_weekend(d)}
-        | {d for d, b in data.items() if b.attendance_total}
-    )
-    points = []
-    for day in days:
-        breakdown = data.get(day, metrics.Breakdown())
-        jalali = calendar.to_jalali(day)
-        points.append({
-            "date": day,
-            "label": fa_digits(f"{jalali.day} {MONTHS[jalali.month - 1]}"),
-            "title": format_jalali(day, with_weekday=True),
-            "rate": rounded(breakdown.attendance_rate),
-            "total": breakdown.attendance_total,
-            "absent": breakdown.absences,
-            "late": breakdown.late,
-            "closed": day in closed,
-            "closure": events.get(day, ""),
-        })
-    with_data = sum(1 for p in points if p["rate"] is not None)
-    return {
-        "points": points,
-        "has_data": with_data > 0,
-        "enough": with_data >= 2,
-        "closed_days": sum(1 for p in points if p["closed"]),
-        "chart": {
-            "labels": [p["label"] for p in points],
-            "titles": [p["title"] for p in points],
-            "rates": [p["rate"] for p in points],
-            "closed": [p["closed"] for p in points],
-            "closures": [p["closure"] for p in points],
-            "totals": [p["total"] for p in points],
-            "absents": [p["absent"] for p in points],
-            "lates": [p["late"] for p in points],
-        },
-    }
-
-
-def _scope_classes(scope):
-    """The classes of ``scope`` (year, branch, grade) as a queryset."""
-
-    lookups = {"year": scope.year}
-    if scope.branch is not None:
-        lookups["branch"] = scope.branch
-    if scope.grade is not None:
-        lookups["grade"] = scope.grade
-    return SchoolClass.objects.filter(**lookups)
-
-
-def top_absentees(scope, school_class=None, limit=TOP_ABSENTEES):
-    """
-    Students with the most absences (absent + excused) in the range
-    (count, then records), through ``attendance.services``: the archived
-    records of delivered sessions before the cutoff, the daily sheets from
-    it on. One grouped query per side of the cutoff.
-    """
-
-    target = school_class if school_class is not None else _scope_classes(scope)
-    tallies = attendance_services.student_tallies(target, scope.start, scope.end)
-    ranked = sorted(
-        ((pk, row) for pk, row in tallies.items() if row["absences"]),
-        key=lambda item: (-item[1]["absences"], -item[1]["total"], item[0]),
-    )[:limit]
+    groups = {c.pk: {"school_class": c, "absent": [], "late": []} for c in classes}
+    for record in attendance.get_absences(_queryset(classes), day, day):
+        group = groups.get(record.student_enrollment.school_class_id)
+        if group is not None:
+            group["late" if record.status == LATE else "absent"].append(record)
 
     result = []
-    for _, row in ranked:
-        name = " ".join(filter(None, (row["first_name"], row["last_name"]))) or row["username"]
+    for group in groups.values():
+        if not group["absent"] and not group["late"]:
+            continue
+        school_class = group["school_class"]
         result.append({
-            "name": name,
-            "class_label": fa_digits(f"{row['grade']} {row['section']}"),
-            "branch": row["branch"],
-            "total": row["total"],
-            "absent": row["absences"],
-            "excused": row["excused"],
-            "late": row["late"],
-            "absence_rate": rounded(rate(row["absences"], row["total"])),
+            **group,
+            "label": class_label(school_class),
+            "branch": school_class.branch.name,
+            "excused": sum(1 for r in group["absent"] if r.status == EXCUSED),
         })
     return result
 
 
-def missing_attendance_rows(result, scope, where=None, limit=MISSING_ATTENDANCE_ITEMS):
+# ----------------------------------------------------------------------
+# Attendance page: a period
+# ----------------------------------------------------------------------
+
+#: The absence label of a class: (level, badge colour, words).
+ABSENCE_LEVELS = {
+    "good": ("success", "وضعیت خوب"),
+    "attention": ("warning", "نیاز به توجه"),
+    "high": ("danger", "غیبت زیاد"),
+}
+
+
+def absence_level(absences, total):
     """
-    Expected class-days of the range (from the attendance cutoff on),
-    past the grace days, without a daily sheet. Days before the cutoff had
-    per-session attendance, which is archived and can no longer be
-    completed, so they are not listed.
+    ``(level, share)`` of a class: its absent days as a share of its
+    records against ``DIRECTOR_CLASS_ABSENCE_YELLOW`` / ``_RED`` (%), and
+    that share rounded; ``(None, None)`` without records.
     """
 
-    grace = threshold("DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS")
-    before = scope.today - timedelta(days=grace)
-    classes = result.classes
-    rows = []
-    for row in result.class_days:
-        if not row.expected or row.has_sheet or row.date >= before:
+    share = rate(absences, total)
+    if share is None:
+        return None, None
+    if share >= threshold("DIRECTOR_CLASS_ABSENCE_RED"):
+        level = "high"
+    elif share >= threshold("DIRECTOR_CLASS_ABSENCE_YELLOW"):
+        level = "attention"
+    else:
+        level = "good"
+    return level, rounded(share)
+
+
+def attendance_page(dims, filters, as_of):
+    """Everything the attendance page shows for the filters' period and branch."""
+
+    data = {"daily_start": attendance.daily_start()}
+    if filters.is_empty:
+        return data
+
+    classes = scope_classes(filters.year, filters.branch)
+    days = attendance.class_day_statuses(filters.start, filters.end, classes, as_of)
+    supervisors = class_supervisors([c.pk for c in classes]) if classes else {}
+
+    data["daily"] = daily_points(filters.start, filters.end, days)
+    data["classes"] = class_rows(classes, days, supervisors)
+    data["totals"] = {
+        "absences": sum(day.absences for day in days.values()),
+        "excused": sum(day.excused for day in days.values()),
+        "late": sum(day.late for day in days.values()),
+        "missing": sum(1 for day in days.values() if day.status == ClassDay.MISSING),
+        "recorded": sum(1 for day in days.values() if day.status == ClassDay.RECORDED),
+    }
+    data["frequent"] = (
+        None if filters.period == periods.TODAY or not classes
+        else frequent_absentees(classes, filters.start, filters.end)
+    )
+    return data
+
+
+def daily_points(start, end, days):
+    """
+    One point per working day (Saturday..Wednesday) of the range: how
+    many students were absent, or why there is no number -- the calendar
+    closed every class (``closed``, with the event: never plotted as
+    zero), no class had a lesson (``no_lessons``), or no sheet was taken
+    yet (``missing`` / ``pending``).
+    """
+
+    by_day = defaultdict(list)
+    for day in days.values():
+        by_day[day.date].append(day)
+
+    points = []
+    for day in calendar.date_range(start, end):
+        rows = by_day.get(day, [])
+        if calendar.is_weekend(day) and not rows:
             continue
-        school_class = classes[row.school_class_id]
-        if where is not None and not where(metrics.ClassUnit(school_class)):
-            continue
-        rows.append({
-            "date": row.date,
-            "school_class": school_class,
-            "class_label": class_label(school_class),
-            "branch": school_class.branch.name,
+        due = [row for row in rows if row.is_due]
+        recorded = [row for row in due if row.status == ClassDay.RECORDED]
+        missing = sum(1 for row in due if row.status == ClassDay.MISSING)
+        if not due:
+            closed = [row for row in rows if row.status == ClassDay.CLOSED]
+            kind = "closed" if closed else "no_lessons"
+            closure = closed[0].closure.title if closed else ""
+        else:
+            kind = "recorded" if recorded else ("missing" if missing else "pending")
+            closure = ""
+        points.append({
+            "date": day,
+            "label": day_label(day),
+            "title": format_jalali(day, with_weekday=True),
+            "kind": kind,
+            "closure": closure,
+            "absences": sum(row.absences for row in recorded) if recorded else None,
+            "excused": sum(row.excused for row in recorded),
+            "late": sum(row.late for row in recorded),
+            "due": len(due),
+            "recorded": len(recorded),
+            "missing": missing,
         })
-    rows.sort(key=lambda r: (r["date"], r["class_label"]), reverse=True)
-    return {"count": len(rows), "rows": rows[:limit], "limit": limit}
+
+    with_data = sum(1 for p in points if p["absences"] is not None)
+    return {
+        "points": points,
+        "has_data": with_data > 0,
+        "enough": with_data >= 2,
+        "chart": {
+            "labels": [p["label"] for p in points],
+            "titles": [p["title"] for p in points],
+            "kinds": [p["kind"] for p in points],
+            "closures": [p["closure"] for p in points],
+            "absences": [p["absences"] for p in points],
+            "excused": [p["excused"] for p in points],
+            "late": [p["late"] for p in points],
+            "missing": [p["missing"] for p in points],
+        },
+    }
+
+
+def class_rows(classes, days, supervisors):
+    """
+    One row per class: its supporters, absent days (excused among them),
+    late, and the days it should have taken attendance and did not, each
+    with its label (``ABSENCE_LEVELS``; a missing day is red).
+    """
+
+    per_class = defaultdict(list)
+    for day in days.values():
+        per_class[day.school_class_id].append(day)
+
+    rows = []
+    for school_class in classes:
+        class_days = per_class.get(school_class.pk, [])
+        recorded = [d for d in class_days if d.status == ClassDay.RECORDED]
+        absences = sum(d.absences for d in recorded)
+        total = sum(d.total for d in recorded)
+        level, share = absence_level(absences, total)
+        missing = sum(1 for d in class_days if d.status == ClassDay.MISSING)
+        pending = any(d.status == ClassDay.PENDING for d in class_days)
+
+        if missing:
+            recording = ("danger", f"{fa_digits(missing)} روز ثبت نشده")
+        elif recorded:
+            recording = ("success", "همه ثبت شده")
+        elif pending:
+            recording = ("", "هنوز وقت دارد")
+        else:
+            recording = ("", "کلاسی نداشته")
+
+        rows.append({
+            "school_class": school_class,
+            "label": class_label(school_class),
+            "branch": school_class.branch.name,
+            "supporters": supporters(supervisors.get(school_class.pk)),
+            "absences": absences,
+            "excused": sum(d.excused for d in recorded),
+            "late": sum(d.late for d in recorded),
+            "total": total,
+            "share": share,
+            "level": level,
+            "level_badge": ABSENCE_LEVELS[level] if level else None,
+            "missing": missing,
+            "recording": recording,
+        })
+    return rows

@@ -1,0 +1,140 @@
+{% extends "director/_layout.html" %}
+{% load jalali_tags %}
+
+{% block heading_title %}امروز{% endblock %}
+{% block heading %}وضعیت امروز مدرسه{% endblock %}
+{% block subheading %}
+{% if year %}<p>{{ day|jalali_date:"weekday" }} · {% if filters.branch %}شعبه‌ی {{ filters.branch.name }}{% else %}همه‌ی شعبه‌ها{% endif %}</p>{% endif %}
+{% endblock %}
+
+{% block page %}
+
+<!-- 1. Today in a few sentences -->
+<section class="sv-card director-lead" aria-labelledby="todayTitle">
+  <h2 id="todayTitle" class="visually-hidden">امروز</h2>
+  {% if not is_daily %}
+    <p class="director-lead__main">حضور و غیاب روزانه از {{ daily_start|jalali_date:"weekday" }} شروع می‌شود.</p>
+  {% elif not has_classes %}
+    <p class="director-lead__main">{% if filters.branch %}این شعبه{% else %}مدرسه{% endif %} در سال تحصیلی جاری کلاس فعالی ندارد.</p>
+  {% elif holiday %}
+    <p class="director-lead__main">{{ holiday.reason }}</p>
+    <p class="director-lead__line">
+      {% if holiday.next_school_day %}روز کلاسی بعدی: {{ holiday.next_school_day|jalali_date:"weekday" }}.
+      {% else %}تا {{ holiday.within|fa_digits }} روز آینده روز کلاسی در برنامه نیست.{% endif %}
+    </p>
+  {% else %}
+    {% if not summary.recorded %}
+      <p class="director-lead__main">هنوز حضور و غیاب هیچ کلاسی ثبت نشده است.</p>
+    {% elif summary.absences %}
+      <p class="director-lead__main">امروز {{ summary.absences|fa_digits }} دانش‌آموز غایب هستند ({% if summary.excused %}{{ summary.excused|fa_digits }} نفر موجه{% else %}هیچ‌کدام موجه نیست{% endif %}).</p>
+    {% else %}
+      <p class="director-lead__main">امروز هیچ دانش‌آموزی غایب نیست.</p>
+    {% endif %}
+    {% if summary.recorded %}
+      <p class="director-lead__line director-secondary">{% if summary.late %}{{ summary.late|fa_digits }} نفر تأخیر داشتند.{% else %}تأخیری ثبت نشده است.{% endif %}</p>
+    {% endif %}
+    <p class="director-lead__line">
+      حضور و غیاب {{ summary.recorded|fa_digits }} از {{ summary.due|fa_digits }} کلاس ثبت شده است.
+      {% if summary.recorded == summary.due %}<span class="badge badge--success">همه ثبت شده</span>
+      {% elif missing %}<span class="badge badge--danger">{{ missing|length|fa_digits }} کلاس ثبت نشده</span>{% endif %}
+    </p>
+    {% if summary.pending %}
+      <p class="director-lead__line director-secondary">{{ summary.pending|fa_digits }} کلاس هنوز وقت دارد: تا پایان زنگ اول هر کلاس و ربع ساعت پس از آن.</p>
+    {% endif %}
+    {% if closed_classes.count %}
+      <p class="director-lead__line director-secondary">{{ closed_classes.count|fa_digits }} کلاس امروز تعطیل است ({{ closed_classes.reasons }}).</p>
+    {% endif %}
+  {% endif %}
+</section>
+
+{% if summary %}
+<!-- 2. Classes without attendance today -->
+<section class="sv-card" aria-labelledby="missingTitle">
+  <div class="section-heading">
+    <div><h2 id="missingTitle">کلاس‌هایی که حضور و غیاب امروزشان ثبت نشده</h2></div>
+  </div>
+  {% if missing %}
+  <ul class="director-list">
+    {% for row in missing %}
+    <li class="director-row">
+      <span class="director-row__title">{{ row.label }}{% if not filters.branch %} <span class="director-secondary">· {{ row.branch }}</span>{% endif %}</span>
+      <span class="director-row__detail">{% if row.supporters %}پشتیبان: {{ row.supporters }}{% else %}پشتیبان ندارد{% endif %}</span>
+      <span class="badge badge--danger">ثبت نشده</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif summary.pending %}
+    <p class="director-ok">کلاسی که وقتش گذشته باشد بدون حضور و غیاب نمانده است.</p>
+  {% else %}
+    <p class="director-ok"><span class="badge badge--success">همه ثبت شده</span> حضور و غیاب همه‌ی کلاس‌ها ثبت شده است.</p>
+  {% endif %}
+</section>
+
+<!-- 3. Today's absent students, by class -->
+{% if absent_by_class %}
+<section class="sv-card" aria-labelledby="absentTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="absentTitle">دانش‌آموزان غایب امروز</h2>
+      <p>برای دیدن نام‌ها روی هر کلاس بزنید.</p>
+    </div>
+  </div>
+  <ul class="director-list">
+    {% for group in absent_by_class %}
+    <li>
+      <details class="director-class"{% if absent_by_class|length <= 3 %} open{% endif %}>
+        <summary>
+          <span class="director-row__title">{{ group.label }}{% if not filters.branch %} <span class="director-secondary">· {{ group.branch }}</span>{% endif %}</span>
+          <span class="director-row__detail">
+            {% if group.absent %}{{ group.absent|length|fa_digits }} غایب{% if group.excused %} ({{ group.excused|fa_digits }} موجه){% endif %}{% else %}غایبی ندارد{% endif %}
+            {% if group.late %}<span class="director-secondary"> · {{ group.late|length|fa_digits }} تأخیر</span>{% endif %}
+          </span>
+        </summary>
+        {% if group.absent %}
+        <ul class="director-days">
+          {% for record in group.absent %}
+          <li>
+            <span class="director-days__date">{{ record.student_enrollment.student.user.get_full_name|default:record.student_enrollment.student.user.username }}</span>
+            {% include "director/partials/_status.html" %}
+            <span class="director-days__note">{{ record.description|default:"بدون توضیح" }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if group.late %}
+        <p class="director-secondary director-late-line">با تأخیر:
+          {% for record in group.late %}{{ record.student_enrollment.student.user.get_full_name|default:record.student_enrollment.student.user.username }}{% if record.description %} ({{ record.description }}){% endif %}{% if not forloop.last %}، {% endif %}{% endfor %}
+        </p>
+        {% endif %}
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endif %}
+
+<!-- 4. Frequently absent this month -->
+{% if frequent %}
+<section class="sv-card" aria-labelledby="frequentTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="frequentTitle">غیبت‌های پرتکرار این ماه</h2>
+      <p>دانش‌آموزانی که از {{ month.start|jalali_date }} تا امروز {{ frequent.minimum|fa_digits }} روز یا بیشتر غایب بوده‌اند. برای دیدن روزها روی نام بزنید.</p>
+    </div>
+    <a class="link-action director-link" href="{% url 'director:attendance' %}?{{ director_query }}">حضور و غیاب این ماه</a>
+  </div>
+  {% include "director/partials/_frequent.html" %}
+</section>
+{% endif %}
+
+<!-- 5. Next holiday -->
+<p class="director-next">
+  {% if next_holiday %}
+    تعطیلی بعدی: {{ next_holiday.start|jalali_date:"weekday" }}{% if next_holiday.end != next_holiday.start %} تا {{ next_holiday.end|jalali_date:"weekday" }}{% endif %}، {{ next_holiday.event.title }}{% if next_holiday.is_partial %} (بخشی از کلاس‌ها){% endif %}.
+  {% else %}
+    تا دو ماه آینده تعطیلی‌ای در تقویم آموزشی ثبت نشده است.
+  {% endif %}
+</p>
+
+{% endblock %}

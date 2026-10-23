@@ -23,7 +23,10 @@ the analytics engine. Status values are spelled out for the same reason
   sheets from then on -- is decided in ``attendance.services`` only.
 """
 
+from datetime import datetime, timedelta
+
 from django.db.models import Q
+from django.utils import timezone
 
 HELD = "HD"
 CANCELLED = "CD"
@@ -37,6 +40,20 @@ DELIVERED_STATUSES = (HELD, COMPENSATORY)
 #: teacher has had this long to record it (the supervisor's «نیازمند
 #: پیگیری» list uses the same grace).
 REGISTRATION_GRACE_MINUTES = 15
+
+
+def slot_deadline(day, end_time):
+    """
+    When a slot of ``day`` whose bell ends at ``end_time`` stops being
+    "not over yet" (an aware datetime): the bell's end plus the
+    registration grace. The engine's expected slots and the daily
+    attendance's classes due today both wait for it.
+    """
+
+    end = datetime.combine(day, end_time)
+    return timezone.make_aware(end, timezone.get_default_timezone()) + timedelta(
+        minutes=REGISTRATION_GRACE_MINUTES
+    )
 
 PRESENT = "present"
 ABSENT = "absent"

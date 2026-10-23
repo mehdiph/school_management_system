@@ -2,7 +2,7 @@
 Who may open the director panel: the director and superusers. Everyone
 else is sent to their own dashboard (like the teacher and student
 panels), logged-out users to the login page, and the panel accepts no
-writes.
+writes. The former execution page (now a redirect) is guarded the same way.
 """
 
 from django.test import TestCase
@@ -13,7 +13,10 @@ from core.testing import make_superuser, make_user
 from accounts.models import User
 
 #: Every page of the panel.
-PAGES = ("director:dashboard", "director:execution", "director:attendance")
+PAGES = ("director:dashboard", "director:attendance")
+
+#: Every URL of the panel: the pages and the execution redirect.
+GUARDED = PAGES + ("director:execution",)
 
 
 class DirectorAccessTests(TestCase):
@@ -28,7 +31,7 @@ class DirectorAccessTests(TestCase):
         self.assert_allowed(make_superuser())
 
     def test_logged_out_users_go_to_the_login_page(self):
-        for name in PAGES:
+        for name in GUARDED:
             response = self.client.get(reverse(name))
             self.assertRedirects(
                 response, f"{reverse('accounts:login')}?next={reverse(name)}",
@@ -43,7 +46,7 @@ class DirectorAccessTests(TestCase):
             for is_staff in (False, True):
                 user = make_user(role, is_staff=is_staff)
                 self.client.force_login(user)
-                for name in PAGES:
+                for name in GUARDED:
                     with self.subTest(role=role, is_staff=is_staff, page=name):
                         response = self.client.get(reverse(name))
                         self.assertRedirects(
@@ -53,7 +56,7 @@ class DirectorAccessTests(TestCase):
 
     def test_the_panel_is_read_only(self):
         self.client.force_login(make_user(User.Roles.DIRECTOR))
-        for name in PAGES:
+        for name in GUARDED:
             for method in ("post", "put", "patch", "delete"):
                 with self.subTest(page=name, method=method):
                     response = getattr(self.client, method)(reverse(name))
@@ -76,6 +79,9 @@ class DirectorAccessTests(TestCase):
         response = self.client.get(reverse("director:dashboard"))
 
         self.assertContains(response, f'href="{reverse("director:dashboard")}"')
+        self.assertContains(response, f'href="{reverse("director:attendance")}"')
+        self.assertNotContains(response, reverse("director:execution"))
+        self.assertNotContains(response, "اجرای برنامه")
 
     def test_role_labels(self):
         self.assertEqual(User.Roles.DIRECTOR.label, "مدیر مدرسه")

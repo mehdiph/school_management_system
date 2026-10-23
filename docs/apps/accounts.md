@@ -222,7 +222,7 @@ Supervisor Dashboard
 
 Director
 ↓
-Director Dashboard (/director/)
+Director Panel (/director/: today's attendance)
 
 Student
 ↓

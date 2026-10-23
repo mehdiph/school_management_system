@@ -1,0 +1,4 @@
+{% comment %}
+An absence as a badge, colour and words (only green / yellow / red on the
+director panel). Context: record (an attendance.services.AbsenceRecord).
+{% endcomment %}{% if record.status == "absent" %}<span class="badge badge--danger">{{ record.status_label }}</span>{% elif record.status == "excused" %}<span class="badge badge--warning">{{ record.status_label }}</span>{% else %}<span class="director-late">{{ record.status_label }}</span>{% endif %}

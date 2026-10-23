@@ -24,6 +24,17 @@
 
 # [Unreleased]
 
+## Changed (director panel: daily attendance at a glance)
+
+- The director panel is rebuilt around the supporters' daily attendance, for a reader who wants the school's situation at a glance (ADR-023): plain Persian sentences with names, larger text and tap targets, only green / yellow / red with words, percentages as secondary text only.
+- Home `/director/` («وضعیت امروز»): «امروز X دانش‌آموز غایب هستند (Y نفر موجه)», late on its own line, «حضور و غیاب A از B کلاس ثبت شده است»; the classes without attendance today with their supporter (or «پشتیبان ندارد»), shown only once the class's first lesson has ended plus 15 minutes; today's absent students by class with the supporter's description; this month's frequent absences; the next holiday. Thursday, Friday and closures say «امروز تعطیل است» with the reason and the next school day.
+- `/director/attendance/` (today / this week / this month, default this month; and branch): absent students per day (holidays marked, never zero, with a table version), a classes table with the supporter, absent days and two labels (absences: «وضعیت خوب» / «نیاز به توجه» / «غیبت زیاد»; recording: «همه ثبت شده» / «n روز ثبت نشده»), frequent absences with each student's days. Daily attendance only: ranges start at 1 Aban 1405, with a note when cut.
+- Removed until curriculum budgeting («بودجه‌بندی») exists: the execution page (`/director/execution/` now redirects to `/director/`, 302), KPI cards, previous-period comparison, execution and content rates, branch / grade / class drill-downs, the alerts and the year-long engine run; the grade filter, custom ranges and «از ابتدای سال»; the `DIRECTOR_ALERT_*` defaults.
+- New settings (school policy, to review after the first month of real data): `DIRECTOR_FREQUENT_ABSENCE_DAYS = 3`, `DIRECTOR_CLASS_ABSENCE_YELLOW = 5`, `DIRECTOR_CLASS_ABSENCE_RED = 10`.
+- Shared layer (no behaviour change for supervisors or `analytics`): `attendance.services.class_day_statuses` (recorded / missing / pending / closed per class and day, pinned to the supervisor's overview and the engine by tests); `planned_class_days(…, closures=)`; the readers accept a queryset of enrollments; `analytics.definitions.slot_deadline` (the engine's grace, moved); `supervisor.selectors.class_supervisors`.
+- The daily summary table's 1 Dey 1405 deadline is dropped: measure the slowest pages on production in mid-Bahman 1405 and build it only if one passes 1 second (`docs/apps/analytics.md` §8).
+- Docs: `docs/apps/director.md` rewritten, ADR-023, `docs/apps/analytics.md` §5 / §8, `docs/apps/attendance.md`, report `docs/plans/2026-10-director-daily-attendance.md`.
+
 ## Added
 
 ### Daily Attendance (grade supporter)
