@@ -196,6 +196,19 @@ SCHOOL_WORKING_DAYS = [0, 1, 2, 3, 4]
 ATTENDANCE_DAILY_START_DATE = date(2026, 10, 23)
 
 
+# Director panel (see director/selectors.py and docs/apps/director.md)
+#
+# School policy, to be reviewed after the first month of real data:
+# - a student absent (absent or «غیبت موجه») on at least this many days of
+#   the period is listed under «غیبت‌های پرتکرار»;
+# - a class's absent days as a share of its attendance records: from
+#   YELLOW % on «نیاز به توجه», from RED % on «غیبت زیاد», below YELLOW
+#   «وضعیت خوب».
+DIRECTOR_FREQUENT_ABSENCE_DAYS = 3
+DIRECTOR_CLASS_ABSENCE_YELLOW = 5
+DIRECTOR_CLASS_ABSENCE_RED = 10
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 

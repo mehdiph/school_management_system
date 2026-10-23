@@ -121,12 +121,15 @@ The one place the cutoff is applied. Dates are Gregorian or Jalali; ranges are i
 
 | Function | Used by | What |
 | --- | --- | --- |
-| `get_absences(target, start, end, statuses=FOLLOW_UP_STATUSES)` | supervisor follow-up list | `AbsenceRecord`s (date, enrollment, status, label, description, `recorded_at`, `session` for archive records) of a `StudentEnrollment`, a `SchoolClass` or a queryset of classes; by default every record that is not «حاضر»; newest day first, then by name |
+| `get_absences(target, start, end, statuses=FOLLOW_UP_STATUSES)` | supervisor follow-up list, director (today's absent students, a student's days) | `AbsenceRecord`s (date, enrollment, status, label, description, `recorded_at`, `session` for archive records) of a `StudentEnrollment`, a `SchoolClass`, a queryset of classes or a queryset of enrollments; by default every record that is not «حاضر»; newest day first, then by name |
 | `attendance_counts(target, start, end)` | supervisor dashboard rate, follow-up summary | `total`, `present`, `absent`, `late`, `excused`, `absences` (absent + excused), `rate` |
 | `session_counts(session)` | supervisor session drawer | before the cutoff the session's own records; from the cutoff on the class's daily sheet of that day (`daily: True`) |
-| `student_tallies(target, start, end)` | director «بیشترین غیبت» | the counts per student, with names and class |
+| `student_tallies(target, start, end)` | director «غیبت‌های پرتکرار» | the counts per student, with names and class |
 | `session_tallies(start, end, **lookups)` | `analytics.engine` | per archived session (`session_id, total, absent, late`) |
-| `class_day_tallies(start, end, class_ids)` | `analytics.engine`, supervisor overview | per sheet (`class_id, day, total, absent, late, excused`) |
+| `class_day_tallies(start, end, class_ids)` | `analytics.engine`, supervisor overview, `class_day_statuses` | per sheet (`class_id, day, total, absent, late, excused`) |
+| `class_day_statuses(start, end, classes, as_of=None, closures=None)` | director panel | `{(class id, day): ClassDay}` from the cutoff to today: **recorded** (a sheet, with its counts), **closed** (every lesson closed, with the event), **missing** (an open lesson and no sheet: a past day at once, today once the first open bell has ended plus the registration grace, `analytics.definitions.slot_deadline`) or **pending** (today, before that). A day without lessons is not in the result. Three queries (timetable, sheets, events) |
+
+The target of the readers that take one (`get_absences`, `attendance_counts`, `student_tallies`) is a `StudentEnrollment`, a `SchoolClass`, a queryset of classes or a queryset of enrollments (the director's frequent absentees: one query for the listed students' days).
 
 Each reader runs one query per side of the cutoff it needs (none for a side the range does not reach). Archived records count only for **held and compensatory** sessions, as before; every daily record counts.
 
@@ -137,7 +140,7 @@ Each reader runs one query per side of the cutoff it needs (none for a side the 
 | Function | What |
 | --- | --- |
 | `day_error(school_class, day, today=None)` | why the class cannot have a sheet that day (a Persian message), or `None` (§5) |
-| `planned_class_days(start, end, classes)` | `{(class id, day): closing event or None}` for the days the timetable has a lesson (§5) |
+| `planned_class_days(start, end, classes, closures=None)` | `{(class id, day): closing event or None}` for the days the timetable has a lesson (§5); `closures` when the caller has loaded the range's events already (the director's home page) |
 | `sheet_enrollments(school_class, sheet=None)` | the students a sheet lists |
 | `save_daily_sheet(school_class, day, user, entries)` | create or edit the sheet: `(sheet, created)` |
 
@@ -153,7 +156,7 @@ A class can have a sheet on a day when all of these hold (`day_error`, messages 
 4. the class's **weekly timetable** (`ClassSchedule`, through `academic_calendar.services.get_slots`) has at least one lesson that day — so the days come from the timetable, not from a fixed list of weekdays; Thursday and Friday never have lessons («این کلاس در این روز طبق برنامه‌ی هفتگی کلاسی ندارد»);
 5. at least one of those lessons is **not closed** by the academic calendar: a full-day closure, or closures that together cover every bell the class has that day, mean no attendance («کلاس در این روز به‌دلیل «…» تعطیل است»).
 
-This is the same definition as an **expected class-day** in the analytics engine (`docs/apps/analytics.md` §3.4): a day with at least one open expected slot. The engine additionally waits, for today, until the first open bell is over plus the registration grace before it counts the day as expected (a sheet taken in the morning still counts at once).
+This is the same definition as an **expected class-day** in the analytics engine (`docs/apps/analytics.md` §3.4): a day with at least one open expected slot. The engine additionally waits, for today, until the first open bell is over plus the registration grace before it counts the day as expected (a sheet taken in the morning still counts at once). `class_day_statuses` applies the same wait before it calls a day **missing** (until then **pending**), and is tested to agree with both the engine and the supervisor's overview. The supervisor's overview itself shows «ثبت نشده» without waiting: the supporter takes attendance at 8:30.
 
 ---
 
@@ -181,8 +184,9 @@ To change it, edit the value in `base.py` (or override it in `development.py` / 
 | Supervisor attendance page (`/supervisor/attendance/`) | today's (or any day's) classes, recorded or not, and the follow-up list | `class_day_tallies`, `planned_class_days`, `get_absences`, `attendance_counts` |
 | Supervisor dashboard | «حضور و غیاب امروز» card, «نرخ حضور دانش‌آموزان» | `attendance_counts` |
 | Supervisor session drawer | attendance counts of the session / of the class that day | `session_counts` |
-| Director dashboard, attendance page, alerts | attendance rate, recorded rate, absences, trend, days without attendance | `analytics.engine` (→ `session_tallies`, `class_day_tallies`) |
-| Director «بیشترین غیبت» | students with the most absences | `student_tallies` |
+| Director home page | today's absences, classes without attendance, today's absent students | `class_day_statuses`, `get_absences` |
+| Director attendance page | absent students per day, the classes table | `class_day_statuses` |
+| Director «غیبت‌های پرتکرار» (both pages) | students absent on several days, and their days | `student_tallies`, `get_absences` (a queryset of enrollments) |
 
 The teacher panel and the student panel show no attendance.
 
@@ -192,4 +196,5 @@ The teacher panel and the student panel show no attendance.
 
 * `attendance/tests.py`: one sheet per class and day, one record per student, the record's class; `day_error` (cutoff, future, timetable instead of weekday, Thursday, full and partial closures, inactive class); `save_daily_sheet` (present by default, editing the same sheet, `updated_by`, kept descriptions, students who join or leave); the sheet page (defaults, saving, editing, invalid dates, days without attendance, empty class); access (logged out, teacher, other supervisor, other class, student, director → 403; superuser and staff admin with permission and branch); the archive page (read-only, POST 405, 403 for teachers from the cutoff on, supervisor redirect, 404 for others, view permission, view-only admin); no attendance link for teachers; the readers across the cutoff and a moved cutoff; the table name.
 * `supervisor/test_daily_attendance.py`: overview statuses, summary, archive and future days, the page (links, highlight, follow-up list, default day, query count), the dashboard card and rate, the session drawer.
-* `analytics/tests.py` (`DailyAttendanceTests`) and `director/tests.py`: metrics, groupings, alerts, lists and query counts across the cutoff.
+* `attendance/test_class_days.py`: `class_day_statuses` (the grace, partial and full closures, no lessons, Thursday / Friday, past days, clamping to the cutoff and to today), its agreement with the supervisor's overview and with the engine's expected class-days, `planned_class_days` with preloaded closures, the readers with a queryset of enrollments, `supervisor.selectors.class_supervisors`.
+* `analytics/tests.py` (`DailyAttendanceTests`): metrics and groupings across the cutoff. `director/tests.py`: the director's pages (daily attendance only).

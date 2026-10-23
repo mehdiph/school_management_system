@@ -1,0 +1,32 @@
+{% load jalali_tags %}{% comment %}
+  Students absent on several days, each row opening onto those days (and
+  the days they came late) with the supporter's description. Context:
+  frequent ({"rows", "minimum"}), filters (for the branch name).
+{% endcomment %}
+{% if frequent.rows %}
+<ul class="director-list">
+  {% for student in frequent.rows %}
+  <li>
+    <details class="director-student">
+      <summary>
+        <span class="director-student__name">{{ student.name }}</span>
+        <span class="director-student__class">{{ student.class_label }}{% if not filters.branch %} · {{ student.branch }}{% endif %}</span>
+        <span class="director-student__count">{{ student.absences|fa_digits }} روز غایب ({% if student.excused %}{{ student.excused|fa_digits }} روز موجه{% else %}هیچ‌کدام موجه نیست{% endif %})</span>
+        {% if student.late %}<span class="director-secondary">{{ student.late|fa_digits }} روز تأخیر</span>{% endif %}
+      </summary>
+      <ul class="director-days">
+        {% for record in student.days %}
+        <li>
+          <span class="director-days__date">{{ record.date|jalali_date:"weekday" }}</span>
+          {% include "director/partials/_status.html" %}
+          <span class="director-days__note">{{ record.description|default:"بدون توضیح" }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="director-ok"><span class="badge badge--success">خوب</span> دانش‌آموزی {{ frequent.minimum|fa_digits }} روز یا بیشتر غایب نبوده است.</p>
+{% endif %}

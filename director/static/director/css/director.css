@@ -1,211 +1,255 @@
 /* ==========================================================================
-   DIRECTOR PANEL — only what the supervisor panel's components (loaded
-   before this file: dashboard.css, attendance.css, panel.css,
-   sessions.css) don't already provide. Colors are the shared tokens of
-   static/css/sidebar.css and base.css.
+   DIRECTOR PANEL — the school's daily attendance at a glance (ADR-023).
+
+   Built on the supervisor panel's components (loaded before this file:
+   dashboard.css, attendance.css, panel.css) and the shared tokens of
+   static/css/base.css. What it adds: larger text than the other panels,
+   more room between things, tap targets of at least 48px, and the
+   sentence-first summary card. Status colours are only green / yellow /
+   red, always with words.
    ========================================================================== */
 
-.director .sv-sub.director-inline { display: inline; margin: 0; }
-
-/* -- KPI cards: six, wrapping to three / two columns ------------------- */
-
-.director-kpis {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-4);
+.director {
+  font-size: 18px;
+  line-height: 1.8;
+  gap: var(--space-6);
 }
 
-.director-kpi .stat-card__value { font-variant-numeric: normal; }
+.director .dashboard-header__text h1 { font-size: 28px; }
+.director .dashboard-header__text p { font-size: 17px; }
+.director .section-heading h2 { font-size: 21px; }
+.director .section-heading p { font-size: 16px; line-height: 1.7; }
+.director .sv-card { padding: var(--space-6); }
+.director .badge { font-size: 15px; padding: 4px 12px; }
+.director .link-action { font-size: 16px; }
+.director .empty-state p { font-size: 18px; }
 
-.director-delta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
+.director-secondary { color: var(--text-secondary); font-size: 16px; }
 
-/* Up is good for every rate shown; the arrow and the signed number carry
-   the direction too, so color is never the only cue. */
-.director-delta--up { color: var(--success); }
-.director-delta--down { color: var(--danger); }
-.director-delta--flat { color: var(--muted); }
+/* -- Filters: periods and branch ------------------------------------------ */
 
-/* -- Alerts ------------------------------------------------------------ */
-
-.director-alerts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.director-alert {
+.director-filters {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  border-inline-start: 4px solid var(--border);
-}
-
-.director-alert--warning { border-inline-start-color: var(--warning); }
-.director-alert--danger { border-inline-start-color: var(--danger); }
-
-.director-alert__head {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.director-filters .sv-filters__errors { flex-basis: 100%; }
+.director-filters .sv-filters__errors p { margin: 0; font-size: 16px; }
+
+.director-periods {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.director-alert__head h3 { font-size: 15px; margin: 0; }
-.director-alert__desc { margin: 0; font-size: 12.5px; }
+.director .director-pill {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-5);
+  font-size: 17px;
+}
 
-.director-alert__list {
+.director-branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Beside the period pills (attendance page) the branch goes to the end. */
+.director-periods + .director-branch { margin-inline-start: auto; }
+
+.director-branch label { font-weight: 600; font-size: 17px; }
+
+.director-select {
+  min-height: 48px;
+  min-width: 12rem;
+  padding: 0 var(--space-3);
+  font-size: 17px;
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.director-button {
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  font-size: 17px;
+}
+
+.director-note {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 16px;
+}
+
+/* -- The summary card: plain sentences ------------------------------------ */
+
+.director-lead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-inline-start: 6px solid var(--primary);
+}
+
+.director-lead p { margin: 0; }
+.director-lead__main { font-size: 24px; font-weight: 700; line-height: 1.6; color: var(--text); }
+.director-lead__line { font-size: 18px; }
+.director-lead__line .badge { margin-inline-start: var(--space-2); }
+
+.director-ok { margin: 0; font-size: 18px; }
+.director-ok .badge { margin-inline-end: var(--space-2); }
+
+.director-next {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted, var(--surface));
+  border: 1px solid var(--border);
+  font-size: 18px;
+}
+
+/* -- Lists of classes and students ---------------------------------------- */
+
+.director-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
-.director-alert__list li {
+.director-list > li { border-bottom: 1px solid var(--border); }
+.director-list > li:last-child { border-bottom: 0; }
+
+.director-row,
+.director-class > summary,
+.director-student > summary {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px var(--space-2);
-  padding-block: var(--space-1);
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  min-height: 56px;
+  padding: var(--space-3) var(--space-1);
 }
 
-.director-alert__list li:last-child { border-bottom: 0; }
-.director-alert__list a { font-weight: 600; color: var(--text); }
-.director-alert__detail { color: var(--text-secondary); font-size: 13px; }
-.director-alert__list .sv-sub { flex-basis: 100%; }
+.director-row__title,
+.director-student__name { font-weight: 700; font-size: 19px; }
+.director-row__detail,
+.director-student__class,
+.director-student__count { color: var(--text); }
+.director-row .badge { margin-inline-start: auto; }
 
-/* -- Tabs, breadcrumbs, chips ------------------------------------------ */
-
-.director-tabs,
-.director-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.director-crumbs ol {
+.director-class > summary,
+.director-student > summary {
+  cursor: pointer;
   list-style: none;
+  border-radius: var(--radius-md);
+}
+
+.director-class > summary::-webkit-details-marker,
+.director-student > summary::-webkit-details-marker { display: none; }
+
+/* An open / closed marker that is text, not colour: ‹ points down when open. */
+.director-class > summary::before,
+.director-student > summary::before {
+  content: "‹";
+  display: inline-block;
+  width: 1em;
+  font-weight: 700;
+  color: var(--primary-darker, var(--primary));
+  transition: transform 0.15s ease;
+}
+
+.director-class[open] > summary::before,
+.director-student[open] > summary::before { transform: rotate(-90deg); }
+
+.director-class > summary:hover,
+.director-student > summary:hover { background: var(--primary-light); }
+
+.director-class > summary:focus-visible,
+.director-student > summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.director-days {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  padding-inline-start: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.director-days li {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
-  margin: var(--space-1) 0 0;
-  padding: 0;
-  font-size: 13px;
-  color: var(--muted);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-1);
 }
 
-.director-crumbs li + li::before {
-  content: "›";
-  margin-inline-end: var(--space-1);
+.director-days__date { font-weight: 600; min-width: 11rem; }
+.director-days__note { color: var(--text-secondary); flex-basis: 100%; padding-inline-start: var(--space-1); }
+
+@media (min-width: 769px) {
+  .director-days__note { flex-basis: auto; }
 }
 
-.director-crumbs a { color: var(--primary-dark); }
+.director-late { color: var(--text-secondary); font-weight: 600; }
+.director-late-line { margin: 0 0 var(--space-3); padding-inline-start: var(--space-6); }
 
-/* -- Tables ------------------------------------------------------------ */
+/* -- Tables ---------------------------------------------------------------- */
 
-.director-table tbody th,
-.director-matrix tbody th,
-.director-compare tbody th {
-  font-weight: 600;
-  text-align: start;
+.director-table { font-size: 17px; }
+.director-table thead th { font-size: 15px; }
+.director-table tbody td { padding-block: var(--space-3); }
+
+.director-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
 }
 
-.director-table tbody th a { color: var(--primary-darker); }
-.director-table tfoot th,
-.director-table tfoot td {
-  font-weight: 700;
-  border-top: 1px solid var(--border-strong);
-}
-
-.director-compare th.is-selected,
-.director-compare td.is-selected { background: var(--primary-tint); }
-
-.director-matrix td { white-space: nowrap; }
-.director-matrix__behind { background: var(--warning-bg); }
-.director-matrix__value { margin-inline-end: var(--space-1); }
-
-.director-row--closed th,
 .director-row--closed td { color: var(--muted); }
 
-/* -- Calendar summary ---------------------------------------------------- */
-
-.director-calendar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: 0;
-}
-
-.director-calendar > div {
-  background: var(--surface-muted);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-}
-
-.director-calendar dt { color: var(--text-secondary); font-size: 13px; }
-.director-calendar dd { margin: 0; font-size: 24px; font-weight: 700; color: var(--text); }
-
-.director-subheading { font-size: 14px; margin: var(--space-5) 0 var(--space-2); }
-
-.director-events {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.director-events li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px var(--space-3);
-  align-items: baseline;
-}
-
-.director-events .sv-sub { flex-basis: 100%; }
-
-/* -- Chart ------------------------------------------------------------- */
-
-.director-chart__keys {
-  display: flex;
-  gap: var(--space-4);
-  font-size: 12.5px;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-2);
-}
-
-.director-key { display: inline-flex; align-items: center; gap: 6px; }
-.director-key__line { width: 16px; height: 2px; border-radius: 2px; background: var(--primary); }
-.director-key__band { width: 12px; height: 12px; border-radius: 3px; background: var(--gray-100); border: 1px solid var(--gray-200); }
+/* -- Chart ------------------------------------------------------------------ */
 
 /* The canvas box includes the axis band: no nested scroll. */
-.director-chart__canvas { position: relative; height: 280px; }
+.director-chart__canvas { position: relative; height: 300px; }
 
-.director-details { margin-top: var(--space-3); }
-.director-details summary { cursor: pointer; color: var(--primary-darker); font-weight: 600; font-size: 13.5px; }
-
-/* -- Responsive: tablet first --------------------------------------------- */
-
-@media (max-width: 1280px) {
-  .director-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.director-details { margin-top: var(--space-4); }
+.director-details > summary {
+  cursor: pointer;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  color: var(--primary-darker, var(--primary));
+  font-weight: 600;
+  font-size: 17px;
 }
 
-@media (max-width: 900px) {
-  .director-alerts { grid-template-columns: minmax(0, 1fr); }
-}
+/* -- Phones ---------------------------------------------------------------- */
 
-@media (max-width: 600px) {
-  .director-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .director-calendar { grid-template-columns: minmax(0, 1fr); }
-  .director-chart__canvas { height: 220px; }
+@media (max-width: 768px) {
+  .director { font-size: 17px; }
+  .director .sv-card { padding: var(--space-4); }
+  .director-lead__main { font-size: 21px; }
+  .director-branch { margin-inline-start: 0; width: 100%; }
+  .director-select { flex: 1; min-width: 0; }
+  .director-days { padding-inline-start: var(--space-3); }
+  .director-row .badge { margin-inline-start: 0; }
+  .director-chart__canvas { height: 240px; }
+  .director-table tbody td::before { font-size: 15px; }
 }

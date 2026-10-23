@@ -49,11 +49,10 @@ the supporters' daily sheets from it on:
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date
 
 from django.db.models import DateField, Exists, OuterRef
 from django.db.models.functions import Cast
-from django.utils import timezone
 
 from academic_calendar import services as calendar
 from attendance import services as attendance
@@ -64,7 +63,7 @@ from .definitions import (
     CANCELLED,
     DELIVERED_STATUSES,
     HOLIDAY,
-    REGISTRATION_GRACE_MINUTES,
+    slot_deadline,
 )
 
 HELD_SLOT = "held"
@@ -74,8 +73,6 @@ UNREGISTERED_SLOT = "unregistered"
 FILLS = "fills"
 CONFLICT = "conflict"
 PENDING = "pending"
-
-REGISTRATION_GRACE = timedelta(minutes=REGISTRATION_GRACE_MINUTES)
 
 #: What every grouping and label needs from a class subject.
 CLASS_SUBJECT_RELATED = (
@@ -160,8 +157,7 @@ class EngineResult:
 def _deadline(day, bell):
     """When a slot of ``day`` at ``bell`` stops being "not over yet"."""
 
-    end = datetime.combine(day, bell.end_time)
-    return timezone.make_aware(end, timezone.get_default_timezone()) + REGISTRATION_GRACE
+    return slot_deadline(day, bell.end_time)
 
 
 def load_class_subjects(scope):

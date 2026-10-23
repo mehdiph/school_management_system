@@ -49,6 +49,8 @@ The single source of truth for "what may this supervisor see". All page selector
 
 Attendance is not read through the scope's own querysets any more but through `attendance.services` with `scope.classes()` (or one in-scope class) as the target, so the cutoff between archived per-session records and daily sheets is applied in one place. `attendance.permissions.can_record_daily_attendance` uses `SupervisorScope.classes()` to decide whether a supervisor may take a class's attendance.
 
+`class_supervisors(class_ids)` (module-level, same file) answers the reverse question with the same rule — assigned through `SupervisorClass`, of the class's branch and grade — for active users: `{class id: [SupervisorProfile, …]}` in one query. The director panel uses it to name the supporter of a class that has not taken attendance («پشتیبان ندارد» when there is none). It is a read-only lookup; nothing in the supervisor panel uses it.
+
 Rules:
 
 * Every queryset is restricted to the scope inside the selector, never through user-supplied parameters.
@@ -108,8 +110,8 @@ Invalid values never break the page: the field shows its error and is ignored.
 **Summary table**: one row per supervised `ClassSubject` (teacher × subject × class), including class subjects with no session at all:
 
 * recorded sessions, sessions without content, **holidays** («تعطیل»: sessions the academic calendar cancelled), first and last session date;
-* **progress against the timetable** («پیشرفت»): the **execution rate** of the analytics engine, the same number the director dashboard shows for the class subject (`docs/apps/analytics.md`). The slots the weekly timetable expected (both weeks of the rotation, one per bell) from the class subject's start, or `date_from`, up to now or `date_to` -- **without Thursdays/Fridays, without slots an active calendar event closed, and a slot of today only once its bell ended plus 15 minutes** -- and how many of them were held: a held or compensatory session recorded in that slot (a legacy session without a bell fills the day's first free bell). Shown as "held از expected · x٪" with a bar: under 60% is red, under 85% amber. Rows without timetable slots show «برنامه‌ی هفتگی ندارد».
-* **compensatory sessions** («n جلسه‌ی جبرانی», under the progress): compensatory sessions of the range made up **outside** the timetable's slots (a Thursday, a free bell) — the engine's `compensatory` count, the director's «جبرانی». They do not raise the progress, so they are shown next to it and make-up work stays visible; a compensatory session recorded in a regular slot is not listed here because it already counts as held. Shown for every row, timetable or not.
+* **progress against the timetable** («پیشرفت»): the **execution rate** of the analytics engine (`docs/apps/analytics.md`), the number the director's execution page will show again once it returns after بودجه‌بندی (ADR-023). The slots the weekly timetable expected (both weeks of the rotation, one per bell) from the class subject's start, or `date_from`, up to now or `date_to` -- **without Thursdays/Fridays, without slots an active calendar event closed, and a slot of today only once its bell ended plus 15 minutes** -- and how many of them were held: a held or compensatory session recorded in that slot (a legacy session without a bell fills the day's first free bell). Shown as "held از expected · x٪" with a bar: under 60% is red, under 85% amber. Rows without timetable slots show «برنامه‌ی هفتگی ندارد».
+* **compensatory sessions** («n جلسه‌ی جبرانی», under the progress): compensatory sessions of the range made up **outside** the timetable's slots (a Thursday, a free bell) — the engine's `compensatory` count. They do not raise the progress, so they are shown next to it and make-up work stays visible; a compensatory session recorded in a regular slot is not listed here because it already counts as held. Shown for every row, timetable or not.
   Until October 2026 this column counted every held + compensatory session of the range against the expected slots (it could pass 100%, and sessions on days without a slot or in closed slots counted); see the changelog.
 
 "Without content" means a session with no `SessionContent` row, **excluding cancelled and holiday sessions**. Holiday sessions are never counted as recorded sessions.
@@ -278,7 +280,7 @@ class CurriculumPlanItem(models.Model):
 # optional: SessionContent.plan_items = M2M(CurriculumPlanItem)
 ```
 
-With teachers tagging each session with the plan items it covered, the timeline could show "planned for week N, taught in week M" and the summary table could show the share of the plan covered instead of the share of timetabled sessions.
+With teachers tagging each session with the plan items it covered, the timeline could show "planned for week N, taught in week M" and the summary table could show the share of the plan covered instead of the share of timetabled sessions. The same plan is the baseline the director's program-execution page waits for (ADR-023).
 
 ### Other
 

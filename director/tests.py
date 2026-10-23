@@ -1,10 +1,21 @@
 """
-The director panel's pages: what each shows for a known fixture, the
-alerts and their thresholds, the filters, the empty states, and a locked
-number of queries per page.
+The director panel: the school's daily attendance at a glance.
 
-The fixture is ``analytics.tests.Fixture`` (two branches, Sunday slots in
-1405) and "now" is Wednesday 15 Mehr 1405 at noon, like the metric tests.
+* the home page on a school day (before and after the grace), on
+  Thursday / Friday, on a full or partial closure, on a weekday without
+  lessons, before daily attendance starts and without data;
+* the classes without attendance today, with and without a supporter;
+* today's absent students by class, late on its own line;
+* frequent absences at and around the threshold, with each student's days;
+* the attendance page: periods, clamping at the cutoff (archived
+  per-session records never mix in), the daily points (a holiday is never
+  zero), the class labels and their thresholds;
+* the branch filter, the execution redirect, and locked query counts.
+
+The fixture is ``analytics.tests.Fixture`` (year 1405; class A in branch A
+has math at bells 1 and 2 on Sundays, class B in branch B physics at bell
+1; bell 1 ends at 08:15) with daily attendance from Sunday 12 Mehr
+(``DAILY_FROM_SUNDAY_2``). "Now" is set by each test.
 """
 
 from unittest import mock
@@ -12,580 +23,508 @@ from unittest import mock
 from django.test import override_settings
 from django.urls import reverse
 
-from academic_calendar import services as calendar
-from analytics.tests import AS_OF, DAILY_FROM_SUNDAY_2, SUNDAY_1, SUNDAY_2, THURSDAY, Fixture, J, at
-from attendance.models import SessionAttendance
-from core.templatetags.jalali_tags import fa_digits
+from accounts.models import User
+from analytics.tests import DAILY_FROM_SUNDAY_2, SUNDAY_1, SUNDAY_2, Fixture, J, at
+from attendance.models import DailyAttendance, DailyAttendanceSheet, SessionAttendance
 from core.testing import (
     make_assignment,
-    make_calendar_event,
     make_class_subject,
     make_enrollment,
     make_schedule,
     make_school_class,
     make_student,
     make_subject,
+    make_supervisor,
     make_teacher_profile,
     make_user,
 )
-from accounts.models import User
-from school.models import AcademicYear, SchoolClass
 from scheduling.models import ClassSchedule
-from teaching.models import SchoolSession
+from school.models import AcademicYear
+from supervisor.models import SupervisorClass
 
-now = mock.patch("django.utils.timezone.now", lambda: AS_OF)
+from . import selectors
+
+MONDAY = J(1405, 7, 13)
+WEDNESDAY = J(1405, 7, 15)
+THURSDAY = J(1405, 7, 16)
+FRIDAY = J(1405, 7, 17)
+SUNDAY_3 = J(1405, 7, 19)
+SUNDAY_4 = J(1405, 7, 26)
+END_OF_MEHR = J(1405, 7, 29)    # a Wednesday
+
+ABSENT, EXCUSED, LATE, PRESENT = "absent", "excused", "late", "present"
 
 
+@DAILY_FROM_SUNDAY_2
 class DirectorPageTestCase(Fixture):
     def setUp(self):
-        now.start()
-        self.addCleanup(now.stop)
         self.client.force_login(make_user(User.Roles.DIRECTOR))
+        self.ali = self.enroll("علی", "رضایی")
+        self.sara = self.enroll("سارا", "محمدی")
+        self.maryam = self.enroll("مریم", "کریمی")
+        self.reza = self.enroll("رضا", "اکبری")
+
+    def now(self, day, hour=12, minute=0):
+        patcher = mock.patch("django.utils.timezone.now", return_value=at(day, hour, minute))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def enroll(self, first_name, last_name, school_class=None):
+        enrollment = make_enrollment(make_student(), school_class or self.class_a)
+        user = enrollment.student.user
+        user.first_name, user.last_name = first_name, last_name
+        user.save()
+        return enrollment
+
+    def supporter(self, school_class, first_name="زهرا", last_name="احمدی"):
+        supervisor = make_supervisor(school_class.branch, school_class.grade)
+        supervisor.user.first_name, supervisor.user.last_name = first_name, last_name
+        supervisor.user.save()
+        SupervisorClass.objects.create(supervisor=supervisor, school_class=school_class)
+        return supervisor
+
+    def sheet(self, day, *entries, school_class=None):
+        """A daily sheet: ``entries`` are ``(enrollment, status[, description])``."""
+
+        sheet = DailyAttendanceSheet.objects.create(
+            school_class=school_class or self.class_a, date=day, taken_by=make_user(User.Roles.SUPERVISOR),
+        )
+        DailyAttendance.objects.bulk_create(
+            DailyAttendance(sheet=sheet, student_enrollment=entry[0], status=entry[1],
+                            description=entry[2] if len(entry) > 2 else "")
+            for entry in entries
+        )
+        return sheet
 
     def get(self, name, **params):
         response = self.client.get(reverse(f"director:{name}"), params)
         self.assertEqual(response.status_code, 200)
         return response
 
-    def attend(self, session, *statuses, school_class=None):
-        for status in statuses:
-            SessionAttendance.objects.create(
-                session=session,
-                student_enrollment=make_enrollment(make_student(), school_class or self.class_a),
-                status=status,
-            )
 
+# ----------------------------------------------------------------------
+# Home: today
+# ----------------------------------------------------------------------
 
-P, A, L = (SessionAttendance.AttendanceStatus.PRESENT, SessionAttendance.AttendanceStatus.ABSENT,
-           SessionAttendance.AttendanceStatus.LATE)
+class HomeSchoolDayTests(DirectorPageTestCase):
+    def setUp(self):
+        super().setUp()
+        self.supporter(self.class_a)
+        self.sheet(
+            SUNDAY_2,
+            (self.ali, ABSENT, "بیمار است"), (self.sara, EXCUSED, "نامه‌ی پزشک"),
+            (self.maryam, LATE, "۸:۴۵"), (self.reza, PRESENT),
+        )
 
-
-class DashboardTests(DirectorPageTestCase):
-    def kpis(self, response):
-        return {kpi.key: kpi for kpi in response.context["kpis"]}
-
-    def test_kpis_for_the_year_so_far(self):
-        held = self.session(self.math, SUNDAY_1, self.bell_1)
-        self.content(held)
-        self.attend(held, P, L, A, P)
-        self.session(self.math, SUNDAY_1, self.bell_2, SchoolSession.Status.CANCELED)
-        make_enrollment(make_student(), self.class_b)
-
-        response = self.get("dashboard", period="year")
-        kpis = self.kpis(response)
-
-        self.assertEqual(kpis["execution_rate"].value, 100 / 6)       # 1 of 6 slots
-        self.assertEqual(kpis["attendance_rate"].value, 75)            # late is attended
-        self.assertEqual(kpis["content_rate"].value, 100)
-        self.assertEqual(kpis["students"].value, 5)
-        self.assertEqual(kpis["classes"].value, 2)
-        self.assertEqual(kpis["teachers"].value, 2)
-        # The year so far has no previous period: no arrow, a note.
-        self.assertIsNone(kpis["execution_rate"].delta)
-        self.assertEqual(kpis["execution_rate"].note, "بدون دوره‌ی قبلی")
-        self.assertContains(response, "۱۷٪")
-
-    def test_counts_have_no_comparison(self):
-        kpis = self.kpis(self.get("dashboard", period="week"))
-
-        for key in ("students", "classes", "teachers"):
-            self.assertIsNone(kpis[key].delta)
-            self.assertFalse(kpis[key].is_rate)
-
-    def test_comparison_with_the_previous_period(self):
-        # This week (Sat 11 .. Wed 15 Mehr) has Sunday 12; the previous
-        # five teaching days (Sat 4 .. Wed 8) have Sunday 5.
-        self.session(self.math, SUNDAY_1, self.bell_1)
-        self.session(self.math, SUNDAY_1, self.bell_2)
-        self.session(self.physics, SUNDAY_1, self.bell_1)
-        self.session(self.math, SUNDAY_2, self.bell_1)
-
-        response = self.get("dashboard", period="week")
-        kpi = self.kpis(response)["execution_rate"]
-
-        self.assertEqual(response.context["previous_period"],
-                         (J(1405, 7, 4).togregorian(), J(1405, 7, 8).togregorian(), True))
-        self.assertEqual((round(kpi.value), round(kpi.previous), kpi.delta), (33, 100, -67))
-        self.assertEqual(kpi.direction, "down")
-        self.assertContains(response, '<bdi dir="ltr">−۶۷</bdi> واحد')
-
-    def test_an_incomplete_previous_period_shows_no_arrow(self):
-        # Sat 4 .. Wed 15 has 10 teaching days; only 1 Mehr comes before.
-        kpi = self.kpis(self.get("dashboard", date_from="1405-07-04", date_to="1405-07-15"))["execution_rate"]
-
-        self.assertIsNone(kpi.delta)
-        self.assertEqual(kpi.note, "داده‌ی دوره‌ی قبل کافی نیست")
-
-    def test_branches_side_by_side_whatever_the_branch_filter(self):
-        self.session(self.math, SUNDAY_1, self.bell_1)
-
-        response = self.get("dashboard", branch=self.branch_b.pk)
-        comparison = {c["branch"].pk: c for c in response.context["comparison"]}
-
-        self.assertEqual(comparison[self.branch_a.pk]["breakdown"].held, 1)
-        self.assertEqual(comparison[self.branch_b.pk]["breakdown"].held, 0)
-        self.assertTrue(comparison[self.branch_b.pk]["is_selected"])
-        # The KPIs follow the filter: branch B held nothing.
-        self.assertEqual(self.kpis(response)["execution_rate"].value, 0)
-        self.assertEqual(self.kpis(response)["classes"].value, 1)
-
-    def test_calendar_summary(self):
-        make_calendar_event(self.year, SUNDAY_2, branches=[self.branch_a])
-        upcoming = make_calendar_event(self.year, J(1405, 7, 20), title="تعطیلی آینده")
-        make_calendar_event(self.year, J(1405, 9, 1), title="بیش از ۳۰ روز بعد")
-
-        summary = self.get("dashboard").context["calendar"]
-        summary_a = self.get("dashboard", branch=self.branch_a.pk).context["calendar"]
-
-        self.assertEqual((summary["elapsed"], summary["lost"]), (11, 0))
-        self.assertEqual((summary_a["elapsed"], summary_a["lost"]), (10, 1))
-        self.assertEqual(summary["upcoming"], [upcoming])
-        self.assertGreater(summary["remaining"], 100)
-
-    def test_no_data_yet(self):
-        response = self.get("dashboard", period="today")
-        kpis = self.kpis(response)
-
-        self.assertIsNone(kpis["execution_rate"].value)
-        self.assertIsNone(kpis["attendance_rate"].value)
-        self.assertContains(response, "—")
-
-    def test_without_a_current_academic_year(self):
-        AcademicYear.objects.update(is_current=False)
+    def test_today_in_sentences(self):
+        self.now(SUNDAY_2, 10)
 
         response = self.get("dashboard")
 
-        self.assertContains(response, "سال تحصیلی جاری تعریف نشده است")
-        self.assertNotIn("kpis", response.context)
+        self.assertEqual(response.context["summary"], {
+            "due": 2, "recorded": 1, "pending": 0, "absences": 2, "excused": 1, "late": 1,
+        })
+        self.assertContains(response, "امروز ۲ دانش‌آموز غایب هستند (۱ نفر موجه).")
+        self.assertContains(response, "۱ نفر تأخیر داشتند.")
+        self.assertContains(response, "حضور و غیاب ۱ از ۲ کلاس ثبت شده است.")
+        for technical in ("نرخ", "کلاس-روز", "زنگ مورد انتظار", "دوره‌ی قبل", "↑", "↓"):
+            self.assertNotContains(response, technical)
 
-    def test_a_range_in_the_future_is_empty(self):
-        response = self.get("dashboard", date_from="1405-09-01", date_to="1405-09-10")
+    def test_missing_classes_with_and_without_a_supporter(self):
+        self.now(SUNDAY_2, 10)
 
-        self.assertTrue(response.context["scope"].is_empty)
-        self.assertContains(response, "هیچ روزی از سال تحصیلی تا امروز")
+        missing = self.get("dashboard").context["missing"]
+        self.assertEqual([(row["school_class"], row["supporters"]) for row in missing], [(self.class_b, "")])
+        self.assertContains(self.get("dashboard"), "پشتیبان ندارد")
 
+        self.supporter(self.class_b, "مینا", "صادقی")
+        response = self.get("dashboard")
+        self.assertEqual(response.context["missing"][0]["supporters"], "مینا صادقی")
+        self.assertContains(response, "پشتیبان: مینا صادقی")
 
-class AlertTests(DirectorPageTestCase):
-    def alerts(self, **params):
-        return {alert.key: alert for alert in self.get("dashboard", **params).context["alerts"]}
+    def test_todays_absent_students_by_class_late_apart(self):
+        self.now(SUNDAY_2, 10)
 
-    def test_classes_under_the_attendance_threshold(self):
-        # 6 of 7 attended = 86% (not flagged); 5 of 6 = 83% (flagged)
-        self.attend(self.session(self.math, SUNDAY_2, self.bell_1), P, P, P, P, P, L, A)
-        self.attend(self.session(self.physics, SUNDAY_2, self.bell_1), P, P, P, P, P, A,
-                    school_class=self.class_b)
+        response = self.get("dashboard")
+        [group] = response.context["absent_by_class"]
 
-        alert = self.alerts()["attendance"]
+        self.assertEqual(group["school_class"], self.class_a)
+        self.assertEqual([(r.student_enrollment, r.status) for r in group["absent"]],
+                         [(self.ali, ABSENT), (self.sara, EXCUSED)])
+        self.assertEqual([r.student_enrollment for r in group["late"]], [self.maryam])
+        self.assertEqual(group["excused"], 1)
+        self.assertContains(response, "بیمار است")
+        self.assertContains(response, "نامه‌ی پزشک")
+        self.assertContains(response, "با تأخیر:")
 
-        self.assertEqual(alert.count, 1)
-        self.assertEqual(alert.items[0]["label"], fa_digits(f"{self.grade.name} {self.class_b.section}"))
-        self.assertIn(f"class={self.class_b.pk}", alert.items[0]["url"])
-        self.assertIn("period=custom", alert.items[0]["url"])
+    def test_everything_recorded(self):
+        self.now(SUNDAY_2, 10)
+        self.sheet(SUNDAY_2, (self.enroll("نیما", "نوری", self.class_b), PRESENT), school_class=self.class_b)
 
-        with override_settings(DIRECTOR_ALERT_ATTENDANCE_RATE=90):
-            self.assertEqual(self.alerts()["attendance"].count, 2)
+        response = self.get("dashboard")
 
-    def test_attendance_outside_the_window_is_ignored(self):
-        # Sunday 5 Mehr is more than 7 teaching days before Wednesday 15.
-        self.attend(self.session(self.math, SUNDAY_1, self.bell_1), A, A)
-
-        self.assertEqual(self.alerts()["attendance"].count, 0)
-
-    def test_teachers_with_unregistered_slots(self):
-        # Math: Sunday 12 (2 bells) + Monday 13 (1 bell) in the window = 3.
-        make_schedule(self.math, ClassSchedule.DayChoices.MONDAY, self.bell_1)
-
-        alert = self.alerts()["unregistered"]
-
-        self.assertEqual(alert.count, 1)
-        self.assertIn(self.teacher.staff.user.first_name, alert.items[0]["label"])
-        self.assertIn("view=teachers", alert.url)
-
-        self.session(self.math, J(1405, 7, 13), self.bell_1)
-        self.assertEqual(self.alerts()["unregistered"].count, 0)
-
-        with override_settings(DIRECTOR_ALERT_UNREGISTERED_SLOTS=2):
-            self.assertEqual(self.alerts()["unregistered"].count, 1)
-
-    @DAILY_FROM_SUNDAY_2
-    def test_class_days_without_a_daily_sheet_after_a_day(self):
-        make_schedule(self.math, ClassSchedule.DayChoices.MONDAY, self.bell_1)
-        make_schedule(self.math, ClassSchedule.DayChoices.TUESDAY, self.bell_1)
-        self.session(self.math, SUNDAY_1, self.bell_1)          # archive, no attendance: never listed
-        self.daily(self.class_b, SUNDAY_2, P)                   # taken: not listed
-        # Class A: Sunday 12 and Monday 13 listed, Tuesday 14 (yesterday) not yet.
-
-        alert = self.alerts()["missing_attendance"]
-
-        self.assertEqual(alert.title, "روزهای بدون حضور و غیاب")
-        self.assertEqual(alert.count, 2)
-        self.assertEqual([item["date"] for item in alert.items],
-                         [J(1405, 7, 13).togregorian(), SUNDAY_2.togregorian()])
-        self.assertIn("#missing", alert.url)
-        self.assertEqual(self.alerts(branch=self.branch_b.pk)["missing_attendance"].count, 0)
-
-    def test_archived_sessions_without_attendance_are_not_an_alert(self):
-        # Before the cutoff attendance was per session; it can no longer be
-        # completed, so a session without it is not listed.
-        self.session(self.math, SUNDAY_1, self.bell_1)
-
-        self.assertEqual(self.alerts()["missing_attendance"].count, 0)
-
-    def test_conflicts_with_the_calendar(self):
-        self.session(self.math, SUNDAY_2, self.bell_1)
-        make_calendar_event(self.year, SUNDAY_2, branches=[self.branch_a], title="آلودگی هوا")
-        calendar.sync_cancelled_sessions(SUNDAY_2, SUNDAY_2)
-
-        alerts = self.alerts()
-        execution = self.get("execution", period="year")
-
-        self.assertEqual(alerts["conflicts"].count, 1)
-        self.assertEqual(alerts["conflicts"].items[0]["detail"], "آلودگی هوا")
-        self.assertEqual(self.alerts(branch=self.branch_b.pk)["conflicts"].count, 0)
-        self.assertEqual(len(execution.context["conflicts"]), 1)
-        self.assertContains(execution, "آلودگی هوا")
-
-    def test_no_alerts(self):
-        alerts = self.alerts(period="today")
-
-        # math has 2 unregistered slots in the window, physics 1: under 3
-        self.assertEqual([a.count for a in alerts.values()], [0, 0, 0, 0])
-        self.assertContains(self.get("dashboard"), "ندارد")
+        self.assertEqual(response.context["missing"], [])
+        self.assertContains(response, "حضور و غیاب همه‌ی کلاس‌ها ثبت شده است.")
 
 
-class ExecutionTests(DirectorPageTestCase):
-    def test_drill_down_branch_grade_class_class_subject(self):
-        self.session(self.math, SUNDAY_1, self.bell_1)
+class HomeGraceTests(DirectorPageTestCase):
+    def test_before_the_first_bell_is_over_nothing_is_missing(self):
+        self.now(SUNDAY_2, 8, 29)       # bell 1 ends at 08:15: due from 08:30
 
-        def rows(**params):
-            response = self.get("execution", **params)
-            return response.context["level"], {r.label: r.breakdown for r in response.context["rows"]}
+        response = self.get("dashboard")
 
-        level, by_branch = rows()
-        self.assertEqual(level, "branch")
-        self.assertEqual((by_branch[self.branch_a.name].expected, by_branch[self.branch_a.name].held), (4, 1))
+        self.assertEqual(response.context["missing"], [])
+        self.assertEqual(response.context["summary"]["pending"], 2)
+        self.assertContains(response, "هنوز حضور و غیاب هیچ کلاسی ثبت نشده است.")
+        self.assertContains(response, "۲ کلاس هنوز وقت دارد")
 
-        level, by_grade = rows(branch=self.branch_a.pk)
-        self.assertEqual((level, by_grade[self.grade.name].held), ("grade", 1))
+    def test_after_the_grace_they_are(self):
+        self.now(SUNDAY_2, 8, 30)
 
-        level, by_class = rows(branch=self.branch_a.pk, grade=self.grade.pk)
-        self.assertEqual(level, "class")
-        self.assertEqual(list(by_class), [fa_digits(f"{self.grade.name} {self.class_a.section}")])
+        response = self.get("dashboard")
 
-        level, by_subject = rows(branch=self.branch_a.pk, grade=self.grade.pk, **{"class": self.class_a.pk})
-        self.assertEqual(level, "class_subject")
-        self.assertEqual(by_subject[self.math.subject.name].unregistered, 3)
-
-    def test_teachers_view(self):
-        self.session(self.math, SUNDAY_1, self.bell_1)
-
-        response = self.get("execution", view="teachers")
-        rows = response.context["teacher_rows"]
-
-        self.assertEqual([r.breakdown.execution_rate for r in rows], [0, 25])   # worst first
-        self.assertContains(response, self.math.subject.name)
-
-    def test_same_subject_comparison_marks_the_class_behind(self):
-        class_c = make_school_class(self.branch_b, self.grade, self.year)
-        teacher = make_teacher_profile()
-        lagging = make_class_subject(
-            class_c, self.math.subject, make_assignment(teacher, self.branch_b, self.year),
-            J(1405, 7, 1), J(1406, 3, 31),
-        )
-        make_schedule(lagging, ClassSchedule.DayChoices.SUNDAY, self.bell_3)
-        for day in (SUNDAY_1, SUNDAY_2):
-            self.session(self.math, day, self.bell_1)
-
-        response = self.get("execution", view="subjects", grade=self.grade.pk)
-        matrix = response.context["subject_matrix"]
-        row = next(r for r in matrix["rows"] if r["subject"] == self.math.subject)
-        cells = {c["school_class"].pk: c for c in row["cells"]}
-
-        self.assertEqual(cells[self.class_a.pk]["breakdown"].held, 2)
-        self.assertTrue(cells[class_c.pk]["is_behind"])
-        self.assertIsNone(cells[self.class_b.pk]["breakdown"])     # no math in class B
-        self.assertContains(response, "director-matrix__behind")
-
-    def test_the_subject_comparison_asks_for_a_grade(self):
-        response = self.get("execution", view="subjects")
-
-        self.assertIsNone(response.context["subject_matrix"])
-        self.assertContains(response, "یک پایه انتخاب کنید")
-
-    def test_a_class_outside_the_scope_is_ignored(self):
-        response = self.get("execution", branch=self.branch_b.pk, **{"class": self.class_a.pk})
-
-        self.assertIsNone(response.context["school_class"])
-        self.assertEqual(response.context["level"], "grade")
-
-    def test_unknown_view_falls_back(self):
-        self.assertEqual(self.get("execution", view="nope").context["view"], "breakdown")
+        self.assertEqual([row["school_class"] for row in response.context["missing"]],
+                         [self.class_a, self.class_b])
+        self.assertEqual(response.context["summary"]["pending"], 0)
 
 
-class AttendancePageTests(DirectorPageTestCase):
-    def test_trend_marks_closure_days_instead_of_zero(self):
-        self.attend(self.session(self.math, SUNDAY_1, self.bell_1), P, A)
-        self.attend(self.session(self.math, J(1405, 7, 13), self.bell_3, SchoolSession.Status.COMPENSATORY), P)
-        make_calendar_event(self.year, SUNDAY_2, title="تعطیل رسمی")
+class HomeHolidayTests(DirectorPageTestCase):
+    def test_thursday_and_friday(self):
+        for day, name in ((THURSDAY, "پنج‌شنبه"), (FRIDAY, "جمعه")):
+            with self.subTest(day=name):
+                self.now(day)
+                response = self.get("dashboard")
+                self.assertEqual(response.context["holiday"]["reason"], f"امروز {name} است؛ مدرسه تعطیل است.")
+                self.assertEqual(response.context["holiday"]["next_school_day"], SUNDAY_3.togregorian())
+                self.assertContains(response, "روز کلاسی بعدی: یکشنبه ۱۹ مهر ۱۴۰۵")
+                self.assertNotIn("missing", response.context)
 
-        trend = self.get("attendance").context["trend"]
-        points = {p["date"]: p for p in trend["points"]}
+    def test_a_closure_of_the_whole_school(self):
+        self.closure(SUNDAY_3, title="تاسوعا")
+        self.now(SUNDAY_3, 10)
 
-        self.assertEqual(points[SUNDAY_1.togregorian()]["rate"], 50)
-        self.assertTrue(points[SUNDAY_2.togregorian()]["closed"])
-        self.assertIsNone(points[SUNDAY_2.togregorian()]["rate"])
-        self.assertEqual(points[SUNDAY_2.togregorian()]["closure"], "تعطیل رسمی")
-        self.assertNotIn(THURSDAY.togregorian(), points)
-        self.assertTrue(trend["enough"])
-        self.assertEqual(trend["chart"]["closed"].count(True), 1)
+        response = self.get("dashboard")
 
-    def test_one_day_of_data_is_not_enough_for_a_chart(self):
-        self.attend(self.session(self.math, SUNDAY_1, self.bell_1), P)
+        self.assertEqual(response.context["holiday"]["reason"], "امروز تعطیل است: تاسوعا.")
+        self.assertEqual(response.context["holiday"]["next_school_day"], SUNDAY_4.togregorian())
 
-        response = self.get("attendance")
+    def test_a_partial_closure_is_a_school_day(self):
+        self.closure(SUNDAY_3, branches=[self.branch_b], title="اردو")
+        self.now(SUNDAY_3, 10)
 
-        self.assertFalse(response.context["trend"]["enough"])
-        self.assertNotContains(response, 'id="attendanceTrend"')
-        self.assertContains(response, "جدول روزانه")
+        response = self.get("dashboard")
 
-    def test_empty_state(self):
-        response = self.get("attendance")
+        self.assertNotIn("holiday", response.context)
+        self.assertEqual(response.context["summary"]["due"], 1)
+        self.assertEqual([row["school_class"] for row in response.context["missing"]], [self.class_a])
+        self.assertContains(response, "۱ کلاس امروز تعطیل است (اردو).")
 
-        self.assertFalse(response.context["trend"]["has_data"])
-        self.assertContains(response, "هنوز در این بازه حضور و غیابی ثبت نشده است")
+    def test_a_weekday_without_lessons(self):
+        self.now(MONDAY)
 
-    def test_comparison_and_top_absentees(self):
-        session_a = self.session(self.math, SUNDAY_1, self.bell_1)
-        session_b = self.session(self.math, SUNDAY_1, self.bell_2)
-        often = make_enrollment(make_student(), self.class_a)
-        once = make_enrollment(make_student(), self.class_a)
-        for session in (session_a, session_b):
-            SessionAttendance.objects.create(session=session, student_enrollment=often, status=A)
-        SessionAttendance.objects.create(session=session_a, student_enrollment=once, status=A)
-        SessionAttendance.objects.create(session=session_b, student_enrollment=once, status=L)
+        response = self.get("dashboard")
+
+        self.assertEqual(response.context["holiday"]["reason"], "امروز کلاسی در برنامه نیست.")
+
+    def test_before_daily_attendance_starts(self):
+        self.now(J(1405, 7, 8))         # a Tuesday before the cutoff
+
+        response = self.get("dashboard")
+
+        self.assertFalse(response.context["is_daily"])
+        self.assertContains(response, "حضور و غیاب روزانه از یکشنبه ۱۲ مهر ۱۴۰۵ شروع می‌شود.")
+
+    def test_next_holiday(self):
+        self.closure(SUNDAY_4, title="اردوی پایه", grades=[self.grade])
+        self.now(SUNDAY_2, 10)
+
+        response = self.get("dashboard")
+
+        self.assertEqual(response.context["next_holiday"]["event"].title, "اردوی پایه")
+        self.assertTrue(response.context["next_holiday"]["is_partial"])
+        self.assertContains(response, "تعطیلی بعدی: یکشنبه ۲۶ مهر ۱۴۰۵، اردوی پایه (بخشی از کلاس‌ها).")
+
+    def test_no_next_holiday(self):
+        self.now(SUNDAY_2, 10)
+
+        self.assertContains(self.get("dashboard"), "تا دو ماه آینده تعطیلی‌ای در تقویم آموزشی ثبت نشده است.")
+
+
+class HomeEmptyTests(DirectorPageTestCase):
+    def test_no_data(self):
+        self.now(SUNDAY_2, 13)
+
+        response = self.get("dashboard")
+
+        self.assertEqual(response.context["summary"]["recorded"], 0)
+        self.assertEqual(response.context["absent_by_class"], [])
+        self.assertEqual(response.context["frequent"]["rows"], [])
+        self.assertContains(response, "هنوز حضور و غیاب هیچ کلاسی ثبت نشده است.")
+
+    def test_without_a_current_academic_year(self):
+        AcademicYear.objects.update(is_current=False)
+        self.now(SUNDAY_2, 10)
+
+        self.assertContains(self.get("dashboard"), "سال تحصیلی جاری تعریف نشده است.")
+        self.assertContains(self.get("attendance"), "سال تحصیلی جاری تعریف نشده است.")
+
+
+class BranchFilterTests(DirectorPageTestCase):
+    def test_one_branch(self):
+        self.now(SUNDAY_2, 10)
+
+        response = self.get("dashboard", branch=self.branch_b.pk)
+
+        self.assertEqual([row["school_class"] for row in response.context["missing"]], [self.class_b])
+        self.assertEqual(response.context["summary"]["due"], 1)
+        self.assertEqual([row["school_class"] for row in self.get("attendance", branch=self.branch_b.pk)
+                          .context["classes"]], [self.class_b])
+
+    def test_an_unknown_branch_is_reported_and_not_applied(self):
+        self.now(SUNDAY_2, 10)
+
+        response = self.get("dashboard", branch=9999)
+
+        self.assertIsNone(response.context["filters"].branch)
+        self.assertEqual(response.context["summary"]["due"], 2)
+        self.assertContains(response, "همه‌ی شعبه‌ها نمایش داده شده است.")
+
+    def test_links_keep_the_branch(self):
+        self.now(SUNDAY_2, 10)
 
         response = self.get("attendance", branch=self.branch_a.pk)
-        absentees = response.context["absentees"]
-        rows = {r.label: r.breakdown for r in response.context["rows"]}
 
-        self.assertEqual([(s["absent"], s["absence_rate"]) for s in absentees], [(2, 100), (1, 50)])
-        self.assertEqual(absentees[0]["class_label"], fa_digits(f"{self.grade.name} {self.class_a.section}"))
-        self.assertEqual(rows[self.grade.name].attendance_total, 4)
-        self.assertEqual(round(rows[self.grade.name].attendance_rate), 25)
+        self.assertEqual(response.context["director_query"], f"branch={self.branch_a.pk}")
+        self.assertContains(response, f'href="{reverse("director:dashboard")}?branch={self.branch_a.pk}"')
+        self.assertContains(response, f"?branch={self.branch_a.pk}&amp;period=week")
 
-    @DAILY_FROM_SUNDAY_2
-    def test_missing_attendance_list(self):
-        self.session(self.math, SUNDAY_1, self.bell_1)          # archive: not listed
+
+# ----------------------------------------------------------------------
+# Frequent absences
+# ----------------------------------------------------------------------
+
+class FrequentAbsenceTests(DirectorPageTestCase):
+    def setUp(self):
+        super().setUp()
+        # Ali: 3 days (one excused); Sara: 2 days; Maryam: 1 day and late once.
+        self.sheet(SUNDAY_2, (self.ali, ABSENT, "بیمار"), (self.sara, ABSENT), (self.maryam, ABSENT))
+        self.sheet(SUNDAY_3, (self.ali, ABSENT), (self.sara, ABSENT), (self.maryam, LATE, "۸:۴۰"))
+        self.sheet(SUNDAY_4, (self.ali, EXCUSED, "سفر"), (self.sara, PRESENT))
+        self.now(END_OF_MEHR)
+
+    def names(self, response):
+        return [row["name"] for row in response.context["frequent"]["rows"]]
+
+    def test_at_the_threshold(self):
+        response = self.get("dashboard")
+        [row] = response.context["frequent"]["rows"]
+
+        self.assertEqual(row["name"], "علی رضایی")
+        self.assertEqual((row["absences"], row["excused"], row["late"]), (3, 1, 0))
+        self.assertContains(response, "۳ روز غایب (۱ روز موجه)")
+
+    def test_around_the_threshold(self):
+        with override_settings(DIRECTOR_FREQUENT_ABSENCE_DAYS=2):
+            self.assertEqual(self.names(self.get("dashboard")), ["علی رضایی", "سارا محمدی"])
+        with override_settings(DIRECTOR_FREQUENT_ABSENCE_DAYS=4):
+            self.assertEqual(self.names(self.get("dashboard")), [])
+
+    def test_a_students_days(self):
+        with override_settings(DIRECTOR_FREQUENT_ABSENCE_DAYS=1):
+            response = self.get("attendance")
+        rows = {row["name"]: row for row in response.context["frequent"]["rows"]}
+
+        self.assertEqual(
+            [(r.date, r.status, r.description) for r in rows["علی رضایی"]["days"]],
+            [(SUNDAY_4.togregorian(), EXCUSED, "سفر"), (SUNDAY_3.togregorian(), ABSENT, ""),
+             (SUNDAY_2.togregorian(), ABSENT, "بیمار")],
+        )
+        # late days are listed with the absences, never counted as one
+        self.assertEqual([r.status for r in rows["مریم کریمی"]["days"]], [LATE, ABSENT])
+        self.assertEqual(rows["مریم کریمی"]["absences"], 1)
+        self.assertContains(response, "یکشنبه ۲۶ مهر ۱۴۰۵")
+        self.assertContains(response, "سفر")
+
+    def test_the_same_list_on_the_attendance_page_for_the_month(self):
+        self.assertEqual(self.names(self.get("attendance")), ["علی رضایی"])
+        self.assertIsNone(self.get("attendance", period="today").context["frequent"])
+        self.assertContains(self.get("attendance", period="today"), "«این هفته» یا «این ماه»")
+
+
+# ----------------------------------------------------------------------
+# Attendance page
+# ----------------------------------------------------------------------
+
+class AttendancePageTests(DirectorPageTestCase):
+    def test_the_month_is_clamped_to_the_cutoff_with_a_note(self):
+        self.now(END_OF_MEHR)
+
+        response = self.get("attendance")
+        filters = response.context["filters"]
+
+        self.assertEqual((filters.period, filters.start, filters.end, filters.clamped),
+                         ("month", SUNDAY_2.togregorian(), END_OF_MEHR.togregorian(), True))
+        self.assertContains(response, "حضور و غیاب روزانه از ۱۲ مهر ۱۴۰۵ ثبت می‌شود؛")
+
+    def test_archived_per_session_records_never_mix_in(self):
+        held = self.session(self.math, SUNDAY_1, self.bell_1)
+        SessionAttendance.objects.create(session=held, student_enrollment=self.ali, status=ABSENT)
+        self.sheet(SUNDAY_2, (self.ali, PRESENT))
+        self.now(END_OF_MEHR)
 
         response = self.get("attendance")
 
-        # Sunday 12: class A and class B have no sheet.
-        self.assertEqual(response.context["missing"]["count"], 2)
-        self.assertContains(response, 'id="missing"')
-        self.assertContains(response, "روزهای بدون حضور و غیاب")
+        self.assertEqual(response.context["totals"]["absences"], 0)
+        self.assertNotIn(SUNDAY_1.togregorian(), [p["date"] for p in response.context["daily"]["points"]])
 
-    @DAILY_FROM_SUNDAY_2
-    def test_attendance_across_the_cutoff(self):
-        session = self.session(self.math, SUNDAY_1, self.bell_1)
-        often = make_enrollment(make_student(), self.class_a)
-        SessionAttendance.objects.create(session=session, student_enrollment=often, status=A)
-        sheet = self.daily(self.class_a, SUNDAY_2, P, L)
-        from attendance.models import DailyAttendance
-        DailyAttendance.objects.create(sheet=sheet, student_enrollment=often, status="excused")
+    def test_a_period_entirely_before_the_cutoff_is_empty(self):
+        self.now(J(1405, 7, 8))
 
-        response = self.get("attendance", period="year")
-        summary = response.context["summary"]
-        absentees = response.context["absentees"]
+        response = self.get("attendance")
 
-        # 1 archived record + 3 daily ones; the archived absence and the
-        # excused day are both absences.
-        self.assertEqual((summary.attendance_total, summary.absences), (4, 2))
-        self.assertEqual(summary.attendance_rate, 50)
-        # The same student: one absent session before, one excused day after.
-        self.assertEqual([(s["absent"], s["excused"], s["total"]) for s in absentees], [(2, 1, 2)])
-        # Recorded: the archived session + class A's sheet, of that session
-        # and the two class-days of Sunday 12.
-        self.assertEqual((summary.with_attendance, summary.attendance_expected), (2, 3))
+        self.assertTrue(response.context["filters"].is_empty)
+        self.assertContains(response, "این بازه هنوز روزی از آن ندارد")
+
+    def test_periods(self):
+        self.now(J(1405, 7, 21))        # Tuesday 21 Mehr
+
+        week = self.get("attendance", period="week").context["filters"]
+        today = self.get("attendance", period="today").context["filters"]
+        unknown = self.get("attendance", period="year", grade=1, date_from="1405-07-01")
+
+        self.assertEqual((week.start, week.clamped), (J(1405, 7, 18).togregorian(), False))   # Saturday
+        self.assertEqual((today.start, today.end), (J(1405, 7, 21).togregorian(),) * 2)
+        self.assertEqual(unknown.context["filters"].period, "month")
+        self.assertFalse(unknown.context["form"].errors)
+
+    def test_daily_points_mark_holidays_instead_of_zero(self):
+        self.sheet(SUNDAY_2, (self.ali, ABSENT), (self.sara, EXCUSED), (self.maryam, LATE))
+        self.sheet(SUNDAY_2, (self.enroll("نیما", "نوری", self.class_b), ABSENT), school_class=self.class_b)
+        self.closure(SUNDAY_3, title="تاسوعا")
+        self.sheet(SUNDAY_4, (self.ali, PRESENT))
+        self.now(END_OF_MEHR)
+
+        points = {p["date"]: p for p in self.get("attendance").context["daily"]["points"]}
+
+        sunday_2, sunday_3, sunday_4 = (points[d.togregorian()] for d in (SUNDAY_2, SUNDAY_3, SUNDAY_4))
+        self.assertEqual((sunday_2["kind"], sunday_2["absences"], sunday_2["excused"], sunday_2["late"]),
+                         ("recorded", 3, 1, 1))
+        self.assertEqual((sunday_3["kind"], sunday_3["absences"], sunday_3["closure"]), ("closed", None, "تاسوعا"))
+        self.assertEqual((sunday_4["kind"], sunday_4["absences"], sunday_4["missing"]), ("recorded", 0, 1))
+        self.assertEqual(points[MONDAY.togregorian()]["kind"], "no_lessons")
+        self.assertNotIn(THURSDAY.togregorian(), points)
+
+    def test_a_day_with_lessons_and_no_sheet_is_a_gap(self):
+        self.now(SUNDAY_2, 10)
+
+        [point] = [p for p in self.get("attendance", period="today").context["daily"]["points"]]
+
+        self.assertEqual((point["kind"], point["absences"], point["missing"]), ("missing", None, 2))
+
+    def test_class_rows(self):
+        self.supporter(self.class_a)
+        # class A: 2 of 4 records absent (one excused) -> 50% -> red
+        self.sheet(SUNDAY_2, (self.ali, ABSENT), (self.sara, EXCUSED), (self.maryam, LATE), (self.reza, PRESENT))
+        self.now(WEDNESDAY)
+
+        rows = {row["school_class"]: row for row in self.get("attendance").context["classes"]}
+
+        a, b = rows[self.class_a], rows[self.class_b]
+        self.assertEqual((a["absences"], a["excused"], a["late"], a["share"], a["level"]), (2, 1, 1, 50, "high"))
+        self.assertEqual(a["level_badge"], ("danger", "غیبت زیاد"))
+        self.assertEqual(a["recording"], ("success", "همه ثبت شده"))
+        self.assertEqual(a["supporters"], "زهرا احمدی")
+        self.assertEqual((b["level"], b["missing"], b["supporters"]), (None, 1, ""))
+        self.assertEqual(b["recording"], ("danger", "۱ روز ثبت نشده"))
+
+    def test_a_class_still_in_time_or_without_lessons(self):
+        self.now(SUNDAY_2, 8)
+        rows = self.get("attendance", period="today").context["classes"]
+        self.assertEqual({row["recording"] for row in rows}, {("", "هنوز وقت دارد")})
+
+        self.now(MONDAY)
+        rows = self.get("attendance", period="today").context["classes"]
+        self.assertEqual({row["recording"] for row in rows}, {("", "کلاسی نداشته")})
 
 
-class FormattingTests(DirectorPageTestCase):
-    def test_a_rate_is_banded_by_the_value_it_shows(self):
-        from director.templatetags.director_tags import percent, rate_level, signed
+class AbsenceLevelTests(DirectorPageTestCase):
+    def test_thresholds(self):
+        cases = ((0, 0, None), (0, 20, "good"), (1, 21, "good"), (1, 20, "attention"),
+                 (19, 199, "attention"), (2, 20, "high"), (5, 20, "high"))
+        for absences, total, level in cases:
+            with self.subTest(absences=absences, total=total):
+                self.assertEqual(selectors.absence_level(absences, total)[0], level)
 
-        self.assertEqual((percent(84.6), rate_level(84.6)), ("۸۵٪", "ok"))
-        self.assertEqual((percent(84.4), rate_level(84.4)), ("۸۴٪", "warning"))
-        self.assertEqual((rate_level(59.5), rate_level(59.4)), ("warning", "low"))
-        self.assertEqual((percent(None), rate_level(None)), ("—", ""))
-        self.assertEqual((signed(3), signed(-12), signed(0)), ("+۳", "−۱۲", "۰"))
+    def test_thresholds_come_from_the_settings(self):
+        with override_settings(DIRECTOR_CLASS_ABSENCE_YELLOW=1, DIRECTOR_CLASS_ABSENCE_RED=3):
+            self.assertEqual(selectors.absence_level(1, 50)[0], "attention")
+            self.assertEqual(selectors.absence_level(3, 100)[0], "high")
 
 
-class FilterTests(DirectorPageTestCase):
-    def scope(self, **params):
-        return self.get("dashboard", **params).context["scope"]
+# ----------------------------------------------------------------------
+# Execution: deferred until curriculum budgeting
+# ----------------------------------------------------------------------
 
-    def test_presets(self):
-        today = AS_OF.date()
+class ExecutionRedirectTests(DirectorPageTestCase):
+    def test_the_execution_page_redirects_home(self):
+        url = reverse("director:execution")
+        home = reverse("director:dashboard")
 
-        self.assertEqual(self.scope(period="year").start, J(1405, 7, 1).togregorian())
-        self.assertEqual(self.scope(period="today").start, today)
-        self.assertEqual(self.scope(period="week").start, J(1405, 7, 11).togregorian())
-        self.assertEqual(self.scope(period="month").start, J(1405, 7, 1).togregorian())
+        self.assertRedirects(self.client.get(url), home, status_code=302, fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(url, {"branch": self.branch_a.pk, "view": "teachers"}),
+                             f"{home}?branch={self.branch_a.pk}", fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(url, {"branch": "x"}), home, fetch_redirect_response=False)
 
-    def test_every_page_opens_on_this_jalali_month(self):
-        # In Aban, "this month" and "since the start of the year" differ.
-        aban = at(J(1405, 8, 10))
-        with mock.patch("django.utils.timezone.now", lambda: aban):
-            self.client.force_login(make_user(User.Roles.DIRECTOR))
-            for page in ("dashboard", "execution", "attendance"):
-                with self.subTest(page=page):
-                    response = self.get(page)
-                    self.assertEqual(response.context["filters"].period, "month")
-                    self.assertEqual(
-                        (response.context["scope"].start, response.context["scope"].end),
-                        (J(1405, 8, 1).togregorian(), aban.date()),
-                    )
-                    self.assertIn("period=month", response.context["director_query"])
 
-            year = self.get("dashboard", period="year")
-            self.assertEqual(year.context["scope"].start, J(1405, 7, 1).togregorian())
-            # A custom range without dates falls back to this month too.
-            self.assertEqual(self.get("dashboard", period="custom").context["filters"].period, "month")
-
-    def test_typed_dates_make_a_custom_range(self):
-        response = self.get("dashboard", period="week", date_from="۱۴۰۵/۰۷/۰۴", date_to="1405-07-08")
-
-        self.assertEqual(response.context["filters"].period, "custom")
-        self.assertEqual(response.context["scope"].start, J(1405, 7, 4).togregorian())
-        self.assertIn("date_from=1405-07-04", response.context["director_query"])
-
-    def test_dates_equal_to_the_preset_keep_it(self):
-        response = self.get("dashboard", period="week", date_from="1405-07-11", date_to="1405-07-15")
-
-        self.assertEqual(response.context["filters"].period, "week")
-
-    def test_invalid_input_is_reported_and_not_applied(self):
-        response = self.get("dashboard", date_from="1405-13-40", branch="999999", grade="x")
-
-        self.assertEqual(response.context["filters"].branch, None)
-        self.assertEqual(response.context["scope"].start, J(1405, 7, 1).togregorian())
-        self.assertContains(response, "برخی فیلترها اعمال نشدند")
-
-    def test_end_before_start(self):
-        response = self.get("dashboard", date_from="1405-07-10", date_to="1405-07-05")
-
-        self.assertContains(response, "تاریخ پایان نباید قبل از تاریخ شروع باشد")
-
-    def test_links_keep_the_filters(self):
-        response = self.get("dashboard", period="week", branch=self.branch_a.pk)
-
-        self.assertContains(response, f'{reverse("director:execution")}?period=week&amp;branch={self.branch_a.pk}')
-
+# ----------------------------------------------------------------------
+# Query counts
+# ----------------------------------------------------------------------
 
 class QueryCountTests(DirectorPageTestCase):
     """
-    Every page runs a fixed number of queries, however many classes,
-    sessions and records there are: the second request, after adding a
-    class with its timetable, sessions, content and attendance, must not
-    run a single extra query.
+    Every page runs a fixed number of queries: adding classes, each with
+    its supporter, timetable, students, sheets, absences and late records
+    (and frequent absentees), must not add any.
     """
-
-    PAGES = (
-        ("dashboard", {}),
-        ("dashboard", {"branch": "A"}),
-        ("execution", {}),
-        ("execution", {"view": "teachers"}),
-        ("execution", {"view": "subjects", "grade": "G"}),
-        ("execution", {"class": "C"}),
-        ("attendance", {}),
-        ("attendance", {"class": "C"}),
-    )
-
-    def params(self, params):
-        values = {"A": self.branch_a.pk, "G": self.grade.pk, "C": self.class_a.pk}
-        return {key: values.get(value, value) for key, value in params.items()}
 
     def add_data(self, n):
         for _ in range(n):
             school_class = make_school_class(self.branch_a, self.grade, self.year)
-            teacher = make_teacher_profile()
+            self.supporter(school_class)
             cs = make_class_subject(
-                school_class, make_subject(), make_assignment(teacher, self.branch_a, self.year),
+                school_class, make_subject(), make_assignment(make_teacher_profile(), self.branch_a, self.year),
                 J(1405, 7, 1), J(1406, 3, 31),
             )
-            make_schedule(cs, ClassSchedule.DayChoices.SUNDAY, self.bell_3)
-            session = self.session(cs, SUNDAY_1, self.bell_3)
-            self.content(session)
-            self.attend(session, P, A, L, school_class=school_class)
-        make_calendar_event(self.year, J(1405, 7, 20))
+            make_schedule(cs, ClassSchedule.DayChoices.SUNDAY, self.bell_1)
+            students = [make_enrollment(make_student(), school_class) for _ in range(3)]
+            for day in (SUNDAY_2, SUNDAY_3, SUNDAY_4):
+                self.sheet(day, (students[0], ABSENT, "x"), (students[1], LATE), (students[2], EXCUSED),
+                           school_class=school_class)
 
     def counts(self):
+        self.client.get(reverse("director:dashboard"))      # warm the session / user caches
         counts = {}
-        for name, params in self.PAGES:
-            url = reverse(f"director:{name}")
-            self.client.get(url, self.params(params))      # warm per-process caches
-            from django.db import connection
-            from django.test.utils import CaptureQueriesContext
-
-            with CaptureQueriesContext(connection) as queries:
-                response = self.client.get(url, self.params(params))
+        for name, params in (("dashboard", {}), ("attendance", {}), ("attendance", {"branch": self.branch_a.pk})):
+            with self.assertNumQueries(self.locked[(name, bool(params))]) as context:
+                response = self.client.get(reverse(f"director:{name}"), params)
             self.assertEqual(response.status_code, 200)
-            counts[(name, tuple(sorted(params.items())))] = len(queries)
+            counts[(name, bool(params))] = len(context.captured_queries)
         return counts
 
+    #: 7 overhead (session, user and its 3 profiles, the footer's 2) + year,
+    #: branches and classes, then -- dashboard (20): the calendar (1 + 3
+    #: prefetches), this month's student tallies and the frequent
+    #: absentees' days, today's timetable, sheets, supporters and absences;
+    #: attendance (19): the timetable, the calendar (1 + 3), the sheets,
+    #: the supporters, the student tallies and the frequent absentees' days.
+    locked = {("dashboard", False): 20, ("attendance", False): 19, ("attendance", True): 19}
+
     def test_query_counts_do_not_grow_with_data(self):
+        # Events on Mondays (no lessons) in each page's range, so the calendar's prefetches run.
+        self.closure(J(1405, 7, 20), title="تعطیلی")    # this month, before today
+        self.closure(J(1405, 7, 27), title="تعطیلی")    # the next holiday
+        self.now(SUNDAY_4, 10)
         self.add_data(1)
-        before = self.counts()
-        self.add_data(5)
-        after = self.counts()
-
-        self.assertEqual(after, before)
-        # Locked: a new query on a page must be a deliberate change.
-        self.assertEqual(before, self.EXPECTED)
-
-    #: overhead (session, user, branch middleware, site footer) 7 +
-    #: current year, branches, grades 3 + the year's events 4 + engine 3
-    #: (class subjects, slots, sessions) + 1 attendance tallies where the
-    #: page shows attendance; the dashboard adds the head counts 5 (its
-    #: conflicts and sessions without attendance come from the engine
-    #: run); the attendance page adds the top absentees 1.
-    EXPECTED = {
-        ("dashboard", ()): 23,
-        ("dashboard", (("branch", "A"),)): 23,
-        ("execution", ()): 17,
-        ("execution", (("view", "teachers"),)): 17,
-        ("execution", (("grade", "G"), ("view", "subjects"))): 17,
-        ("execution", (("class", "C"),)): 17,
-        ("attendance", ()): 19,
-        ("attendance", (("class", "C"),)): 19,
-    }
-
-
-    @DAILY_FROM_SUNDAY_2
-    def test_query_counts_across_the_attendance_cutoff(self):
-        """
-        With the year so far on both sides of the cutoff, a page that shows
-        attendance reads the archive *and* the daily sheets: one more
-        query for the class-day tallies (engine), and the attendance page
-        one more for the daily side of the top absentees.
-        """
-
-        def add_sheets():
-            for school_class in SchoolClass.objects.filter(year=self.year):
-                if not school_class.daily_attendance_sheets.filter(date=SUNDAY_2).exists():
-                    self.daily(school_class, SUNDAY_2, P, A)
-
-        self.add_data(1)
-        add_sheets()
-        before = self.counts()
-        self.add_data(5)
-        add_sheets()
-        after = self.counts()
-
-        self.assertEqual(after, before)
-        expected = dict(self.EXPECTED)
-        for key in expected:
-            if key[0] == "dashboard":
-                expected[key] += 1
-            elif key[0] == "attendance":
-                expected[key] += 2
-        self.assertEqual(before, expected)
+        first = self.counts()
+        self.add_data(3)
+        self.assertEqual(self.counts(), first)

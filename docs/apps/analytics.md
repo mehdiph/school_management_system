@@ -2,13 +2,13 @@
 
 ## 1. Purpose
 
-`analytics` is where the school's metrics are **defined, once**. It has no models, URLs or templates: it is a layer of selectors that the panels call. The director panel (`docs/apps/director.md`) is built entirely on it, and the supervisor's training sessions page computes its «پیشرفت» column with it, so the director and a supervisor always see the same number for the same class subject.
+`analytics` is where the school's metrics are **defined, once**. It has no models, URLs or templates: it is a layer of selectors that the panels call. The supervisor's training sessions page computes its «پیشرفت» column with it. The director panel was built on it in Phase 1; since October 2026 it shows daily attendance only and reads it through `attendance.services` (ADR-023) — program execution returns to it, on this engine, after curriculum budgeting («بودجه‌بندی»).
 
 If a number shown somewhere is "execution", "makeup coverage", "content rate", "attendance rate" or "attendance recorded", it comes from here. A panel that needs a new grouping or window asks `analytics.metrics.breakdowns`; it never re-derives a rule (ADR-019).
 
 | Module | What it holds |
 | --- | --- |
-| `analytics/definitions.py` | The shared rules with no model import (usable from `core.querysets`): statuses, `counted_q`, `delivered_q`, `has_content_q`, `missing_content_q`, `rate`, `attendance_rate`, `REGISTRATION_GRACE_MINUTES` |
+| `analytics/definitions.py` | The shared rules with no model import (usable from `core.querysets`): statuses, `counted_q`, `delivered_q`, `has_content_q`, `missing_content_q`, `rate`, `attendance_rate`, `REGISTRATION_GRACE_MINUTES`, `slot_deadline` |
 | `analytics/scope.py` | `AnalyticsScope`: year, date range (clamped), optional branch / grade / class subjects, and the moment it is computed `as_of` |
 | `analytics/engine.py` | `compute(scope)`: expected slots, what happened in each, every session of the scope |
 | `analytics/metrics.py` | `Breakdown` (counts + rates) and `breakdowns(result, key, start=, end=, where=)` |
@@ -53,7 +53,7 @@ All metrics take a date range, an optional branch and an optional grade, and onl
 
 * A slot is `(class subject, date, bell)`: two bells of one subject on one day are two slots.
 * `get_slots` never returns Thursday or Friday (a legacy Thursday timetable row is ignored), and only active class subjects of active classes, on the dates the class subject is taught (`start_date`..`end_date`), with an active bell, in the right rotation week.
-* A slot of **today** is expected only once its bell has ended **plus 15 minutes** (`REGISTRATION_GRACE_MINUTES`, the same grace the supervisor's «نیازمند پیگیری» list gives). Until then it is "pending": neither expected nor reported, and a session already recorded in it is ignored by the slot counts (it still counts as delivered).
+* A slot of **today** is expected only once its bell has ended **plus 15 minutes** (`REGISTRATION_GRACE_MINUTES`, applied by `definitions.slot_deadline`; the same grace the supervisor's «نیازمند پیگیری» list gives, and the moment the director panel starts reporting a class's missing daily attendance). Until then it is "pending": neither expected nor reported, and a session already recorded in it is ignored by the slot counts (it still counts as delivered).
 * A slot holding a holiday row that no active event closes any more (the event changed and the sync has not run yet) is treated as closed: not expected, and its `HL` row is counted as lost.
 
 ### 3.3 Slot outcome
@@ -112,7 +112,7 @@ There is no homework rate: `SessionContent.homework` is required and teachers wr
 > The **previous period** of a range is the same number of **teaching days** (3.1, for the same branch / grade) immediately before it.
 
 * "This week" with a holiday in it is compared with as many real school days before it, not with seven calendar days.
-* When the academic year started too recently to have that many teaching days before the range, the previous period is **incomplete**: the director dashboard shows «داده‌ی دوره‌ی قبل کافی نیست» instead of an arrow. A range starting on the first day of the year has no previous period at all.
+* When the academic year started too recently to have that many teaching days before the range, the previous period is **incomplete** (the Phase 1 director dashboard showed «داده‌ی دوره‌ی قبل کافی نیست» instead of an arrow; no page compares periods since ADR-023). A range starting on the first day of the year has no previous period at all.
 * Rates are compared in percentage points (the rounded current minus the rounded previous rate).
 
 ### 3.6 Date presets (`periods.period_range`)
@@ -121,9 +121,11 @@ There is no homework rate: `SessionContent.homework` is required and teachers wr
 | --- | --- |
 | `today` | today |
 | `week` | Saturday of this week .. today |
-| `month` | the 1st of this **Jalali** month .. today (the director panel's default) |
+| `month` | the 1st of this **Jalali** month .. today (the director attendance page's default) |
 | `year` | the start of the academic year .. today |
 | `custom` | the typed Jalali dates |
+
+The director panel offers only `today`, `week` and `month`, clamped to daily attendance (`docs/apps/director.md` §3.1).
 
 ---
 
@@ -142,7 +144,7 @@ One pass, a fixed number of queries whatever the data size:
 
 Each session row gets a `role`: it `fills` an expected slot, is a `conflict`, is `pending` (today's slot not over yet), or `""` (fills no slot). `metrics.Breakdown.add_session` reads that role to classify compensatory and outside-timetable sessions.
 
-`metrics.breakdowns(result, key, start=None, end=None, where=None)` groups the result by `key(class_subject, day)`: `by_school`, `by_branch`, `by_grade`, `by_class`, `by_class_subject`, `by_teacher`, `by_day`, or any function (the director's same-subject matrix uses `(subject, class)`). `start` / `end` narrow it to a window — one engine run over the union of the windows a page needs (current range, previous period, alert window) serves all of them.
+`metrics.breakdowns(result, key, start=None, end=None, where=None)` groups the result by `key(class_subject, day)`: `by_school`, `by_branch`, `by_grade`, `by_class`, `by_class_subject`, `by_teacher`, `by_day`, or any function (the Phase 1 director's same-subject matrix used `(subject, class)`). `start` / `end` narrow it to a window — one engine run over the union of the windows a page needs (current range, previous period, alert window) serves all of them.
 
 ---
 
@@ -150,16 +152,17 @@ Each session row gets a `role`: it `fills` an expected slot, is a `conflict`, is
 
 | Caller | What |
 | --- | --- |
-| Director panel | every KPI, table, alert and the attendance trend |
+| Director panel | `periods.period_range` (its presets), `definitions.rate` (a class's absence share) and `definitions.slot_deadline` (through `attendance.services.class_day_statuses`): daily attendance only, no engine run (ADR-023) |
 | Supervisor training sessions | «پیشرفت نسبت به برنامه» = execution rate per class subject, and «n جلسه‌ی جبرانی» = `compensatory` beside it (`attach_coverage`) |
 | Supervisor dashboard | «نرخ حضور دانش‌آموزان» = `attendance.services.attendance_counts(scope.classes())["rate"]` (same formula, both sides of the cutoff) |
 | Supervisor «بدون محتوا» counts, teachers page | `missing_content_q`, `counted_q` |
+| `attendance.services.class_day_statuses` | `slot_deadline`: today's class-day is due once its first open bell has ended plus the grace, the moment the engine starts expecting it (tested against the engine) |
 
 ---
 
 ## 6. Performance
 
-Measured on PostgreSQL with a synthetic full year (42 classes, 48k slots, 44k sessions, 1M attendance records): `engine.compute` over the whole year takes about 1.5 s (slots 0.6 s, sessions + tallies 0.4 s, the per-slot pass the rest); see `docs/apps/director.md` §8 for the pages and the proposal to precompute past days.
+Measured on PostgreSQL with a synthetic full year (42 classes, 48k slots, 44k sessions, 1M attendance records): `engine.compute` over the whole year takes about 1.5 s (slots 0.6 s, sessions + tallies 0.4 s, the per-slot pass the rest); the Phase 1 director pages were measured on it (`docs/plans/director-dashboard-phase1.md`); §8 records why no precomputed table is built for now.
 
 ---
 
@@ -169,15 +172,20 @@ Measured on PostgreSQL with a synthetic full year (42 classes, 48k slots, 44k se
 
 ---
 
-## 8. Follow-up: daily summary table (required before Dey 1405)
+## 8. Follow-up: daily summary table (on hold, built only if a measurement asks for it)
 
-**Status:** decided, not built. Phase 1 computes everything on the fly; the year-wide whole-school views are acceptable today (Mehr) but grow linearly with the days elapsed. The director pages open on "this Jalali month" to keep the default view fast; "since the start of the year" remains a preset.
+**Status (October 2026, ADR-023): not needed for now; the 1 Dey 1405 deadline is dropped.** The table was decided in Phase 1 for the director's **year-wide** views (dashboard, execution and attendance "since the start of the year", 1.3–2.7 s at the end of the year, §8.1). Those views no longer exist:
 
-**Deadline:** in production before **1 Dey 1405 (22 December 2026)**, when the year-wide dashboard passes one second on a school of the measured size.
+* the director's home page reads **today** and **this month**; its attendance page **at most a month**; both read daily sheets through `attendance.services` with a fixed, small number of grouped queries and **no engine run** (one grouped query over at most about 900 sheets for a school of the measured size);
+* the only remaining engine caller is the supervisor's training sessions page («پیشرفت»), over **one supporter's classes** (one branch and grade): measured at 0.28 s for a whole year on the synthetic data (one branch + grade).
+
+**Trigger instead of a deadline.** In **mid-Bahman 1405** (early February 2027), measure on the **production server**: the supervisor's training sessions page with "since the start of the year", and the director's attendance page with "this month" (whole school). **Build the table only if a page passes 1 second.** It is also needed when program execution returns to the director panel with year-wide views (after بودجه‌بندی, ADR-023): re-measure then.
+
+The design below stays the specification for when it is built.
 
 ### 8.1 Why: measured cost of the live engine
 
-Synthetic full year on PostgreSQL (42 classes, 504 class subjects, 47,880 expected slots, 43,924 sessions, 1,038,480 attendance records; median of 5 full requests, view + template; details in `docs/apps/director.md` §8). Whole school, range = since the start of the academic year:
+Synthetic full year on PostgreSQL (42 classes, 504 class subjects, 47,880 expected slots, 43,924 sessions, 1,038,480 attendance records; median of 5 full requests, view + template; details in `docs/plans/director-dashboard-phase1.md`). Whole school, range = since the start of the academic year:
 
 | As of | Dashboard | Execution | Attendance |
 | --- | --- | --- | --- |

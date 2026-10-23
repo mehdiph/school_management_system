@@ -44,6 +44,7 @@ from scheduling.utils import (
 from staff.models.teacher_assignment import TeacherAssignment
 from staff.models.teacher_profile import TeacherProfile
 from student.models.student_enrollment import StudentEnrollment
+from supervisor.models.supervisor_class import SupervisorClass
 from teaching.models.school_session import SchoolSession
 
 
@@ -144,6 +145,30 @@ class SupervisorScope:
             assignments__class_subjects__in=self.class_subjects(),
             assignments__class_subjects__is_active=True,
         ).distinct()
+
+
+def class_supervisors(class_ids):
+    """
+    ``{class id: [SupervisorProfile, ...]}``: who supervises each class,
+    by the rule of :meth:`SupervisorScope.classes` (assigned to the class,
+    of its branch and of its grade), active users only, by name. A class
+    without one is missing from the result. One query.
+    """
+
+    assignments = (
+        SupervisorClass.objects.filter(
+            school_class_id__in=class_ids,
+            supervisor__branch=F("school_class__branch"),
+            supervisor__grade=F("school_class__grade"),
+            supervisor__user__is_active=True,
+        )
+        .select_related("supervisor__user")
+        .order_by("supervisor__user__last_name", "supervisor__user__first_name", "supervisor_id")
+    )
+    supervisors = defaultdict(list)
+    for assignment in assignments:
+        supervisors[assignment.school_class_id].append(assignment.supervisor)
+    return dict(supervisors)
 
 
 class SupervisorDashboardSelector:

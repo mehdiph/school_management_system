@@ -457,7 +457,7 @@ The supervisor's training-sessions coverage moved onto the engine, and its dashb
 
 * Execution is slot-based: only a session recorded in an expected slot makes it "held" (a JB session in a regular slot included); compensatory sessions elsewhere count as makeup, never as execution. Late counts as attended everywhere.
 * A new metric or grouping is added to `analytics` and tested there; panels only display it.
-* Cost grows with the range: a whole year means every slot and session of the year in memory and one grouped query over its attendance records (measured in `docs/apps/director.md` §8). Decided: a daily summary table per (day, class subject), **written by the engine itself** so the definitions stay single, with a command that recomputes sampled days live and reports mismatches — before Dey 1405 (`docs/apps/analytics.md` §8).
+* Cost grows with the range: a whole year means every slot and session of the year in memory and one grouped query over its attendance records (measured in `docs/apps/director.md` §8). Decided: a daily summary table per (day, class subject), **written by the engine itself** so the definitions stay single, with a command that recomputes sampled days live and reports mismatches — before Dey 1405 (`docs/apps/analytics.md` §8). *(October 2026, ADR-023: the director no longer has year-wide views, so the deadline is dropped; the table is built only if a page passes one second when measured in mid-Bahman 1405.)*
 
 ---
 
@@ -522,7 +522,34 @@ The per-session attendance (`Attendance`) is renamed `SessionAttendance` and **a
 * Over a range that spans the cutoff, counts add missed sessions (before) and missed days (after); they are never converted.
 * «غیبت موجه» exists only in daily attendance and is an absence in every rate.
 * "Attendance recorded" means class-days with a sheet from the cutoff on; the director's list of missing attendance only lists class-days (archived gaps cannot be completed).
-* The planned daily summary table (ADR-019) needs a per (day, class) part for daily attendance.
+* The planned daily summary table (ADR-019) needs a per (day, class) part for daily attendance, if it is built (ADR-023).
+
+---
+
+# ADR-023: The Director Panel Shows Daily Attendance at a Glance; Execution Waits for بودجه‌بندی
+
+## Decision
+
+The director panel (October 2026) is reduced to **daily attendance**, presented for a reader who is not data-literate: plain Persian sentences with names («امروز ۲۳ دانش‌آموز غایب هستند (۵ نفر موجه)»), the classes that have not taken attendance with their supporter, today's absent students, students absent on several days, and a daily chart and class table for a period (today / this week / this month) and a branch. Percentages are secondary text only; there are no previous-period comparisons, deltas or technical terms; status colours are only green / yellow / red, always with words.
+
+**Program execution is removed** from the panel (the execution page, execution / content rates, the per-teacher view, the same-subject comparison, conflicts, makeup) **until curriculum budgeting («بودجه‌بندی») exists**; `/director/execution/` redirects (302) to the home page. It will return on the existing `analytics` engine.
+
+The panel computes no metric: everything comes from `attendance.services` (`class_day_statuses`, `student_tallies`, `get_absences`, …) and `supervisor.selectors.class_supervisors`, the functions the supporter's daily attendance page is built on. A class is due to take attendance on a day when its timetable has an open lesson (`planned_class_days`); today it is reported missing only once its first open bell has ended plus the engine's 15-minute grace (`analytics.definitions.slot_deadline`, now the one deadline rule the engine also uses).
+
+## Rationale
+
+* The Phase 1 panel (KPI cards, rates, drill-downs, alerts) answered questions a statistician would ask; the directors want to know who is absent today and whether every class has been checked.
+* Execution compared classes with each other and with the timetable; without a plan of what should have been taught by when, a director cannot tell a good number from a bad one. بودجه‌بندی gives that baseline.
+* Daily attendance, taken at 8:30 by the supporter (ADR-022), is the one figure that is fresh every morning and means the same to everyone.
+* Reusing the supporter's functions keeps ADR-019's promise: the director and the supporter see the same classes as missing once the grace is over (tested), and the same absences.
+
+## Consequences
+
+* The pages read today and at most one month of daily sheets: a fixed, small number of queries and no year-long engine run. The daily summary table planned in ADR-019 is no longer needed for the director; its deadline (1 Dey 1405) is dropped in favour of a measurement in mid-Bahman 1405 (`docs/apps/analytics.md` §8).
+* Archived per-session attendance is not shown on the director panel: every range starts at `ATTENDANCE_DAILY_START_DATE` at the earliest.
+* For the first minutes of each school day, a supporter sees a class «ثبت نشده» while the director sees «هنوز وقت دارد»: the supporter acts at 8:30, the director is told only what is late.
+* The label thresholds (`DIRECTOR_FREQUENT_ABSENCE_DAYS`, `DIRECTOR_CLASS_ABSENCE_YELLOW` / `_RED`) are school policy in settings, to be reviewed after the first month of real data.
+* `analytics.periods.previous_period`, `preceding_teaching_days` and the per-teacher grouping keep their tests but have no page caller until execution returns.
 
 ---
 
@@ -537,6 +564,7 @@ Planned modules:
 * Financial Management
 * School Analytics
 * Curriculum Plan (بودجه‌بندی): planned lessons per subject, grade and year, so supervisors can compare recorded sessions with the plan automatically (proposal in `docs/apps/supervisor.md`)
+* Program execution on the director panel, back after بودجه‌بندی and built on the existing `analytics` engine (ADR-023, `docs/apps/director.md` §8)
 
 Future development should follow the same principles:
 
