@@ -82,6 +82,31 @@
     </div>
   </article>
 
+  {% if daily_attendance.is_daily %}
+  <article class="stat-card stat-card--wide{% if daily_attendance.missing %} stat-card--alert{% endif %}">
+    <div class="stat-card__icon {% if daily_attendance.missing %}stat-card__icon--danger{% else %}stat-card__icon--success{% endif %}">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9.5h18"></path><path d="M8 3v3M16 3v3"></path><path d="m9 15 2 2 4-4"></path></svg>
+    </div>
+    <div class="stat-card__body">
+      <span class="stat-card__title">حضور و غیاب امروز</span>
+      {% if daily_attendance.due %}
+      <span class="stat-card__value">{{ daily_attendance.recorded|to_persian }} از {{ daily_attendance.due|to_persian }}</span>
+      <span class="stat-card__desc">
+        {% if daily_attendance.missing %}
+          ثبت نشده:
+          {% for row in daily_attendance.missing %}کلاس {{ row.school_class.section }}{% if not forloop.last %}، {% endif %}{% endfor %}
+        {% else %}
+          حضور و غیاب همه‌ی کلاس‌ها ثبت شده است
+        {% endif %}
+      </span>
+      {% else %}
+      <span class="stat-card__desc">امروز هیچ کلاسی طبق برنامه‌ی هفتگی کلاس ندارد</span>
+      {% endif %}
+      <a href="{% url 'supervisor:attendance' %}" class="link-action">ثبت و پیگیری</a>
+    </div>
+  </article>
+  {% endif %}
+
 </section>
 
 <!-- Needs attention -->

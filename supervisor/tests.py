@@ -19,7 +19,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from attendance.models.attendance import Attendance
+from attendance.models import SessionAttendance
 from school.models import AcademicYear, Branch, ClassSubject, Grade, SchoolClass, Subject
 from scheduling.models.bell import Bell
 from scheduling.models.class_schedule import ClassSchedule
@@ -173,8 +173,8 @@ def make_session(class_subject, session_date, status=SchoolSession.Status.HELD):
     )
 
 
-def make_attendance(session, enrollment, status=Attendance.AttendanceStatus.PRESENT):
-    return Attendance.objects.create(
+def make_attendance(session, enrollment, status=SessionAttendance.AttendanceStatus.PRESENT):
+    return SessionAttendance.objects.create(
         session=session,
         student_enrollment=enrollment,
         status=status,
@@ -443,8 +443,8 @@ class SupervisorDashboardSelectorAttendanceTests(TestCase):
         enrollment_1 = make_enrollment(student_1, school_class)
         enrollment_2 = make_enrollment(student_2, school_class)
 
-        make_attendance(session, enrollment_1, Attendance.AttendanceStatus.PRESENT)
-        make_attendance(session, enrollment_2, Attendance.AttendanceStatus.ABSENT)
+        make_attendance(session, enrollment_1, SessionAttendance.AttendanceStatus.PRESENT)
+        make_attendance(session, enrollment_2, SessionAttendance.AttendanceStatus.ABSENT)
 
         # Data completely outside this supervisor's scope.
         other_supervisor = make_supervisor(make_branch(), make_grade())
@@ -457,7 +457,7 @@ class SupervisorDashboardSelectorAttendanceTests(TestCase):
         other_session = make_session(other_class_subject, jdatetime.date(1402, 7, 1))
         other_student = make_student()
         other_enrollment = make_enrollment(other_student, other_class)
-        make_attendance(other_session, other_enrollment, Attendance.AttendanceStatus.LATE)
+        make_attendance(other_session, other_enrollment, SessionAttendance.AttendanceStatus.LATE)
 
         stats = SupervisorDashboardSelector(supervisor).attendance_statistics()
 
@@ -490,12 +490,12 @@ class SupervisorDashboardSelectorAttendanceTests(TestCase):
             class_subject, jdatetime.date(1402, 7, 3), status=SchoolSession.Status.CANCELED
         )
         enrollments = [make_enrollment(make_student(), school_class) for _ in range(2)]
-        make_attendance(held, enrollments[0], Attendance.AttendanceStatus.PRESENT)
-        make_attendance(held, enrollments[1], Attendance.AttendanceStatus.LATE)
-        make_attendance(compensatory, enrollments[0], Attendance.AttendanceStatus.ABSENT)
-        make_attendance(compensatory, enrollments[1], Attendance.AttendanceStatus.LATE)
+        make_attendance(held, enrollments[0], SessionAttendance.AttendanceStatus.PRESENT)
+        make_attendance(held, enrollments[1], SessionAttendance.AttendanceStatus.LATE)
+        make_attendance(compensatory, enrollments[0], SessionAttendance.AttendanceStatus.ABSENT)
+        make_attendance(compensatory, enrollments[1], SessionAttendance.AttendanceStatus.LATE)
         # A record on a cancelled session is not part of any rate.
-        make_attendance(cancelled, enrollments[0], Attendance.AttendanceStatus.ABSENT)
+        make_attendance(cancelled, enrollments[0], SessionAttendance.AttendanceStatus.ABSENT)
 
         stats = SupervisorDashboardSelector(supervisor).attendance_statistics()
 
@@ -823,14 +823,17 @@ class SupervisorAttentionListViewTests(TestCase):
 
 class SupervisorAttendanceViewTests(TestCase):
     """
-    Attendance page, backed by ``SupervisorAttendanceSelector`` and real
-    data end to end. Covers: access control, branch/scope isolation
-    (items 1-3), summary counts (items 4-6), the phone-number
-    visibility rule (items 7-9), the "no attendance yet" empty state
-    (item 10), a tampered/foreign class_id not leaking another class's
-    data (item 11), and that status/search are echoed for the
-    toolbar's initial state without filtering the queryset (item 12 --
-    the actual filtering is client-side, see attendance.js).
+    Attendance page on a day **before** the daily-attendance cutoff
+    (``?date=1402/07/10``), where it shows the archived per-session
+    records, backed by ``SupervisorAttendanceSelector`` and real data end
+    to end. Covers: access control, branch/scope isolation (items 1-3),
+    summary counts (items 4-6), the follow-up list only listing students
+    who were not present (items 7-9), the "nothing to follow up" empty
+    state (item 10), a tampered/foreign class_id not leaking another
+    class's data (item 11), and that status/search are echoed for the
+    toolbar's initial state without filtering the list (item 12 -- the
+    actual filtering is client-side, see attendance.js). The daily side
+    is in ``supervisor/test_daily_attendance.py``.
     """
 
     def setUp(self):
@@ -840,6 +843,7 @@ class SupervisorAttendanceViewTests(TestCase):
         self.year = make_academic_year(jdatetime.date(1402, 1, 1))
         self.supervisor = make_supervisor(self.branch, self.grade)
         self.url = reverse("supervisor:attendance")
+        self.day = "1402/07/10"
 
         self.class_a = make_school_class(self.branch, self.grade, self.year)
         assign_class(self.supervisor, self.class_a)
@@ -858,9 +862,9 @@ class SupervisorAttendanceViewTests(TestCase):
         enrollment_absent = make_enrollment(self.student_absent, self.class_a)
         enrollment_late = make_enrollment(self.student_late, self.class_a)
 
-        make_attendance(self.session, enrollment_present, Attendance.AttendanceStatus.PRESENT)
-        make_attendance(self.session, enrollment_absent, Attendance.AttendanceStatus.ABSENT)
-        make_attendance(self.session, enrollment_late, Attendance.AttendanceStatus.LATE)
+        make_attendance(self.session, enrollment_present, SessionAttendance.AttendanceStatus.PRESENT)
+        make_attendance(self.session, enrollment_absent, SessionAttendance.AttendanceStatus.ABSENT)
+        make_attendance(self.session, enrollment_late, SessionAttendance.AttendanceStatus.LATE)
 
     # ------------------------------------------------------------------
     # Access control
@@ -890,7 +894,7 @@ class SupervisorAttendanceViewTests(TestCase):
     def test_supervisor_sees_own_assigned_class(self):
         self.client.force_login(self.supervisor.user)
 
-        response = self.client.get(self.url, {"class": self.class_a.id})
+        response = self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "supervisor/attendance.html")
@@ -905,7 +909,7 @@ class SupervisorAttendanceViewTests(TestCase):
         unassigned_class = make_school_class(self.branch, self.grade, self.year)
 
         self.client.force_login(self.supervisor.user)
-        response = self.client.get(self.url, {"class": unassigned_class.id})
+        response = self.client.get(self.url, {"class": unassigned_class.id, "date": self.day})
 
         # Falls back to the one class actually in scope instead of the
         # requested (unauthorized) one.
@@ -922,7 +926,7 @@ class SupervisorAttendanceViewTests(TestCase):
         assign_class(other_supervisor, other_class)
 
         self.client.force_login(self.supervisor.user)
-        response = self.client.get(self.url, {"class": other_class.id})
+        response = self.client.get(self.url, {"class": other_class.id, "date": self.day})
 
         self.assertEqual(response.context["selected_class"], self.class_a)
         self.assertNotIn(other_class, response.context["classes"])
@@ -934,7 +938,7 @@ class SupervisorAttendanceViewTests(TestCase):
     def test_summary_counts_are_correct(self):
         self.client.force_login(self.supervisor.user)
 
-        response = self.client.get(self.url, {"class": self.class_a.id})
+        response = self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         summary = response.context["summary"]
         self.assertEqual(summary["total"], 3)
@@ -949,14 +953,14 @@ class SupervisorAttendanceViewTests(TestCase):
     def test_phone_number_shown_for_absent_student(self):
         self.client.force_login(self.supervisor.user)
 
-        response = self.client.get(self.url, {"class": self.class_a.id})
+        response = self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         self.assertContains(response, self.student_absent.user.phone_number)
 
     def test_phone_number_shown_for_late_student(self):
         self.client.force_login(self.supervisor.user)
 
-        response = self.client.get(self.url, {"class": self.class_a.id})
+        response = self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         self.assertContains(response, self.student_late.user.phone_number)
 
@@ -968,7 +972,7 @@ class SupervisorAttendanceViewTests(TestCase):
         self.student_present.user.save(update_fields=["phone_number"])
 
         self.client.force_login(self.supervisor.user)
-        response = self.client.get(self.url, {"class": self.class_a.id})
+        response = self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         self.assertNotContains(response, "09999999999")
 
@@ -981,10 +985,10 @@ class SupervisorAttendanceViewTests(TestCase):
         assign_class(self.supervisor, empty_class)
 
         self.client.force_login(self.supervisor.user)
-        response = self.client.get(self.url, {"class": empty_class.id})
+        response = self.client.get(self.url, {"class": empty_class.id, "date": self.day})
 
-        self.assertEqual(list(response.context["attendance_rows"]), [])
-        self.assertContains(response, "هنوز حضور و غیابی ثبت نشده است")
+        self.assertEqual(response.context["absences"], [])
+        self.assertContains(response, "غیبت یا تأخیری برای این کلاس در این روز ثبت نشده است")
         self.assertEqual(response.context["summary"]["total"], 0)
 
     # ------------------------------------------------------------------
@@ -995,7 +999,7 @@ class SupervisorAttendanceViewTests(TestCase):
     def test_nonexistent_class_id_falls_back_safely(self):
         self.client.force_login(self.supervisor.user)
 
-        response = self.client.get(self.url, {"class": 999999})
+        response = self.client.get(self.url, {"class": 999999, "date": self.day})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selected_class"], self.class_a)
@@ -1003,7 +1007,7 @@ class SupervisorAttendanceViewTests(TestCase):
     def test_non_numeric_class_id_falls_back_safely(self):
         self.client.force_login(self.supervisor.user)
 
-        response = self.client.get(self.url, {"class": "not-a-number"})
+        response = self.client.get(self.url, {"class": "not-a-number", "date": self.day})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["selected_class"], self.class_a)
@@ -1018,36 +1022,40 @@ class SupervisorAttendanceViewTests(TestCase):
 
         response = self.client.get(
             self.url,
-            {"class": self.class_a.id, "status": "absent", "search": "زهرا"},
+            {"class": self.class_a.id, "date": self.day, "status": "absent", "search": "زهرا"},
         )
 
         self.assertEqual(response.context["current_status"], "absent")
         self.assertEqual(response.context["search_query"], "زهرا")
-        # All three rows are still in the context -- filtering happens
-        # client-side, not in the queryset.
-        self.assertEqual(len(response.context["attendance_rows"]), 3)
+        # Both students to follow up (absent and late) are still in the
+        # context -- filtering happens client-side, not in the queryset.
+        self.assertEqual(len(response.context["absences"]), 2)
 
     # ------------------------------------------------------------------
-    # "Latest session" business rule: a class can have more than one
-    # class_subject (subject/teacher); the session shown is whichever
-    # is most recently registered, not necessarily the first one.
+    # An archive day lists every session of the class that day (a class
+    # has several class subjects); another day's records are not there.
     # ------------------------------------------------------------------
 
-    def test_shows_attendance_for_the_most_recently_registered_session(self):
+    def test_archive_day_lists_every_session_of_that_day_only(self):
         _, other_assignment = make_teacher(self.branch, self.year)
         other_class_subject = make_class_subject(
             self.class_a, make_subject(), other_assignment, WIDE_START, WIDE_END
         )
-        newer_session = make_session(other_class_subject, jdatetime.date(1402, 8, 1))
-        newer_student = make_student()
-        newer_enrollment = make_enrollment(newer_student, self.class_a)
-        make_attendance(newer_session, newer_enrollment, Attendance.AttendanceStatus.PRESENT)
+        same_day = make_session(other_class_subject, jdatetime.date(1402, 7, 10))
+        other_day = make_session(other_class_subject, jdatetime.date(1402, 8, 1))
+        student = make_student()
+        enrollment = make_enrollment(student, self.class_a)
+        make_attendance(same_day, enrollment, SessionAttendance.AttendanceStatus.ABSENT)
+        make_attendance(other_day, enrollment, SessionAttendance.AttendanceStatus.ABSENT)
 
         self.client.force_login(self.supervisor.user)
-        response = self.client.get(self.url, {"class": self.class_a.id})
+        response = self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
-        self.assertEqual(response.context["session"], newer_session)
-        self.assertEqual(response.context["summary"]["total"], 1)
+        self.assertFalse(response.context["is_daily"])
+        sessions = {row.session for row in response.context["absences"]}
+        self.assertEqual(sessions, {self.session, same_day})
+        self.assertEqual(response.context["summary"]["total"], 4)
+        self.assertContains(response, "حضور و غیاب روزانه از")
 
     # ------------------------------------------------------------------
     # Performance: no N+1. Query count must stay flat as the roster
@@ -1063,18 +1071,18 @@ class SupervisorAttendanceViewTests(TestCase):
         # session write) and takes a slightly different query path once
         # that cache exists -- neither is related to this page or its
         # roster size, so warm it up before measuring.
-        self.client.get(self.url, {"class": self.class_a.id})
+        self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         with CaptureQueriesContext(connection) as small_roster:
-            self.client.get(self.url, {"class": self.class_a.id})
+            self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         for _ in range(15):
             student = make_student()
             enrollment = make_enrollment(student, self.class_a)
-            make_attendance(self.session, enrollment, Attendance.AttendanceStatus.PRESENT)
+            make_attendance(self.session, enrollment, SessionAttendance.AttendanceStatus.PRESENT)
 
         with CaptureQueriesContext(connection) as large_roster:
-            self.client.get(self.url, {"class": self.class_a.id})
+            self.client.get(self.url, {"class": self.class_a.id, "date": self.day})
 
         self.assertEqual(
             len(small_roster.captured_queries),

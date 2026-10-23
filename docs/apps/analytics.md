@@ -18,7 +18,8 @@ Lower-level rules it relies on, owned elsewhere:
 
 * `SchoolSession.objects.counted()`: a session counts unless it is a holiday (`HL`) — ADR-017.
 * `academic_calendar.services.get_slots`, `Closures`, `match_sessions` — `docs/apps/academic_calendar.md`.
-* `AttendanceQuerySet.delivered()` / `.status_counts()` (`core/querysets/teaching.py`) use `analytics.definitions`, so a plain queryset count and the engine agree (tested).
+* `AttendanceQuerySet.delivered()` / `.status_counts()` and `DailyAttendanceQuerySet.status_counts()` (`core/querysets/teaching.py`) use `analytics.definitions`, so a plain queryset count and the engine agree (tested).
+* `attendance.services`: **which attendance a date has** — the teacher's per-session archive before `ATTENDANCE_DAILY_START_DATE`, the supporter's daily sheets from it on (`docs/apps/attendance.md`). The engine reads attendance only through it.
 
 ---
 
@@ -88,9 +89,21 @@ A non-holiday session in a **closed** slot is a **conflict**: the slot is not ex
 | `conflicts` | non-holiday sessions in closed slots |
 | `delivered` | `HD` + `JB` sessions in the range, whatever slot they are in |
 | **content rate** | delivered sessions **with a `SessionContent` row** / delivered. The same "has content" rule as the supervisor's «بدون محتوا» (a missing row on a `CD` or `HL` session is expected and never counted) |
-| **attendance recorded rate** | delivered sessions with at least one attendance record / delivered |
-| **attendance rate** | `(records − absent) / records`, over the records of **delivered** sessions: present **and late** count as attended |
+| `attendance_expected` | delivered sessions **before** the attendance cutoff + **expected class-days** from it on (3.4.1) |
+| `with_attendance` | of those, sessions with at least one record + class-days with a daily sheet |
+| **attendance recorded rate** | `with_attendance / attendance_expected` |
+| `absences` | absent + excused («غیبت موجه», daily only) records |
+| **attendance rate** | `(records − absences) / records`: present **and late** count as attended. Records are those of **delivered** sessions before the cutoff and of daily sheets from it on |
 | late rate | `late / records` (reported separately; late is still attended) |
+
+#### 3.4.1 Attendance across the cutoff
+
+From `ATTENDANCE_DAILY_START_DATE` (1 Aban 1405) attendance is one sheet per **class and day**, not per session:
+
+* An **expected class-day** is a (class, day) on/after the cutoff on which the class has at least one expected slot (3.2): open, and for today over plus the grace. Closed days, days without lessons, Thursdays and Fridays are never expected. A sheet taken on a day that is not (yet) expected — today's, taken at 8:30 — still counts its records.
+* A delivered session on/after the cutoff has no attendance of its own and is not part of `attendance_expected`; a per-session record dated on/after the cutoff is ignored.
+* Daily records belong to a class: only the **class-level groupings** (`by_school`, `by_branch`, `by_grade`, `by_class`, `by_day`, marked `per_class`) include them. Groupings by class subject or teacher hold the archived per-session attendance only. A `where` filter receives a `metrics.ClassUnit` (the class, no subject) for a class-day, so it must only read `cs.school_class` / `cs.school_class_id`, as every caller's does.
+* Over a range that spans the cutoff, the counts add sessions before it and days after it (an absence is one missed session before, one missed day after); nothing is converted.
 
 There is no homework rate: `SessionContent.homework` is required and teachers write «ندارد» when there is none, so a filled field says nothing.
 
@@ -122,7 +135,8 @@ One pass, a fixed number of queries whatever the data size:
 2. the expected slots (`get_slots`, 1 query);
 3. the active events (`Closures`, 1 query + 3 prefetches when there are events; skipped when the caller passes them in);
 4. every session of the scope in the range as plain rows, with `has_content` (an `EXISTS` subquery) and the date cast to a plain `DATE` (a `jDateField` value would become a `jdatetime` object, whose constructor queries the locale) (1 query);
-5. unless `with_attendance=False`, the attendance tallies per session (`total`, `absent`, `late`): a separate grouped aggregate over the records, about twice as fast as joining them to the sessions (1 query).
+5. unless `with_attendance=False`, the archived attendance tallies per session (`total`, `absent`, `late`) for the part of the range **before** the cutoff (`attendance.services.session_tallies`): a separate grouped aggregate over the records, about twice as fast as joining them to the sessions (1 query; none when the range is all after the cutoff);
+6. unless `with_attendance=False`, the daily sheets' tallies per class and day for the part of the range **from** the cutoff on (`attendance.services.class_day_tallies`), merged with the expected class-days into `result.class_days` (`ClassDayRow`: class, day, `expected`, `has_sheet`, `total`, `absent`, `late`, `excused`) (1 query; none before the cutoff).
 
 `get_slots` and `load_class_subjects` defer the Jalali date/time fields of the joined rows that nobody reads (`academic_calendar.services.UNUSED_JALALI_FIELDS`) for the same reason.
 
@@ -138,7 +152,7 @@ Each session row gets a `role`: it `fills` an expected slot, is a `conflict`, is
 | --- | --- |
 | Director panel | every KPI, table, alert and the attendance trend |
 | Supervisor training sessions | «پیشرفت نسبت به برنامه» = execution rate per class subject, and «n جلسه‌ی جبرانی» = `compensatory` beside it (`attach_coverage`) |
-| Supervisor dashboard | «نرخ حضور دانش‌آموزان» = `Attendance...delivered().status_counts()["rate"]` (same formula) |
+| Supervisor dashboard | «نرخ حضور دانش‌آموزان» = `attendance.services.attendance_counts(scope.classes())["rate"]` (same formula, both sides of the cutoff) |
 | Supervisor «بدون محتوا» counts, teachers page | `missing_content_q`, `counted_q` |
 
 ---
@@ -151,7 +165,7 @@ Measured on PostgreSQL with a synthetic full year (42 classes, 48k slots, 44k se
 
 ## 7. Tests
 
-`analytics/tests.py` pins every definition: two bells are two slots, held / cancelled / unregistered, the legacy count fallback (one and two bell-less sessions), Thursday never expected, future dates and today's not-yet-ended slots excluded, closed slots and holiday rows, a branch-only closure, a partial (bell) closure, conflicts, a holiday row left on a reopened slot, compensatory sessions outside and inside expected slots, makeup coverage, outside-timetable sessions, content / attendance rates (late attended, cancelled sessions excluded), the queryset and the engine agreeing, groupings and windows, teaching days per branch, the previous period (complete, pushed back by a closure, incomplete) and the presets.
+`analytics/tests.py` pins every definition: two bells are two slots, held / cancelled / unregistered, the legacy count fallback (one and two bell-less sessions), Thursday never expected, future dates and today's not-yet-ended slots excluded, closed slots and holiday rows, a branch-only closure, a partial (bell) closure, conflicts, a holiday row left on a reopened slot, compensatory sessions outside and inside expected slots, makeup coverage, outside-timetable sessions, content / attendance rates (late attended, cancelled sessions excluded), the queryset and the engine agreeing, attendance across the cutoff (`DailyAttendanceTests`: archive before, daily sheets after, excused as an absence, expected class-days, class-level groupings only, today's sheet before its day is expected, a moved cutoff), groupings and windows, teaching days per branch, the previous period (complete, pushed back by a closure, incomplete) and the presets.
 
 ---
 
@@ -176,9 +190,10 @@ Narrow views stay fast all year (end of year: one branch + grade 0.28 s, one mon
 
 ### 8.2 What to build
 
-* A table with one row per **(day, class subject)** for past days, holding exactly the counts of a `Breakdown` (expected, held, cancelled, unregistered, lost to closures, compensatory, outside the timetable, conflicts, delivered, with content, with attendance, records, absent, late).
+* A table with one row per **(day, class subject)** for past days, holding exactly the counts of a `Breakdown` (expected, held, cancelled, unregistered, lost to closures, compensatory, outside the timetable, conflicts, delivered, with content; and, **before the attendance cutoff only**, attendance expected, with attendance, records, absent, late).
+* **Daily attendance** (from 1 Aban 1405) belongs to a class, not a class subject: store it in a second table with one row per **(day, class)** — expected class-day, has a sheet, records, absent, late, excused — written by the same engine run from `result.class_days`. `metrics.breakdowns` adds those rows for the class-level keys only, exactly as it does with the live class-days (3.4.1).
 * **Written by `engine.compute` itself** (run per day or per range, grouped `by_class_subject` and by day), so there is still only one definition of every metric. Pages sum the stored rows for past days and compute **only today** live; `metrics.breakdowns` keeps its interface (a `Breakdown` per group), so the director and supervisor pages do not change.
-* Kept fresh by a nightly rebuild **and** by marking (day, class subject) dirty on every write that can change a past day: session create / edit / delete (and the renumbering it triggers), content and attendance saves, the calendar sync (events, imports, deactivation), timetable and class subject changes. Teachers record missed sessions for past days, so a nightly rebuild alone would show stale numbers for up to a day.
+* Kept fresh by a nightly rebuild **and** by marking (day, class subject) — or (day, class) for a daily sheet — dirty on every write that can change a past day: session create / edit / delete (and the renumbering it triggers), content saves, daily attendance sheet saves (including the supporter's later edits and admin corrections), the calendar sync (events, imports, deactivation), timetable and class subject changes. Teachers record missed sessions for past days, so a nightly rebuild alone would show stale numbers for up to a day.
 * Lists that need individual sessions (conflicts, sessions without attendance, top absentees) keep their targeted queries.
 
 ### 8.3 Required: a verification command

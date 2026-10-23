@@ -9,17 +9,22 @@ branches with one class each. ``math`` (branch A) has two bells every
 Sunday, ``physics`` (branch B) one. Unless a test says otherwise,
 metrics are computed as of Wednesday 15 Mehr (7 Oct) at noon, over the
 year so far: the Sundays 5 and 12 Mehr.
+
+Daily attendance starts on 1 Aban 1405, after this fixture: its sessions
+have per-session (archived) attendance. Tests of the cutoff move it to
+Sunday 12 Mehr with ``DAILY_FROM_SUNDAY_2``, so Sunday 5 is archive and
+Sunday 12 daily.
 """
 
 from datetime import date, datetime, time
 
 import jdatetime
 from django.db.models import QuerySet
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from academic_calendar import services as calendar
-from attendance.models import Attendance
+from attendance.models import DailyAttendance, DailyAttendanceSheet, SessionAttendance
 from core.testing import (
     make_academic_year,
     make_assignment,
@@ -34,7 +39,9 @@ from core.testing import (
     make_student,
     make_subject,
     make_teacher_profile,
+    make_user,
 )
+from accounts.models import User
 from scheduling.models import ClassSchedule
 from teaching.models import SchoolSession, SessionContent
 
@@ -55,6 +62,9 @@ def at(day, hour=12, minute=0):
 
 
 AS_OF = at(WEDNESDAY)
+
+#: Daily attendance from Sunday 12 Mehr: Sunday 5 is archive, Sunday 12 daily.
+DAILY_FROM_SUNDAY_2 = override_settings(ATTENDANCE_DAILY_START_DATE=SUNDAY_2.togregorian())
 
 
 class Fixture(TestCase):
@@ -96,6 +106,22 @@ class Fixture(TestCase):
 
     def content(self, session):
         SessionContent.objects.create(session=session, title="t", content="c", homework="ندارد")
+
+    def daily(self, school_class, day, *statuses):
+        """A daily sheet of ``school_class`` on ``day``, one new student per status."""
+
+        sheet = DailyAttendanceSheet.objects.create(
+            school_class=school_class, date=day, taken_by=make_user(User.Roles.SUPERVISOR),
+        )
+        DailyAttendance.objects.bulk_create(
+            DailyAttendance(
+                sheet=sheet,
+                student_enrollment=make_enrollment(make_student(), school_class),
+                status=status,
+            )
+            for status in statuses
+        )
+        return sheet
 
     def closure(self, day, **scope):
         event = make_calendar_event(self.year, day, **scope)
@@ -302,12 +328,12 @@ class ContentAndAttendanceTests(Fixture):
         self.content(cancelled)             # never part of the content rate
 
         students = [make_enrollment(make_student(), self.class_a) for _ in range(3)]
-        statuses = [Attendance.AttendanceStatus.PRESENT, Attendance.AttendanceStatus.LATE,
-                    Attendance.AttendanceStatus.ABSENT]
+        statuses = [SessionAttendance.AttendanceStatus.PRESENT, SessionAttendance.AttendanceStatus.LATE,
+                    SessionAttendance.AttendanceStatus.ABSENT]
         for enrollment, status in zip(students, statuses):
-            Attendance.objects.create(session=held, student_enrollment=enrollment, status=status)
-        Attendance.objects.create(
-            session=cancelled, student_enrollment=students[0], status=Attendance.AttendanceStatus.ABSENT
+            SessionAttendance.objects.create(session=held, student_enrollment=enrollment, status=status)
+        SessionAttendance.objects.create(
+            session=cancelled, student_enrollment=students[0], status=SessionAttendance.AttendanceStatus.ABSENT
         )
 
         breakdown = self.total(where=lambda cs: cs.pk == self.math.pk)
@@ -329,17 +355,103 @@ class ContentAndAttendanceTests(Fixture):
 
     def test_the_queryset_and_the_engine_agree(self):
         session = self.session(self.math, SUNDAY_1, self.bell_1)
-        for status in (Attendance.AttendanceStatus.PRESENT, Attendance.AttendanceStatus.LATE,
-                       Attendance.AttendanceStatus.ABSENT, Attendance.AttendanceStatus.ABSENT):
-            Attendance.objects.create(
+        for status in (SessionAttendance.AttendanceStatus.PRESENT, SessionAttendance.AttendanceStatus.LATE,
+                       SessionAttendance.AttendanceStatus.ABSENT, SessionAttendance.AttendanceStatus.ABSENT):
+            SessionAttendance.objects.create(
                 session=session, student_enrollment=make_enrollment(make_student(), self.class_a),
                 status=status,
             )
 
-        counts = Attendance.objects.delivered().status_counts()
+        counts = SessionAttendance.objects.delivered().status_counts()
 
         self.assertEqual(counts["rate"], definitions.rounded(self.total().attendance_rate))
         self.assertEqual(counts["rate"], 50)
+
+
+@DAILY_FROM_SUNDAY_2
+class DailyAttendanceTests(Fixture):
+    """
+    Across the cutoff (moved to Sunday 12 Mehr): per-session records
+    before it, the supporters' daily sheets from it on -- never both for
+    one day.
+    """
+
+    P, A, L, E = "present", "absent", "late", "excused"
+
+    def setUp(self):
+        archived = self.session(self.math, SUNDAY_1, self.bell_1)
+        for status in (self.P, self.A):
+            SessionAttendance.objects.create(
+                session=archived, student_enrollment=make_enrollment(make_student(), self.class_a),
+                status=status,
+            )
+        # A per-session record after the cutoff (the app no longer writes
+        # them): ignored.
+        after = self.session(self.math, SUNDAY_2, self.bell_1)
+        SessionAttendance.objects.create(
+            session=after, student_enrollment=make_enrollment(make_student(), self.class_a), status=self.A,
+        )
+        self.daily(self.class_a, SUNDAY_2, self.P, self.L, self.A, self.E)
+
+    def test_archive_before_the_cutoff_and_daily_sheets_from_it(self):
+        breakdown = self.total()
+
+        self.assertEqual(breakdown.attendance_total, 2 + 4)
+        self.assertEqual((breakdown.absent, breakdown.excused, breakdown.late), (2, 1, 1))
+        self.assertEqual(breakdown.absences, 3)
+        self.assertEqual(breakdown.attendance_rate, 50)        # excused is an absence
+        # Recorded: the archived session (1 of 1 delivered before the
+        # cutoff) + class A's sheet (1 of the 2 expected class-days of
+        # Sunday 12: class B has none). The session held on Sunday 12
+        # takes no attendance of its own.
+        self.assertEqual((breakdown.with_attendance, breakdown.attendance_expected), (2, 3))
+        self.assertEqual(breakdown.missing_attendance, 1)
+
+    def test_class_days_are_grouped_by_class_level_keys_only(self):
+        result = compute(self.scope())
+        second = SUNDAY_2.togregorian()
+
+        by_class = metrics.breakdowns(result, metrics.by_class)
+        by_day = metrics.breakdowns(result, metrics.by_day)
+        by_class_subject = metrics.breakdowns(result, metrics.by_class_subject)
+        by_teacher = metrics.breakdowns(result, metrics.by_teacher)
+
+        self.assertEqual(by_class[self.class_a.pk].attendance_total, 6)
+        self.assertEqual((by_class[self.class_b.pk].with_attendance,
+                          by_class[self.class_b.pk].attendance_expected), (0, 1))
+        self.assertEqual(by_day[second].attendance_total, 4)
+        # A daily sheet belongs to no subject or teacher: archive only.
+        self.assertEqual(by_class_subject[self.math.pk].attendance_total, 2)
+        self.assertEqual(by_teacher[self.teacher.pk].attendance_total, 2)
+        # The class-level groups still add up to the whole.
+        self.assertEqual(sum(by_class.values(), metrics.Breakdown()), metrics.total(result))
+
+    def test_a_filter_on_the_class_applies_to_class_days(self):
+        breakdown = self.total(where=lambda cs: cs.school_class_id == self.class_b.pk)
+
+        self.assertEqual((breakdown.attendance_total, breakdown.attendance_expected), (0, 1))
+
+    def test_a_sheet_of_today_counts_before_its_day_is_expected(self):
+        # 08:20 on Sunday 12: bell 1 (ends 08:15) is not over plus the
+        # grace yet, so no class-day of today is expected -- but the
+        # sheet taken at 08:00 already counts.
+        breakdown = self.total(self.scope(as_of=at(SUNDAY_2, 8, 20)), start=SUNDAY_2.togregorian())
+
+        self.assertEqual((breakdown.attendance_total, breakdown.attendance_expected), (4, 0))
+
+    def test_without_attendance_there_are_no_class_days(self):
+        result = compute(self.scope(), with_attendance=False)
+
+        self.assertEqual(result.class_days, [])
+        self.assertEqual(metrics.total(result).attendance_total, 0)
+
+    def test_everything_before_the_cutoff_reads_the_archive_only(self):
+        with override_settings(ATTENDANCE_DAILY_START_DATE=date(2026, 10, 23)):
+            breakdown = self.total()
+
+        # Both sessions are archive now; the sheet of Sunday 12 is ignored.
+        self.assertEqual((breakdown.attendance_total, breakdown.absences), (3, 2))
+        self.assertEqual((breakdown.with_attendance, breakdown.attendance_expected), (2, 2))
 
 
 class GroupingTests(Fixture):

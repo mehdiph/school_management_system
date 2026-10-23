@@ -18,6 +18,9 @@ body.attendance-page {
     --at-late: #92400e;
     --at-late-line: #d97706;
     --at-late-bg: #fffbeb;
+    --at-excused: #1e40af;
+    --at-excused-line: #2563eb;
+    --at-excused-bg: #eff6ff;
     --at-unset: #4b5563;
     --at-unset-line: #9ca3af;
 }
@@ -300,6 +303,11 @@ html:has(body.attendance-page) {
     background: #fffdf7;
 }
 
+.at-student[data-status="excused"] {
+    border-inline-start-color: var(--at-excused-line);
+    background: #f8fbff;
+}
+
 .at-student[data-status="unset"] {
     border-inline-start-color: var(--at-unset-line);
 }
@@ -376,6 +384,11 @@ html:has(body.attendance-page) {
     border-color: var(--tp-accent);
     background: var(--tp-tint);
     color: var(--tp-accent);
+}
+
+/* the daily sheet's four statuses: two rows of two on a phone */
+.at-seg.at-seg--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* --------------------------------------------------------------------------
@@ -494,6 +507,18 @@ html:has(body.attendance-page) {
 
 .at-seg__opt--late .at-seg__input:checked + .at-seg__face .at-seg__icon {
     background: var(--at-late);
+    color: #fff;
+}
+
+.at-seg__opt--excused .at-seg__input:checked + .at-seg__face {
+    border-color: var(--at-excused-line);
+    background: var(--at-excused-bg);
+    box-shadow: inset 0 0 0 1px var(--at-excused-line);
+    color: var(--at-excused);
+}
+
+.at-seg__opt--excused .at-seg__input:checked + .at-seg__face .at-seg__icon {
+    background: var(--at-excused-line);
     color: #fff;
 }
 
@@ -656,6 +681,12 @@ html:has(body.attendance-page) {
     border-color: #fde68a;
     background: var(--at-late-bg);
     color: var(--at-late);
+}
+
+.at-count--excused {
+    border-color: #bfdbfe;
+    background: var(--at-excused-bg);
+    color: var(--at-excused);
 }
 
 .at-count--unset {
@@ -890,5 +921,95 @@ html:has(body.attendance-page) {
         animation: none;
         border-top-color: rgba(255, 255, 255, 0.4);
         border-right-color: #fff;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Daily sheet: day picker, "edited by" marker, read-only archive list
+   -------------------------------------------------------------------------- */
+
+.at-day {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.at-day label {
+    color: var(--tp-muted);
+    font-size: 0.875rem;
+}
+
+.at-day input {
+    width: 9.5rem;
+    min-height: 40px;
+    padding: 6px 10px;
+    border: 1px solid var(--tp-line);
+    border-radius: var(--tp-radius);
+    font: inherit;
+    text-align: center;
+}
+
+.at-day__btn {
+    min-height: 40px;
+    padding: 6px 14px;
+    border: 1px solid var(--at-present-line);
+    border-radius: var(--tp-radius);
+    background: var(--at-present-line);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.at-day__btn--soft {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    color: var(--at-present);
+}
+
+.at-student__edited {
+    color: var(--tp-muted);
+    font-size: 0.75rem;
+}
+
+.at-archive-note {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--tp-radius);
+    background: var(--at-excused-bg);
+    color: var(--at-excused);
+    font-size: 0.875rem;
+}
+
+.at-status {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+
+.at-status--present { background: var(--at-present-bg); color: var(--at-present); }
+.at-status--absent { background: var(--at-absent-bg); color: var(--at-absent); }
+.at-status--late { background: var(--at-late-bg); color: var(--at-late); }
+.at-status--excused { background: var(--at-excused-bg); color: var(--at-excused); }
+
+/* keep «غیبت موجه» on one line */
+.at-seg--four .at-seg__face {
+    white-space: nowrap;
+}
+
+@media (min-width: 769px) {
+    .at-student:has(.at-seg--four) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+    }
+
+    .at-seg.at-seg--four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }

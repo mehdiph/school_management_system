@@ -65,11 +65,13 @@ Page-specific parameters: `view` (execution: `breakdown`, `teachers`, `subjects`
 
 ### 3.4 Attendance
 
-* Summary cards: attendance rate, absences, late rate, attendance recorded (delivered sessions with records).
+Attendance is read through `analytics` / `attendance.services`: the teachers' per-session records (archive) for days before 1 Aban 1405 (`ATTENDANCE_DAILY_START_DATE`), the grade supporters' daily sheets from then on (`docs/apps/attendance.md`).
+
+* Summary cards: attendance rate, absences (absent + «غیبت موجه»), late rate, attendance recorded (class-days with a daily sheet of the expected class-days, plus — for days before the cutoff — delivered sessions with records).
 * **Daily attendance rate**: one point per working day of the range. Closure days (no unit of the scope open) are a gray band with the event's title in the tooltip — **never plotted as zero**; days without records are gaps. Chart.js (vendored, ADR-021), RTL (time runs right to left, the axis on the right), Persian digits, crosshair tooltip. The same data is always in a table («جدول روزانه»), open by default and folded once the chart has drawn — so the page works without JavaScript. Fewer than two days with data: no chart, the table only. No data: an empty state.
-* **Comparison** by branch → grade → class → class subject (like the execution breakdown): attendance rate, records, absences, late (and late rate), attendance recorded.
-* **Most absences**: up to 20 students with the most absences in the range (count, then records), with their class, absence rate and lateness. No student detail page in Phase 1.
-* **Sessions without attendance** (`#missing`): delivered sessions of the range older than the grace (§5) with no record at all.
+* **Comparison** by branch → grade → class → class subject (like the execution breakdown): attendance rate, records, absences, late (and late rate), attendance recorded. Daily attendance belongs to a class: the class subject rows of a class drill-down show only the archived per-session attendance (a note says so), while the total row and every higher level include the daily sheets.
+* **Most absences**: up to 20 students with the most absences (absent + excused) in the range (count, then records), with their class, absence rate, excused count and lateness. Before the cutoff an absence is a missed session, after it a missed day; a range across the cutoff adds both. No student detail page in Phase 1.
+* **Days without attendance** (`#missing`, «روزهای بدون حضور و غیاب»): expected class-days of the range, from the cutoff on, older than the grace (§5), without a daily sheet. Archived sessions without attendance are no longer listed: per-session attendance cannot be completed any more.
 
 ---
 
@@ -87,8 +89,8 @@ The definitions live in `docs/apps/analytics.md` §3 (and in code in `analytics`
 | Compensatory | JB sessions that fill no expected slot |
 | Makeup coverage | compensatory ÷ (HL + teacher-cancelled) |
 | Content rate | HD + JB sessions with a `SessionContent` row ÷ HD + JB sessions |
-| Attendance recorded rate | HD + JB sessions with ≥ 1 attendance record ÷ HD + JB sessions |
-| Attendance rate | (records − absent) ÷ records, on HD + JB sessions (late = attended) |
+| Attendance recorded rate | (class-days with a daily sheet + HD/JB sessions before the cutoff with ≥ 1 record) ÷ (expected class-days + HD/JB sessions before the cutoff) |
+| Attendance rate | (records − absent − excused) ÷ records (late = attended); records of daily sheets, and before the cutoff of HD + JB sessions |
 | Previous period | as many teaching days, immediately before the range |
 
 A rate with nothing to divide by is «—».
@@ -104,13 +106,13 @@ Read from settings at request time (`director.selectors.threshold`), with these 
 | `DIRECTOR_ALERT_ATTENDANCE_RATE` | `85` | classes whose attendance rate is **under** this % |
 | `DIRECTOR_ALERT_UNREGISTERED_SLOTS` | `3` | teachers with **at least** this many unregistered slots |
 | `DIRECTOR_ALERT_WINDOW_TEACHING_DAYS` | `7` | the window of both alerts above: the last N teaching days up to today |
-| `DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS` | `1` | sessions without attendance are listed once their date is more than this many days ago |
+| `DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS` | `1` | class-days without a daily sheet are listed once their date is more than this many days ago |
 
 | Alert | Rule | Links to |
 | --- | --- | --- |
 | کلاس‌های با حضور پایین | classes with records in the window and an attendance rate under the threshold, lowest first | the attendance page for that class, over the window |
 | معلمان با جلسات ثبت‌نشده | teachers with ≥ threshold unregistered slots in the window, most first | execution, by teacher, over the window |
-| جلسات بدون حضور و غیاب | HD / JB sessions of the year so far, dated before today − grace days, with no attendance record | the attendance page's list, for the year |
+| روزهای بدون حضور و غیاب | expected class-days of the year so far, from the attendance cutoff on, dated before today − grace days, with no daily sheet (until October 2026: «جلسات بدون حضور و غیاب», HD / JB sessions without a record) | the attendance page's list, for the year |
 | تداخل با تقویم آموزشی | sessions in slots an active event closes (`find_conflicts`, the year so far) | the execution page's conflicts, for the year |
 
 The alerts follow the branch and grade filters, never the date range (each has its own window), so they always say "now".
@@ -141,11 +143,11 @@ Every page runs a **fixed number of queries**, whatever the number of classes, s
 
 | Page | Queries | Of which |
 | --- | --- | --- |
-| Dashboard | 23 | 7 overhead (session, user, branch middleware, footer) + 3 dimensions (year, branches, grades) + 4 the year's events + 4 engine (class subjects, slots, sessions, attendance tallies) + 5 head counts |
+| Dashboard | 23 / 24 | 7 overhead (session, user, branch middleware, footer) + 3 dimensions (year, branches, grades) + 4 the year's events + 4 engine (class subjects, slots, sessions, archived attendance tallies) + 5 head counts; **+1** (the daily sheets' tallies) when the range reaches the attendance cutoff |
 | Execution (any view) | 17 | overhead, dimensions, events, engine without attendance (3) |
-| Attendance | 19 | overhead, dimensions, events, engine (4) + 1 top absentees |
+| Attendance | 19 / 21 | overhead, dimensions, events, engine (4) + 1 top absentees; **+2** (daily sheets' tallies, daily side of the top absentees) when the range spans the cutoff. A range entirely after it skips the archive queries again |
 
-The dashboard runs the engine once over the **year so far**: that one run serves the selected range, the previous period, the alert window, and the year-to-date alerts (its conflicts are exactly `find_conflicts`' and its sessions without attendance need no extra query).
+The dashboard runs the engine once over the **year so far**: that one run serves the selected range, the previous period, the alert window, and the year-to-date alerts (its conflicts are exactly `find_conflicts`' and its days without attendance need no extra query). Both counts are locked in `director/tests.py` (`test_query_counts_do_not_grow_with_data`, and `test_query_counts_across_the_attendance_cutoff`).
 
 ---
 

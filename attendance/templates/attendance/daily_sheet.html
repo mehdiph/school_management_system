@@ -1,17 +1,18 @@
-{% extends panel_base|default:"base.html" %}
-{% load static report_tags session_tags %}
+{% extends "base.html" %}
+{% load static report_tags session_tags jalali_tags %}
 
-{% block title %}ثبت حضور و غیاب - {{ class_subject.subject.name }}{% endblock %}
-{% block page_title %}حضور و غیاب{% endblock %}
+{% block title %}حضور و غیاب روزانه - {{ school_class.grade.name }} {{ school_class.section }}{% endblock %}
+{% block page_title %}حضور و غیاب روزانه{% endblock %}
 
 {% comment %}
-Same shell as the session form and session list (header, topbar, sidebar
-and the shared tokens in teaching_shell.css). Everything page-specific is
-scoped under body.attendance-page / .at (see attendance/css/attendance.css).
+The daily sheet of one class (attendance.views.daily_sheet). Same shell as
+the old per-session attendance page (teaching_shell.css tokens, everything
+page-specific under body.attendance-page / .at in attendance.css).
 
-The POST data is unchanged: one radio group per student named
-"status-<enrollment id>" with the values present / absent / late. The
-optional "description-<enrollment id>" textarea is saved by the view too.
+POST: one radio group per student named "status-<enrollment id>" with the
+values present / absent / late / excused, and the optional
+"description-<enrollment id>" textarea. The date travels in the query
+string (?date=), so the form posts back to the same day.
 {% endcomment %}
 {% block body_class %}teaching-page attendance-page{% endblock %}
 
@@ -25,44 +26,66 @@ optional "description-<enrollment id>" textarea is saved by the view too.
 {% endblock %}
 
 {% block content %}
-{% with school_class=class_subject.school_class %}
 <div class="at">
     <div class="at-card">
         <!-- Header -->
         <header class="at-header">
             <span class="at-header__icon" aria-hidden="true"><i class="fas fa-user-check"></i></span>
             <div class="at-header__text">
-                <h1>ثبت حضور و غیاب</h1>
-                <p>{{ school_class.grade.name }} {{ school_class.section }} · {{ class_subject.subject.name }}</p>
+                <h1>حضور و غیاب روزانه</h1>
+                <p>{{ school_class.grade.name }} {{ school_class.section }} · {{ day|jalali_long_date }}</p>
             </div>
-            <a class="at-header__link" href="{% url 'teaching:session_list' class_subject.id %}">
+            {% if is_supervisor %}
+            <a class="at-header__link" href="{% url 'supervisor:attendance' %}?date={{ day|date:'Y/m/d' }}">
                 <i class="fas fa-list" aria-hidden="true"></i>
-                <span>جلسات ثبت‌شده</span>
+                <span>کلاس‌های من</span>
             </a>
+            {% endif %}
         </header>
 
         <div class="at-body">
-            <!-- Session info -->
-            <dl class="at-info" aria-label="اطلاعات جلسه">
+            <!-- Sheet info -->
+            <dl class="at-info" aria-label="اطلاعات برگه‌ی حضور و غیاب">
                 <div class="at-info__item">
                     <dt><i class="fas fa-users" aria-hidden="true"></i> کلاس</dt>
                     <dd>{{ school_class.grade.name }} {{ school_class.section }}</dd>
                 </div>
                 <div class="at-info__item">
-                    <dt><i class="fas fa-book" aria-hidden="true"></i> درس</dt>
-                    <dd>{{ class_subject.subject.name }}</dd>
+                    <dt><i class="fas fa-building" aria-hidden="true"></i> شعبه</dt>
+                    <dd>{{ school_class.branch.name }}</dd>
                 </div>
                 <div class="at-info__item">
                     <dt><i class="far fa-calendar" aria-hidden="true"></i> تاریخ</dt>
-                    <dd>{{ session.date|jalali_long_date }}</dd>
+                    <dd>{{ day|jalali_long_date }}</dd>
                 </div>
                 <div class="at-info__item">
-                    <dt><i class="fas fa-hashtag" aria-hidden="true"></i> جلسه</dt>
-                    <dd>جلسه {{ session.session_number|to_persian }}</dd>
+                    <dt><i class="fas fa-user-pen" aria-hidden="true"></i> ثبت</dt>
+                    {% if sheet %}
+                    <dd>{{ sheet.taken_by.get_full_name|default:sheet.taken_by.username }} · {{ sheet.created_at|jalali_datetime }}</dd>
+                    {% else %}
+                    <dd>هنوز ثبت نشده</dd>
+                    {% endif %}
                 </div>
             </dl>
 
-            {% if students %}
+            <!-- Another day (GET) -->
+            <form class="at-day" method="get" aria-label="انتخاب روز">
+                <label for="sheetDate">روز</label>
+                <input type="text" id="sheetDate" name="date" value="{{ day|date:'Y/m/d' }}"
+                    inputmode="numeric" dir="ltr" placeholder="۱۴۰۵/۰۸/۰۱" autocomplete="off">
+                <button type="submit" class="at-day__btn">نمایش</button>
+                {% if day != today %}
+                <a class="at-day__btn at-day__btn--soft" href="?date={{ today|date:'Y/m/d' }}">امروز</a>
+                {% endif %}
+            </form>
+
+            {% if error %}
+            <div class="at-empty">
+                <span class="at-empty__icon" aria-hidden="true"><i class="fas fa-calendar-xmark"></i></span>
+                <h2>برای این روز حضور و غیاب ثبت نمی‌شود</h2>
+                <p>{{ error }}</p>
+            </div>
+            {% elif students %}
             <form id="attendanceForm" class="at-form" method="post" novalidate>
                 {% csrf_token %}
 
@@ -83,60 +106,58 @@ optional "description-<enrollment id>" textarea is saved by the view too.
 
                 <p class="at-hint">
                     <i class="fas fa-info-circle" aria-hidden="true"></i>
-                    وضعیت پیش‌فرض «حاضر» است؛ فقط غایب‌ها و تاخیری‌ها را تغییر دهید.
+                    {% if sheet %}
+                    این برگه قبلاً ثبت شده است؛ تغییرات (مثلاً «تأخیر» برای دانش‌آموزی که دیرتر رسید) با نام شما ذخیره می‌شود.
+                    {% else %}
+                    وضعیت پیش‌فرض همه «حاضر» است؛ فقط غایب‌ها، تأخیری‌ها و غیبت‌های موجه را علامت بزنید.
+                    {% endif %}
                 </p>
 
                 <!-- Student list -->
                 <ol class="at-list" id="attendanceList" aria-label="لیست دانش‌آموزان">
                     {% for student in students %}
-                    {% with name=student.student.user.get_full_name %}
-                    <li class="at-student" data-student data-name="{{ name }}" data-status="{{ student.current_status }}">
+                    {% with enrollment=student.enrollment name=student.name %}
+                    <li class="at-student" data-student data-name="{{ name }}" data-status="{{ student.status }}">
                         <div class="at-student__head">
                             <span class="at-student__num" aria-hidden="true">{{ forloop.counter|to_persian }}</span>
                             <span class="at-student__name">{{ name }}</span>
+                            {% if student.record.updated_by %}
+                            <span class="at-student__edited" title="آخرین ویرایش">
+                                <i class="fas fa-pen" aria-hidden="true"></i>
+                                {{ student.record.updated_by.get_full_name|default:student.record.updated_by.username }} · {{ student.record.updated_at|jalali_datetime }}
+                            </span>
+                            {% endif %}
                             <!-- shown by attendance.js, which folds empty descriptions away -->
                             <button type="button" class="at-note-btn" aria-expanded="true"
-                                aria-controls="student-{{ student.id }}-note" hidden>
+                                aria-controls="student-{{ enrollment.id }}-note" hidden>
                                 <i class="fas fa-comment-dots" aria-hidden="true"></i>
                                 <span>توضیح</span>
                             </button>
                         </div>
 
-                        <fieldset class="at-seg">
+                        <fieldset class="at-seg at-seg--four">
                             <legend class="visually-hidden">وضعیت حضور {{ name }}</legend>
-                            <label class="at-seg__opt at-seg__opt--present">
-                                <input type="radio" class="at-seg__input" name="status-{{ student.id }}" value="present"
-                                    {% if student.current_status == 'present' %}checked{% endif %}>
+                            {% for value, label in statuses %}
+                            <label class="at-seg__opt at-seg__opt--{{ value }}">
+                                <input type="radio" class="at-seg__input" name="status-{{ enrollment.id }}" value="{{ value }}"
+                                    {% if student.status == value %}checked{% endif %}>
                                 <span class="at-seg__face">
-                                    <span class="at-seg__icon" aria-hidden="true"><i class="fas fa-check"></i></span>
-                                    <span>حاضر</span>
+                                    <span class="at-seg__icon" aria-hidden="true">
+                                        {% if value == "present" %}<i class="fas fa-check"></i>{% elif value == "absent" %}<i class="fas fa-times"></i>{% elif value == "late" %}<i class="fas fa-clock"></i>{% else %}<i class="fas fa-file-medical"></i>{% endif %}
+                                    </span>
+                                    <span>{{ label }}</span>
                                 </span>
                             </label>
-                            <label class="at-seg__opt at-seg__opt--absent">
-                                <input type="radio" class="at-seg__input" name="status-{{ student.id }}" value="absent"
-                                    {% if student.current_status == 'absent' %}checked{% endif %}>
-                                <span class="at-seg__face">
-                                    <span class="at-seg__icon" aria-hidden="true"><i class="fas fa-times"></i></span>
-                                    <span>غایب</span>
-                                </span>
-                            </label>
-                            <label class="at-seg__opt at-seg__opt--late">
-                                <input type="radio" class="at-seg__input" name="status-{{ student.id }}" value="late"
-                                    {% if student.current_status == 'late' %}checked{% endif %}>
-                                <span class="at-seg__face">
-                                    <span class="at-seg__icon" aria-hidden="true"><i class="fas fa-clock"></i></span>
-                                    <span>تاخیر</span>
-                                </span>
-                            </label>
+                            {% endfor %}
                         </fieldset>
 
-                        <div class="at-note" id="student-{{ student.id }}-note">
-                            <label class="at-note__label" for="description-{{ student.id }}">
+                        <div class="at-note" id="student-{{ enrollment.id }}-note">
+                            <label class="at-note__label" for="description-{{ enrollment.id }}">
                                 توضیح <span class="visually-hidden">برای {{ name }}</span>
                                 <span class="at-optional">(اختیاری)</span>
                             </label>
-                            <textarea class="at-note__input" id="description-{{ student.id }}" name="description-{{ student.id }}"
-                                rows="2" placeholder="مثلاً علت غیبت یا مدت تاخیر">{{ student.current_description }}</textarea>
+                            <textarea class="at-note__input" id="description-{{ enrollment.id }}" name="description-{{ enrollment.id }}"
+                                rows="2" placeholder="مثلاً علت غیبت یا ساعت رسیدن">{{ student.description }}</textarea>
                         </div>
                     </li>
                     {% endwith %}
@@ -161,10 +182,10 @@ optional "description-<enrollment id>" textarea is saved by the view too.
                             <i class="fas fa-times" aria-hidden="true"></i> غایب <b data-count="absent"></b>
                         </span>
                         <span class="at-count at-count--late">
-                            <i class="fas fa-clock" aria-hidden="true"></i> تاخیر <b data-count="late"></b>
+                            <i class="fas fa-clock" aria-hidden="true"></i> تأخیر <b data-count="late"></b>
                         </span>
-                        <span class="at-count at-count--unset" data-count-wrap="unset" hidden>
-                            <i class="fas fa-question" aria-hidden="true"></i> ثبت نشده <b data-count="unset"></b>
+                        <span class="at-count at-count--excused">
+                            <i class="fas fa-file-medical" aria-hidden="true"></i> موجه <b data-count="excused"></b>
                         </span>
                         <span class="at-count at-count--total">
                             کل <b data-count="total"></b>
@@ -173,7 +194,7 @@ optional "description-<enrollment id>" textarea is saved by the view too.
 
                     <button type="submit" class="at-submit" data-loading-text="در حال ثبت...">
                         <i class="fas fa-check" aria-hidden="true"></i>
-                        <span>ثبت حضور و غیاب</span>
+                        <span>{% if sheet %}ذخیره‌ی تغییرات{% else %}ثبت حضور و غیاب{% endif %}</span>
                     </button>
                 </div>
             </form>
@@ -182,16 +203,11 @@ optional "description-<enrollment id>" textarea is saved by the view too.
                 <span class="at-empty__icon" aria-hidden="true"><i class="fas fa-user-slash"></i></span>
                 <h2>دانش‌آموزی در این کلاس ثبت‌نام نشده است</h2>
                 <p>پس از ثبت‌نام دانش‌آموزان در این کلاس، می‌توانید حضور و غیاب را ثبت کنید.</p>
-                <a class="at-empty__link" href="{% url 'teaching:session_list' class_subject.id %}">
-                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                    بازگشت به جلسات
-                </a>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
-{% endwith %}
 {% endblock %}
 
 {% block scripts %}

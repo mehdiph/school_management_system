@@ -258,9 +258,10 @@ class CreateSessionViewTests(SessionViewTestCase):
         response = self.client.post(self.form_url(), post_data(self.class_subject))
 
         session = SchoolSession.objects.get(class_subject=self.class_subject)
+        # teachers no longer take attendance: back to the session list
         self.assertRedirects(
             response,
-            reverse('attendance:attendance_form', args=[session.pk]),
+            reverse('teaching:session_list', args=[self.class_subject.pk]),
             fetch_redirect_response=False,
         )
         self.assertEqual(session.session_number, 1)
@@ -342,7 +343,7 @@ class UpdateSessionViewTests(SessionViewTestCase):
 
         self.assertRedirects(
             response,
-            reverse('attendance:attendance_form', args=[session.pk]),
+            reverse('teaching:session_list', args=[self.class_subject.pk]),
             fetch_redirect_response=False,
         )
         session.session_contents.refresh_from_db()

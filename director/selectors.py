@@ -23,10 +23,10 @@ from django.utils import timezone
 
 from academic_calendar import services as calendar
 from analytics import engine, metrics, periods
-from analytics.definitions import ABSENT, DELIVERED_STATUSES, LATE, rate, rounded
+from analytics.definitions import rate, rounded
 from analytics.scope import AnalyticsScope
 from core.templatetags.jalali_tags import MONTHS, fa_digits, format_jalali
-from attendance.models import Attendance
+from attendance import services as attendance_services
 from school.models import AcademicYear, Branch, ClassSubject, Grade, SchoolClass
 from staff.models import TeacherAssignment
 from student.models.student_enrollment import StudentEnrollment
@@ -39,7 +39,7 @@ ALERT_DEFAULTS = {
     "DIRECTOR_ALERT_ATTENDANCE_RATE": 85,        # %, classes under it are listed
     "DIRECTOR_ALERT_UNREGISTERED_SLOTS": 3,      # teachers with at least this many
     "DIRECTOR_ALERT_WINDOW_TEACHING_DAYS": 7,    # both of the above look this far back
-    "DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS": 1,   # held sessions older than this without attendance
+    "DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS": 1,   # class-days older than this without a daily sheet
 }
 
 #: How many items an alert card lists (the rest is behind its link).
@@ -356,7 +356,7 @@ def alerts(dims, filters, result, window, today, urls):
         low.items = [
             {
                 "label": class_label(school_class),
-                "detail": f"{rounded(b.attendance_rate)}٪ · {b.absent} غیبت",
+                "detail": f"{rounded(b.attendance_rate)}٪ · {b.absences} غیبت",
                 "sub": school_class.branch.name,
                 "url": urls("attendance", custom_range_query(
                     window[0], window[-1], branch=school_class.branch_id,
@@ -394,7 +394,7 @@ def alerts(dims, filters, result, window, today, urls):
         ]
     cards += [low, unregistered]
 
-    # 3. Held sessions still without attendance after the grace days, and
+    # 3. Class-days still without a daily sheet after the grace days, and
     # 4. sessions recorded in closed slots -- both over the year so far,
     # which ``result`` covers.
     cards.append(missing_attendance_alert(filters, result, urls))
@@ -407,18 +407,17 @@ def missing_attendance_alert(filters, result, urls):
     grace = threshold("DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS")
     card = Alert(
         key="missing_attendance",
-        title="جلسات بدون حضور و غیاب",
-        description=f"جلسه‌ی برگزارشده یا جبرانی که بیش از {grace} روز از آن گذشته و حضور و غیابی ندارد",
+        title="روزهای بدون حضور و غیاب",
+        description=f"روز کلاسی که بیش از {grace} روز از آن گذشته و پشتیبان حضور و غیاب روزانه‌اش را ثبت نکرده است",
         count=missing["count"],
         url=urls("attendance", filters.query(period="year", date_from=None, date_to=None)) + "#missing",
     )
     for row in missing["rows"]:
-        cs = row["class_subject"]
         card.items.append({
-            "label": f"{cs.subject.name} · {row['class_label']}",
+            "label": row["class_label"],
             "date": row["date"],
             "detail": "",
-            "sub": row["teacher"],
+            "sub": row["branch"],
             "url": card.url,
         })
     return card
@@ -703,6 +702,7 @@ def attendance(dims, filters, as_of, class_id, urls):
         "absentees": [] if scope.is_empty else top_absentees(scope, school_class),
         "absentee_limit": TOP_ABSENTEES,
         "missing": missing_attendance_rows(result, scope, in_class),
+        "daily_start": attendance_services.daily_start(),
     }
 
 
@@ -737,7 +737,7 @@ def daily_trend(year, scope, result, closures, units, where=None):
             "title": format_jalali(day, with_weekday=True),
             "rate": rounded(breakdown.attendance_rate),
             "total": breakdown.attendance_total,
-            "absent": breakdown.absent,
+            "absent": breakdown.absences,
             "late": breakdown.late,
             "closed": day in closed,
             "closure": events.get(day, ""),
@@ -761,79 +761,71 @@ def daily_trend(year, scope, result, closures, units, where=None):
     }
 
 
+def _scope_classes(scope):
+    """The classes of ``scope`` (year, branch, grade) as a queryset."""
+
+    lookups = {"year": scope.year}
+    if scope.branch is not None:
+        lookups["branch"] = scope.branch
+    if scope.grade is not None:
+        lookups["grade"] = scope.grade
+    return SchoolClass.objects.filter(**lookups)
+
+
 def top_absentees(scope, school_class=None, limit=TOP_ABSENTEES):
     """
-    Students with the most absences in the range (count, then rate), over
-    the records of delivered sessions of the scope. One query.
+    Students with the most absences (absent + excused) in the range
+    (count, then records), through ``attendance.services``: the archived
+    records of delivered sessions before the cutoff, the daily sheets from
+    it on. One grouped query per side of the cutoff.
     """
 
-    records = Attendance.objects.filter(
-        session__status__in=DELIVERED_STATUSES,
-        session__date__gte=calendar.to_jalali(scope.start),
-        session__date__lte=calendar.to_jalali(scope.end),
-        **scope.class_subject_filter("session__class_subject__"),
-    )
-    if school_class is not None:
-        records = records.filter(session__class_subject__school_class=school_class)
+    target = school_class if school_class is not None else _scope_classes(scope)
+    tallies = attendance_services.student_tallies(target, scope.start, scope.end)
+    ranked = sorted(
+        ((pk, row) for pk, row in tallies.items() if row["absences"]),
+        key=lambda item: (-item[1]["absences"], -item[1]["total"], item[0]),
+    )[:limit]
 
-    rows = (
-        records.order_by()
-        .values(
-            "student_enrollment",
-            "student_enrollment__student__user__first_name",
-            "student_enrollment__student__user__last_name",
-            "student_enrollment__student__user__username",
-            "student_enrollment__school_class__grade__name",
-            "student_enrollment__school_class__section",
-            "student_enrollment__school_class__branch__name",
-        )
-        .annotate(
-            total=Count("id"),
-            absent=Count("id", filter=Q(status=ABSENT)),
-            late=Count("id", filter=Q(status=LATE)),
-        )
-        .filter(absent__gt=0)
-        .order_by("-absent", "-total", "student_enrollment")[:limit]
-    )
     result = []
-    for row in rows:
-        name = " ".join(filter(None, (
-            row["student_enrollment__student__user__first_name"],
-            row["student_enrollment__student__user__last_name"],
-        ))) or row["student_enrollment__student__user__username"]
+    for _, row in ranked:
+        name = " ".join(filter(None, (row["first_name"], row["last_name"]))) or row["username"]
         result.append({
             "name": name,
-            "class_label": fa_digits(
-                f"{row['student_enrollment__school_class__grade__name']} "
-                f"{row['student_enrollment__school_class__section']}"
-            ),
-            "branch": row["student_enrollment__school_class__branch__name"],
+            "class_label": fa_digits(f"{row['grade']} {row['section']}"),
+            "branch": row["branch"],
             "total": row["total"],
-            "absent": row["absent"],
+            "absent": row["absences"],
+            "excused": row["excused"],
             "late": row["late"],
-            "absence_rate": rounded(rate(row["absent"], row["total"])),
+            "absence_rate": rounded(rate(row["absences"], row["total"])),
         })
     return result
 
 
 def missing_attendance_rows(result, scope, where=None, limit=MISSING_ATTENDANCE_ITEMS):
-    """Delivered sessions of the range, past the grace days, without any record."""
+    """
+    Expected class-days of the range (from the attendance cutoff on),
+    past the grace days, without a daily sheet. Days before the cutoff had
+    per-session attendance, which is archived and can no longer be
+    completed, so they are not listed.
+    """
 
     grace = threshold("DIRECTOR_ALERT_ATTENDANCE_GRACE_DAYS")
     before = scope.today - timedelta(days=grace)
+    classes = result.classes
     rows = []
-    for row in result.sessions:
-        if row.status not in DELIVERED_STATUSES or row.attendance_total or row.date >= before:
+    for row in result.class_days:
+        if not row.expected or row.has_sheet or row.date >= before:
             continue
-        cs = result.class_subjects[row.class_subject_id]
-        if where is not None and not where(cs):
+        school_class = classes[row.school_class_id]
+        if where is not None and not where(metrics.ClassUnit(school_class)):
             continue
         rows.append({
             "date": row.date,
-            "class_subject": cs,
-            "class_label": class_label(cs.school_class),
-            "teacher": teacher_name(cs.teacher_assignment.teacher),
-            "status": row.status,
+            "school_class": school_class,
+            "class_label": class_label(school_class),
+            "branch": school_class.branch.name,
         })
     rows.sort(key=lambda r: (r["date"], r["class_label"]), reverse=True)
     return {"count": len(rows), "rows": rows[:limit], "limit": limit}

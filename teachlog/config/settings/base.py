@@ -6,6 +6,7 @@ overrides that get layered on top of this file.
 """
 
 import os
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -183,6 +184,16 @@ SCHOOL_WORKING_DAYS = [0, 1, 2, 3, 4]
 
 # "هفته اول" / "هفته دوم" is derived from AcademicYear.start_date alone
 # (scheduling.utils.get_week_cycle); there is no setting for it.
+
+
+# Attendance (see attendance/services.py)
+#
+# The first day of daily attendance: from this date on, attendance is one
+# sheet per class per day, taken by the grade supporter (DailyAttendance);
+# before it, the teacher's per-session records (SessionAttendance, now an
+# archive) apply. Every page and report reads the right one for each date
+# through attendance.services. A Gregorian date: 2026-10-23 = 1 Aban 1405.
+ATTENDANCE_DAILY_START_DATE = date(2026, 10, 23)
 
 
 # Static files (CSS, JavaScript, Images)

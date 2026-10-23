@@ -17,6 +17,7 @@ The database is divided into the following domains:
 * Scheduling
 * Teaching Sessions
 * Academic Calendar
+* Attendance
 
 The full entity relationship diagram (Mermaid) is in [database-mermaid.md](database-mermaid.md).
 
@@ -35,6 +36,14 @@ AcademicYear
 
 AcademicYear
     └── CalendarEvent ── Branches / Grades / Bells (scope; empty = all)
+
+SchoolClass
+    ├── StudentEnrollment (one per student and academic year)
+    └── DailyAttendanceSheet (one per class and day, taken by the grade supporter)
+            └── DailyAttendance ── StudentEnrollment
+
+SchoolSession
+    └── SessionAttendance ── StudentEnrollment (archive: before the daily cutoff)
 
 User
  ├── Staff
@@ -424,7 +433,80 @@ Extends User with educational data.
 ### Relationships
 
 * One-to-One with User.
-* Belongs to one SchoolClass.
+* Placed in a class each academic year through StudentEnrollment.
+
+## StudentEnrollment
+
+A student in a class for one academic year (the table above lists `enrollment_date` and `status` under StudentProfile; in the code they are here).
+
+### Key Fields
+
+| Field           | Description |
+| --------------- | ----------- |
+| student         | StudentProfile |
+| academic_year   | Set from the class on save; unique per student |
+| school_class    | The class |
+| enrollment_date | Jalali date |
+| status          | `active`, `transferred`, `graduated`, `withdrawn` |
+
+### Relationships
+
+* Attendance records (daily and archived) belong to an enrollment, never directly to a student.
+
+---
+
+# Attendance
+
+Attendance is taken **once a day per class by the grade supporter** from `ATTENDANCE_DAILY_START_DATE` (1 Aban 1405) on; before that the teacher took it in every session, and those rows are an archive. Every reader goes through `attendance.services`, which reads the archive for dates before the cutoff and the daily sheets from it on. Details: `docs/apps/attendance.md`.
+
+## DailyAttendanceSheet
+
+The attendance of one class on one day.
+
+| Field        | Description |
+| ------------ | ----------- |
+| school_class | The class |
+| date         | Jalali date |
+| taken_by     | User who first saved it |
+| created_at   | When |
+
+### Constraints
+
+* `unique_daily_attendance_sheet_per_class_day`: one sheet per `(school_class, date)`.
+* A new sheet only on a day the class's timetable has an open lesson, from the cutoff up to today (`attendance.services.day_error`).
+
+## DailyAttendance
+
+One student on a sheet.
+
+| Field              | Description |
+| ------------------ | ----------- |
+| sheet              | The sheet (reverse name `records`) |
+| student_enrollment | The student (an enrollment of the sheet's class) |
+| status             | `present` (default), `absent`, `late`, `excused` |
+| description        | Optional note |
+| updated_by         | Who changed it after the sheet was first taken (nullable) |
+| updated_at         | Last change |
+
+### Constraints
+
+* `unique_daily_attendance_per_sheet`: one record per `(sheet, student_enrollment)`.
+
+## SessionAttendance (archive)
+
+The teacher's per-session attendance, the former `Attendance` model. Table name unchanged (`attendance_attendance`), every row kept, **read-only** in the app; records dated on or after the cutoff are ignored.
+
+| Field              | Description |
+| ------------------ | ----------- |
+| session            | SchoolSession (never a holiday session) |
+| student_enrollment | The student (an enrollment of the session's class) |
+| status             | `present`, `absent`, `late` |
+| description        | Optional note |
+| created_at         | When |
+
+### Constraints
+
+* `unique_attendance_per_session`: one record per `(session, student_enrollment)`.
 
 ---
 
@@ -506,7 +588,6 @@ Benefits:
 
 The database architecture is designed to support future modules:
 
-* Attendance Tracking
 * Student Assessment
 * Parent Portal
 * Messaging System

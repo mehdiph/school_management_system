@@ -7,11 +7,11 @@
     <thead>
       <tr>
         <th scope="col">{{ first_column }}</th>
-        <th scope="col"><span class="sv-th-help" title="رکوردهای غیر از «غایب» (حاضر و تأخیر) ÷ همه‌ی رکوردهای جلسات برگزارشده و جبرانی">نرخ حضور</span></th>
+        <th scope="col"><span class="sv-th-help" title="رکوردهای حاضر و تأخیر ÷ همه‌ی رکوردها (حضور و غیاب روزانه، و پیش از آن جلسات برگزارشده و جبرانی)">نرخ حضور</span></th>
         <th scope="col" class="sv-num">رکورد</th>
-        <th scope="col" class="sv-num">غیبت</th>
+        <th scope="col" class="sv-num"><span class="sv-th-help" title="غایب و غیبت موجه">غیبت</span></th>
         <th scope="col" class="sv-num"><span class="sv-th-help" title="تأخیر ÷ همه‌ی رکوردها؛ تأخیر حضور حساب می‌شود">تأخیر</span></th>
-        <th scope="col"><span class="sv-th-help" title="جلسات برگزارشده و جبرانی که دست‌کم یک رکورد حضور و غیاب دارند">ثبت حضور و غیاب</span></th>
+        <th scope="col"><span class="sv-th-help" title="روزهای کلاسی که حضور و غیاب روزانه دارند (و پیش از آن، جلسات برگزارشده و جبرانی با دست‌کم یک رکورد)">ثبت حضور و غیاب</span></th>
       </tr>
     </thead>
     <tbody>
@@ -24,9 +24,9 @@
         </th>
         <td data-label="نرخ حضور">{% include "director/partials/_rate.html" with value=b.attendance_rate detail=None %}</td>
         <td data-label="رکورد" class="sv-num">{{ b.attendance_total|to_persian }}</td>
-        <td data-label="غیبت" class="sv-num">{{ b.absent|to_persian }}</td>
+        <td data-label="غیبت" class="sv-num">{{ b.absences|to_persian }}</td>
         <td data-label="تأخیر" class="sv-num">{{ b.late|to_persian }}{% if b.late %} <span class="sv-sub director-inline">{{ b.late_rate|percent }}</span>{% endif %}</td>
-        <td data-label="ثبت حضور و غیاب" class="sv-num">{{ b.with_attendance|to_persian }} از {{ b.delivered|to_persian }} <span class="sv-sub director-inline">{{ b.attendance_recorded_rate|percent }}</span></td>
+        <td data-label="ثبت حضور و غیاب" class="sv-num">{{ b.with_attendance|to_persian }} از {{ b.attendance_expected|to_persian }} <span class="sv-sub director-inline">{{ b.attendance_recorded_rate|percent }}</span></td>
       </tr>
       {% endwith %}
       {% endfor %}
@@ -37,9 +37,9 @@
         <th scope="row">جمع</th>
         <td>{{ total.attendance_rate|percent }}</td>
         <td class="sv-num">{{ total.attendance_total|to_persian }}</td>
-        <td class="sv-num">{{ total.absent|to_persian }}</td>
+        <td class="sv-num">{{ total.absences|to_persian }}</td>
         <td class="sv-num">{{ total.late|to_persian }}</td>
-        <td class="sv-num">{{ total.with_attendance|to_persian }} از {{ total.delivered|to_persian }}</td>
+        <td class="sv-num">{{ total.with_attendance|to_persian }} از {{ total.attendance_expected|to_persian }}</td>
       </tr>
     </tfoot>
     {% endif %}

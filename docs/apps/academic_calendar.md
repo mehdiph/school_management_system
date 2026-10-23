@@ -76,7 +76,7 @@ The single exclusion rule is `status != HL`, available as `SchoolSession.objects
 | --- | --- |
 | Teacher | dashboard total, recent sessions, last session number/summary, "recorded today"; profile "sessions this year"; session list total; next session number |
 | Student | per-subject session count |
-| Supervisor | dashboard summary and statistics, recent sessions, latest session (attendance page), missing-session list, today's count; sessions page counts, first/last dates, KPIs, coverage; teachers page count and last activity; timeline count and gaps |
+| Supervisor | dashboard summary and statistics, recent sessions, missing-session list, today's count; daily attendance overview (which classes have an open lesson that day); sessions page counts, first/last dates, KPIs, coverage; teachers page count and last activity; timeline count and gaps |
 | Reports | per-subject count, first/last dates, held total |
 
 Holiday sessions are still **listed**, with a badge, the event as the reason, the bell and no number, wherever sessions are listed.
@@ -95,7 +95,7 @@ The admin decides what to do: fix or delete the session, or change the event's s
 
 Events are never deleted, only deactivated (`is_active = False`). The admin has no delete permission, and sessions keep pointing to their reason. After any change the sync runs again, idempotently, over the old and the new range:
 
-* a holiday session no active event needs any more is **removed only if** it is auto-created **and** has no attendance **and** no content; otherwise it is kept and counted as `kept`;
+* a holiday session no active event needs any more is **removed only if** it is auto-created **and** has no (archived per-session) attendance **and** no content; otherwise it is kept and counted as `kept`;
 * a holiday session whose event was deactivated while another active event still closes the slot is moved to that event (`updated`).
 
 ### 2.9 Timetable changes
@@ -153,7 +153,7 @@ Constraints:
 
 Manager: `SchoolSession.objects.counted()` / `.holidays()` (`core/querysets/teaching.py`).
 
-`Attendance.clean()` refuses attendance on an `HL` session, and the attendance page redirects with a message.
+`SessionAttendance.clean()` refuses attendance on an `HL` session, and the archive page redirects with a message. Daily attendance (from 1 Aban 1405) has no sheet on a day whose lessons the calendar closed for the class: a full-day closure, or closures that together cover every bell the class has that day (`attendance.services.day_error`, `docs/apps/attendance.md` §5).
 
 ### 3.3 Migrations
 
@@ -336,11 +336,11 @@ Branch-scoped (non-superuser) admins see events of their branches plus global on
 
 ### 8.1 Teacher
 
-* **Session list** (`/teaching/sessions/<id>`): holiday cards with the «تعطیل» badge, «تعطیل: <event>» as the title, the date and bell, «بدون شماره», and no edit/attendance buttons. «تعداد کل» counts held sessions only.
+* **Session list** (`/teaching/sessions/<id>`): holiday cards with the «تعطیل» badge, «تعطیل: <event>» as the title, the date and bell, «بدون شماره», and no edit button. «تعداد کل» counts held sessions only.
 * **Session form**: has a required «زنگ» field and never offers «تعطیل» as a status. Holiday sessions cannot be edited. The read-only number explains that it follows date and bell order.
 * **Dashboard**: each bell is its own session. A double period counts as recorded when both bells are, and «ثبت جلسه» prefills the next open bell. A fully closed lesson shows «تعطیل: <event>» and is not pending. A partly closed one shows «بخشی تعطیل».
 * **Weekly schedule**: see [§9](#9-clickable-weekly-schedule-teacher-panel).
-* **Attendance**: a holiday session has none («این جلسه به‌دلیل «…» لغو شده است و حضور و غیاب ندارد.»).
+* **Attendance**: a holiday session has none («این جلسه به‌دلیل «…» لغو شده است و حضور و غیاب ندارد.»). From 1 Aban 1405 attendance is daily: a class closed for the day has no sheet, and the supervisor's overview shows it as «تعطیل» with the event.
 
 ### 8.2 Student
 
@@ -350,7 +350,7 @@ Branch-scoped (non-superuser) admins see events of their branches plus global on
 
 What changed:
 
-* **Dashboard**: summary and statistics count held sessions only (no `HL` bucket in `by_status`). Recent sessions and the attendance page's latest session skip holidays. «امروز» counts only open slots, never Thursday/Friday.
+* **Dashboard**: summary and statistics count held sessions only (no `HL` bucket in `by_status`). Recent sessions skip holidays; the daily attendance overview marks a class whose every lesson of the day is closed as «تعطیل». «امروز» counts only open slots, never Thursday/Friday.
 * **«نیازمند پیگیری» (missing sessions)**: slots are matched to sessions **per bell**, so two bells of one subject are two expected sessions and recording one does not cover the other. A legacy bell-less session covers the day's first uncovered bell. Closed slots are never reported.
 * **Training sessions page**: counts, empty counts, first/last dates and KPIs exclude holidays. A new sortable «تعطیل» column gives the per-class-subject number of sessions cancelled by closures, and the KPI card notes the holidays. **Coverage** ("پیشرفت نسبت به برنامه") expects one session per open timetable slot: no closed slots, no Thursday/Friday, two bells = two. `HL` is not offered as a status filter.
 * **Timeline**: holidays appear in place (date and bell order) with «بدون شماره», the badge «تعطیل: <event>» and their reason. Gaps are measured between counted sessions, so a closure neither breaks nor creates a long gap.

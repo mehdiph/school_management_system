@@ -6,7 +6,16 @@ from student.models.student_enrollment import StudentEnrollment
 from core.managers.teaching import AttendanceManager
 
 
-class Attendance(models.Model):
+class SessionAttendance(models.Model):
+    """
+    Attendance taken by the teacher in one session: the archive of how
+    attendance worked until ``settings.ATTENDANCE_DAILY_START_DATE``.
+
+    Read-only since then: the app never creates or changes a row (the
+    daily sheets of ``DailyAttendanceSheet`` replaced it), and
+    ``attendance.services`` reads it only for dates before the cutoff.
+    The table keeps its old name (``attendance_attendance``) and every row.
+    """
 
     objects = AttendanceManager()
     class AttendanceStatus(models.TextChoices):
@@ -17,14 +26,14 @@ class Attendance(models.Model):
     session = models.ForeignKey(
         SchoolSession,
         on_delete=models.PROTECT,
-        related_name="attendances",
+        related_name="session_attendances",
         verbose_name="جلسه",
     )
 
     student_enrollment = models.ForeignKey(
         StudentEnrollment,
         on_delete=models.PROTECT,
-        related_name="attendances",
+        related_name="session_attendances",
         verbose_name="ثبت‌نام دانش‌آموز",
     )
 
@@ -46,8 +55,9 @@ class Attendance(models.Model):
     )
 
     class Meta:
-        verbose_name = "حضور و غیاب"
-        verbose_name_plural = "حضور و غیاب"
+        db_table = "attendance_attendance"
+        verbose_name = "حضور و غیاب جلسه (بایگانی)"
+        verbose_name_plural = "حضور و غیاب جلسه‌ها (بایگانی)"
 
         ordering = [
             "-session__date",
@@ -80,7 +90,7 @@ class Attendance(models.Model):
                 "student_enrollment":
                     "دانش‌آموز عضو کلاس این جلسه نیست."
             })
-        
+
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)

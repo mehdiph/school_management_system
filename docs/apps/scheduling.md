@@ -447,8 +447,7 @@ Week-Specific Classes
 
 ### Attendance Integration
 
-* Automatic attendance sessions
-* Schedule-based attendance tracking
+* ~~Schedule-based attendance tracking~~ — done: the days a class takes daily attendance come from its timetable (`attendance.services.planned_class_days`, `docs/apps/attendance.md` §5)
 
 ### Notifications
 

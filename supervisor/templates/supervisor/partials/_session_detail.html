@@ -47,14 +47,18 @@
   {% endif %}
 
   <section class="sv-detail__section">
-    <h4>حضور و غیاب</h4>
+    {# From the cutoff on, attendance is the class's daily sheet of that day (attendance.services.session_counts). #}
+    <h4>{% if attendance.daily %}حضور و غیاب روزانه‌ی کلاس در این روز{% else %}حضور و غیاب{% endif %}</h4>
     {% if attendance.total %}
       <ul class="sv-attendance">
         <li><span class="badge badge--gray">کل</span> {{ attendance.total|to_persian }} نفر</li>
         <li><span class="badge badge--success">حاضر</span> {{ attendance.present|to_persian }} نفر</li>
         <li><span class="badge badge--danger">غایب</span> {{ attendance.absent|to_persian }} نفر</li>
         <li><span class="badge badge--warning">تأخیر</span> {{ attendance.late|to_persian }} نفر</li>
+        {% if attendance.daily %}<li><span class="badge badge--info">غیبت موجه</span> {{ attendance.excused|to_persian }} نفر</li>{% endif %}
       </ul>
+    {% elif attendance.daily %}
+      <p class="sv-detail__empty">حضور و غیاب روزانه‌ی این کلاس برای این روز هنوز ثبت نشده است.</p>
     {% else %}
       <p class="sv-detail__empty">برای این جلسه حضور و غیابی ثبت نشده است.</p>
     {% endif %}
