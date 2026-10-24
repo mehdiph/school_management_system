@@ -8,6 +8,8 @@ For any feature, change or bug fix in this project, follow the `teachlog-workflo
 ## Always
 - Never touch the production database; ask before migrating the local Docker database.
 - Work on a feature branch; don't commit, push or deploy unless asked.
+  Exception: the plan file (`docs/plans/YYYY-MM-<slug>-plan.md`) is committed and pushed
+  straight to `main` before stopping for approval, as the `teachlog-workflow` skill describes.
 - Run tests with: `POSTGRES_HOST=localhost .venv/bin/python manage.py test --noinput`
 
 ## Frontend

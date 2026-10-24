@@ -33,13 +33,37 @@ Before writing any code, present a plan and **stop until the user approves it**:
   reports, tests, docs.
 - How you will verify migrations and what you will NOT touch.
 
+### Publishing the plan on `main`
+
+The user reads plans from a copy of `main` synced elsewhere, so the plan file must reach
+`origin/main` without any manual merge. Do this **before** creating the feature branch:
+
+1. Start from a clean `main`: `git switch main` and `git pull --ff-only origin main`.
+   If the working tree has changes you didn't make, or the pull is not a fast-forward,
+   stop and tell the user instead of resolving it yourself.
+2. Write the plan to `docs/plans/YYYY-MM-<slug>-plan.md`.
+3. Stage **only that file** (`git add docs/plans/YYYY-MM-<slug>-plan.md`) and commit it
+   with the subject `Add plan for <short feature name>`.
+4. `git push origin main`. Never force-push. If the push is rejected, pull with
+   `--ff-only` and retry once; if it still fails, stop and report.
+5. Show the plan in the conversation, say it was pushed to `main` (with the commit hash),
+   and stop for approval.
+
+When the user asks for changes to the plan, edit the same file on `main` and repeat
+steps 3–5 (subject `Update plan for <short feature name>`). Only after approval, create
+the feature branch from the updated `main`.
+
+This is the only thing ever committed or pushed to `main` directly. Code, migrations,
+tests, other docs and the final work report stay on the feature branch.
+
 If something is ambiguous during implementation and not covered by the approved plan,
 choose the option most consistent with existing code and record it in the report.
 
 ## 3. Safety rules (never break these)
 
 - Work on a new git branch (`feature/<slug>` or `fix/<slug>`). **Do not commit, push or
-  deploy** unless the user asks.
+  deploy** unless the user asks. The one exception is the plan file, which is committed
+  and pushed to `main` as described in "Publishing the plan on `main`" above.
 - **Never touch the production database.** Do not migrate the local Docker database without
   asking first. Run migrations on the test database and on scratch SQLite copies only.
 - **Never modify or delete existing data rows** (attendance, sessions, enrollments, …)
@@ -108,4 +132,5 @@ Write `docs/plans/YYYY-MM-<slug>.md` with these sections:
 
 State clearly at the top whether the work is committed, pushed or deployed.
 
-Also write the plan to docs/plans/YYYY-MM-<slug>-plan.md before stopping for approval.
+The plan itself lives in `docs/plans/YYYY-MM-<slug>-plan.md` on `main` (see section 2);
+the work report above is written on the feature branch.
