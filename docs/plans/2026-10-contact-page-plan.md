@@ -1,7 +1,47 @@
 # Plan: public «تماس با ما» page
 
-Status: **plan, waiting for approval.** No code written. Implementation goes on
-`feature/contact-page`, created from `main` after approval.
+Status: **approved 2026-10-25** with the changes below. Implementation goes on
+`feature/contact-page`, created from `main` after this update.
+
+## Approval (2026-10-25)
+
+Approved:
+- D1, with the fields as proposed.
+- D2, option A.
+- D3, D4, D6, D9, D10, D13, D14 and D15, as recommended.
+- D5: the reversible data migration, only for rows still at `#`.
+- D7: store only the HMAC of the IP.
+- D8: read-only except «پیگیری شد».
+- D11: one location per active branch (all active branches may be shown
+  publicly).
+- D12, with the fixes in change 4.
+
+Changes to the plan (they supersede the text below where they differ):
+
+1. **Rate limit per mobile and per IP.** Mobile carriers put many users behind
+   one IP (CGNAT). The short window (`CONTACT_RATE_LIMIT = (3, 600)`) applies
+   **per normalised mobile number and per IP hash**: either one trips it. The
+   per-IP daily cap rises to **`CONTACT_DAILY_LIMIT = 50`**. All values are in
+   settings. `ContactMessage` gets an index on `(mobile, created_at)` too.
+   Tests cover a shared IP with different mobiles.
+2. **Client IP from the CDN.** The site sits behind a CDN or reverse proxy in
+   front of nginx. The client IP is read from the CDN's client-IP header, named
+   in `CLIENT_IP_HEADER`. That setting comes from the environment variable of
+   the same name, with a fallback to `REMOTE_ADDR`. The value must parse as an
+   IP address. Documented in `docs/apps/website.md` and in the report.
+3. **Admin access for office staff:** `website.view_contactmessage`, plus
+   `website.change_contactmessage`, which only ever edits `is_handled`. How to
+   grant them is documented in `docs/apps/website.md`. No groups and no
+   permission grants in migrations.
+4. **Mobile action bar:**
+   - it sits below the nav drawer and its overlay (z-index);
+   - it respects `env(safe-area-inset-bottom)`;
+   - matching bottom padding means it never covers the footer;
+   - it hides while a form field has focus, so it doesn't cover inputs when
+     the keyboard is open.
+
+   Screenshots at 375px: one with the bar visible, one with a field focused.
+5. **The D11 seed migration depends on the latest `school` migration.**
 
 Read before planning: `CLAUDE.md`, `.claude/CLAUDE.md`, `docs/apps/website.md`,
 ADR-011/015/021, `docs/changelog.md`, `template/base.html`, all of `website/`
