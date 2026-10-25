@@ -1,7 +1,8 @@
 # Report: public «درباره ما» page, and «کلاس ها» removed from the menu
 
-**State: implemented on `feature/about-page`, not committed, not pushed, not
-deployed.** The plan (`docs/plans/2026-10-about-page-plan.md`) was approved on
+**State: committed on `feature/about-page`, merged into `main` with
+`--no-ff` and pushed on 2026-10-25. Not deployed: migrations and
+`collectstatic` are pending (§9).** The plan (`docs/plans/2026-10-about-page-plan.md`) was approved on
 2026-10-25 with three changes, and those changes are applied here. Nothing was
 migrated outside the test databases and scratch SQLite copies.
 
