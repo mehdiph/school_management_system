@@ -1,7 +1,7 @@
 # Work report: public «تماس با ما» page
 
-**Status: implemented on `feature/contact-page`. Not committed, not pushed,
-not merged, not deployed.** No migration was run on the local Docker database
+**Status: committed on `feature/contact-page` and merged into `main` locally
+on 2026-10-25. Not pushed, not deployed.** No migration was run on the local Docker database
 or on production. The plan (`docs/plans/2026-10-contact-page-plan.md`) was
 approved on 2026-10-25 and is on `main` (`deba498`, updated in `b3652ce`).
 
@@ -295,6 +295,12 @@ the CDN. Without that, only the per-mobile limit really holds. Documented in
 | Baseline, `main` (worktree) | Ran 700 tests, FAILED (errors=1): the known `scheduling…test_invalid_color_in_database_never_reaches_style` |
 | Branch, full suite | Ran 750 tests (+50), FAILED (errors=1): the same known error only |
 | Branch, `website` after the final `ContactChannel.clean` change (made while the full run was going) | Ran 69 tests, OK |
+| Branch, full suite on the committed work (`41ed4bb`), 2026-10-25 | Ran 750 tests, FAILED (errors=1): the same known error only |
+| Branch, `scheduling` after fixing that test (`Fit the invalid-colour test value…`) | Ran 140 tests, OK |
+
+The known error is gone: the test wrote a 21-character value into
+`Subject.color varchar(7)`, which PostgreSQL refuses. It now uses a
+7-character invalid value and passes on both databases.
 
 **Browser checks.** Headless Chrome (Playwright, scratch venv) against a
 scratch SQLite copy with sample branches, phones, social links and generated
