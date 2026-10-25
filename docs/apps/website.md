@@ -1,7 +1,8 @@
 # Website App Documentation
 
 The `website` app is the public site: the landing page (`/`), the contact
-page (`/contact/`) and the about page (`/about/`). All of their text and
+page (`/contact/`), the about page (`/about/`) and the teachers page
+(`/teachers/`). All of their text and
 images are editable from the Django admin; nothing on the pages is hardcoded
 anymore. Public content is editorial: nothing is computed from school data
 (ADR-025).
@@ -17,21 +18,54 @@ they are edited as admin inlines.
 | Model | Purpose | Children (inlines) |
 |---|---|---|
 | `SiteSettings` | site name, logo, login button, footer texts, meta title/description — used by `base.html` on every page | `NavMenuItem`, `FooterLink` |
-| `LandingPage` | intro, "why us", active-learning and teachers section texts/images, plus one `show_*` switch per section | `HeroSlide`, `FeatureCard`, `LearningPoint`, `LandingTeacher` |
+| `LandingPage` | intro, "why us", active-learning and teachers section texts/images, the link to the teachers page, plus one `show_*` switch per section | `HeroSlide`, `FeatureCard`, `LearningPoint` |
 | `ContactPage` | contact page texts (hero, section titles, form, success message, FAQ teaser, meta title/description), plus one `show_*` switch per section | `ContactLocation`, `ContactChannel`, `ContactTopic` |
+| `TeachersPage` | teachers page texts (intro, list labels, empty state, closing CTA, meta title/description), plus `show_intro`, `show_filter`, `show_cta` | `TeacherGroup` |
 | `AboutPage` | about page texts (hero, story, director's words, mission/vision, section titles, branches text and link, closing CTA, meta title/description), the hero and quote photos, plus one `show_*` switch per section | `AboutMilestone`, `AboutValue` (`belief_values`), `AboutHighlight`, `AboutFact`, `AboutPerson`, `AboutPhoto` |
 
 `ContactMessage` (not a singleton child) stores what the contact form sends;
-see §5.
+see §5. `LandingTeacher` (not a singleton child either, since the teachers
+page) is the list of teachers both the landing page and the teachers page
+read; see below.
 
 * `SingletonModel.load()` returns the row, creating it on first use; `delete()`
   is a no-op.
 * Repeatable models extend `OrderedItem` (`order`, `is_active`, `created_at`,
   ordered by `order`).
-* `LandingTeacher.teacher` optionally links a `staff.TeacherProfile`.
-  `display_name`, `photo_url` and `display_specialty` prefer the
-  `*_override` fields, then fall back to the user's name/avatar and the
-  profile's `field_of_study`.
+* `LandingTeacher` is one teacher of the public site, shared by the landing
+  page's row and the teachers page:
+  * `on_teachers_page` («نمایش در صفحه معلمان») and `on_home` («نمایش در
+    صفحه اصلی») say where it appears; both default to off, so nobody is
+    published until ticked. Rows that existed before `0009` got `on_home`
+    on, so the landing page didn't change. `is_active` is the master switch.
+  * `teacher` optionally links a `staff.TeacherProfile`. `display_name` is
+    `name_override`, else the user's first and last name, **never the
+    username**; `display_specialty` is `specialty_override`, else the
+    profile's `field_of_study`. `clean()` needs a name.
+  * The photo is **only** `photo_override` (ADR-025): never the account
+    avatar; without it, `initial` (the name's first letter) is shown on
+    both pages.
+  * `experience` (text as typed, «۱۲ سال»), `education`, `quote` (the
+    red-pen note), `bio` (400 characters) are typed on the card; nothing
+    is read from `teaching_experience`, `education` or any other staff
+    field.
+  * `group` optionally links a `TeacherGroup` (`SET_NULL`).
+  * `slug` (unique, Persian kept) is generated from the name on first save
+    (`-2`, `-3`… on a clash), never regenerated, editable; it is the card's
+    `id`, so `/teachers/#<slug>` links to a teacher. It is the hook for the
+    blog, whose plan decides how an author optionally links to a card; the
+    card's expansion has a commented slot for a «نوشته‌های …» link.
+  * Cards linked to an inactive `Staff` are hidden on both pages
+    (`selectors.public_teachers()`).
+* `TeacherGroup` (inline of `TeachersPage`): an editorial department
+  («آموزگاران پایه», «زبان انگلیسی»…), not `school.Subject`. Teachers of an
+  inactive group are hidden on the teachers page.
+* Photos of people (`LandingTeacher.photo_override`,
+  `AboutPerson.photo_override`) are re-encoded when uploaded
+  (`website/images.py`, called from the models' `save()`): turned upright,
+  scaled to fit 900 px, flattened onto white if transparent, saved as a
+  fresh JPEG with a random name. No EXIF (GPS included) survives. Other
+  website images are stored as uploaded (follow-up).
 * Images: per-model `upload_to`, jpg/jpeg/png/webp only, max 2 MB
   (`website/validators.py`). Replaced or deleted files are removed from
   MEDIA_ROOT after the transaction commits (`website/signals.py`).
@@ -42,7 +76,7 @@ see §5.
 
 * `ContactLocation.branch` optionally links a `school.Branch`:
   `display_title`, `display_address` and the branch phone fall back to the
-  branch's `name`, `address` and `phone_number` (like `LandingTeacher`).
+  branch's `name`, `address` and `phone_number`.
   Locations of inactive branches are not shown. `map_links` lists only the
   filled-in Neshan / Balad / Google Maps links.
 * `ContactChannel` is a phone, mobile or email, school-wide (no location)
@@ -79,6 +113,24 @@ re-activates only an inactive «کلاس ها» still at `#`; rows an admin has
 renamed or linked are never touched. (If an admin had deactivated «کلاس
 ها» by hand before 0008, a rollback turns it back on.)
 
+Teachers page migrations:
+* `0009_teachers`: the `TeachersPage` and `TeacherGroup` tables, the new
+  `LandingTeacher` fields (`slug` still nullable), `LandingTeacher.page`
+  made nullable, the landing page's link fields, help texts.
+* `0010_seed_teachers`: creates the `TeachersPage` row and fills every
+  card's `slug`. No teachers or groups are created. Its reverse points the
+  cards back at the landing page's row and deletes the teachers page row.
+* `0011_teacher_slug`: drops `LandingTeacher.page`, makes `slug` unique and
+  required. Kept apart from 0010 so no PostgreSQL transaction both updates
+  and alters the table.
+* `0012_teachers_menu`: the «معلمان» menu row still at `#` → `/teachers/`;
+  the reverse resets only a row still at `/teachers/`.
+* `0013_hide_seed_teachers`: deactivates the four invented seed teachers
+  of `0002` (علی رضایی، سعید محمدی، ماریا کریمی، ندا حسینی) only where
+  they are untouched: exact seed name and specialty, no linked teacher, no
+  photo. The reverse re-activates only inactive rows matching the same
+  conditions (one an admin had deactivated by hand would come back on).
+
 ## 2. Admin
 
 * **مدیریت صفحه اصلی** (`LandingPage`), **صفحه تماس با ما** (`ContactPage`),
@@ -92,14 +144,25 @@ renamed or linked are never touched. (If an admin had deactivated «کلاس
 * On **صفحه تماس با ما**, a channel's «شعبه» dropdown lists saved locations
   only: save a new location before attaching phones to it.
 * **پیام‌های تماس با ما** (`ContactMessage`): see §5.
-* Every image has a thumbnail preview; `order` is editable inline;
-  `LandingTeacher.teacher` uses autocomplete.
+* **معلمان سایت** (`LandingTeacher`), its own list: thumbnail, name,
+  specialty, group, and the two ticks, «فعال» and order editable in the
+  list; filters by tick and group; search by name. The change form has
+  «معلم» (autocomplete on teacher profiles), «نمایش», «عکس», «معرفی»,
+  «لینک». The help texts say a teacher is published only with their
+  agreement, and that photo metadata is removed. **مدیریت صفحه اصلی** no
+  longer has a teachers inline: its «سکشن اساتید» links to this list.
+* **صفحه معلمان** (`TeachersPage`) opens its single record, with the groups
+  as an inline and a link to «معلمان سایت».
+* Every image has a thumbnail preview; `order` is editable inline.
 
 ## 3. View and templates
 
 * `views.website` loads `LandingPage` and prefetches only the enabled sections'
-  active items (teachers with `select_related("teacher__staff__user")`), so the
-  query count doesn't grow with the number of items.
+  active items, and reads the teachers from
+  `selectors.public_teachers().filter(on_home=True)` (one query), so the
+  query count doesn't grow with the number of items. Below the teachers
+  row, `teachers_link_text` links to `teachers_link_url` (`/teachers/`),
+  shown only with both filled in.
 * `website.context_processors.site_settings` exposes `site_settings`,
   `nav_items` and `footer_links` lazily to every template (the header logo and
   footer live in `template/base.html`).
@@ -125,6 +188,23 @@ renamed or linked are never touched. (If an admin had deactivated «کلاس
   address, linking to the contact page for phones and maps), closing CTA.
   A section switched off, or with nothing active, isn't rendered.
   Templates: `website/about.html` and `website/about/_person.html`.
+* `views.teachers` (`website:teachers`, GET/HEAD only) loads `TeachersPage`
+  and `selectors.teachers_page_listing()`: the published teachers
+  (`is_active`, `on_teachers_page`, linked staff null or active, group null
+  or active) in **one** query with their groups, grouped in Python. With
+  «همه», one section per group in use (group order), then the teachers
+  without a group under `other_group_title`; with no group in use, one
+  flat list under a visually hidden `list_title`. `?group=<id>` shows one
+  group; an unknown, inactive, empty or non-numeric value shows everyone.
+  The chips («همه» + groups in use) appear only with two or more groups and
+  `show_filter`. With `?partial=1` only `website/teachers/_directory.html`
+  (the filter and the list) is rendered, for `teachers.js` (ADR-015).
+  5 queries for the page and 2 for the fragment, whatever the number of
+  teachers and groups (tested). One `h1`, visually hidden when the intro is
+  off; an empty state (`empty_text`) until a teacher is published.
+  Templates: `website/teachers.html` and `website/teachers/_filter.html`,
+  `_list.html`, `_teacher.html`, `_directory.html`. The template only uses
+  a card's own fields and `display_*` properties, never `card.teacher`.
 * `template/base.html` has a `messages` block (default markup unchanged) and
   a `viewport` block; the contact page shows its confirmation inside the
   form card and sets `viewport-fit=cover` for the phone bar.
@@ -159,6 +239,24 @@ renamed or linked are never touched. (If an admin had deactivated «کلاس
   reached. Everywhere else it is simply drawn. The hero photo sits in an
   arch. The gallery is a scroll-snap strip below 768px and a grid above.
   No JavaScript besides `nav.js`.
+* `css/teachers.css` + `js/teachers.js` — the teachers page; loaded after
+  `index.css`. It adds `--tc-redpen #b3202e` (6.4:1 on the paper), used only
+  for each teacher's note and its hand-drawn tick, and repeats the contact
+  page's paper and rule values (`--tc-paper`, `--tc-rule`) plus a red
+  notebook margin. A teacher's `quote` is written in red ink on a strip of
+  ruled notebook paper with the margin line at the start (right) edge.
+  Portraits use the landing page's blob frame (peach / yellow / sand
+  backgrounds), with no card boxes. Below 576px each teacher is a row (96px
+  portrait beside the name); then 2 / 3 / 4 columns at 576 / 992 / 1200px.
+  The bio and education are in a native `<details>` («درباره …»), the only
+  motion (a height transition where `::details-content` is supported and
+  motion is allowed). `teachers.js` only enhances: the chips fetch
+  `?partial=1`, swap `[data-tc-swap]` blocks, `pushState` (back and forward
+  work), announce «n معلم» in a polite live region and keep focus on the
+  chip; any error falls back to a normal page load. It also opens the
+  `<details>` of a teacher linked by `#slug`.
+* `index.css` also styles the landing card's initial (`.instructor-initial`)
+  and the link to the teachers page (`.instructors-more`, `--lp-action`).
 * `js/slider.js` — hero carousel (autoplay, dots, arrows, touch swipe; pauses on
   hover/focus and honours `prefers-reduced-motion`) and the teachers row
   (native scroll-snap; arrows scroll one card; 1/2/3 cards per view).

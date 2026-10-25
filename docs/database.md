@@ -18,7 +18,7 @@ The database is divided into the following domains:
 * Teaching Sessions
 * Academic Calendar
 * Attendance
-* Public website: contact and about pages (the other `website` CMS tables are documented in `docs/apps/website.md`)
+* Public website: contact, about and teachers pages (the other `website` CMS tables are documented in `docs/apps/website.md`)
 
 The full entity relationship diagram (Mermaid) is in [database-mermaid.md](database-mermaid.md).
 
@@ -97,7 +97,6 @@ Acts as the base profile for all school employees.
 | Field          | Description                    |
 | -------------- | ------------------------------ |
 | personnel_code | Internal personnel identifier  |
-| national_code  | National identification number |
 | hire_date      | Employment start date          |
 | gender         | Personnel gender               |
 
@@ -123,11 +122,11 @@ Extends Staff with educational and teaching details.
 | education           | Highest degree        |
 | field_of_study      | Academic major        |
 | teaching_experience | Years of experience   |
-| is_homeroom_teacher | Homeroom teacher flag |
 
 ### Relationships
 
 * One-to-One with Staff.
+* Optionally linked from public teacher cards (`website.LandingTeacher.teacher`); only `field_of_study` is read there, as a fallback specialty.
 
 ---
 
@@ -627,6 +626,40 @@ A leader or office colleague shown on the about page («همکاران ما»).
 
 * Belongs to one AboutPage; optionally to one Staff.
 * Rows whose linked Staff is inactive are not shown.
+
+---
+
+# Public Website: Teachers Page
+
+`TeachersPage` is a singleton (intro, list labels, closing call to action,
+one switch each) with `TeacherGroup` rows (title, order, `is_active`) as its
+inline. The teachers themselves are `LandingTeacher` rows: one list shared
+by the landing page's teachers row and the «معلمان» page (`/teachers/`).
+Everything is editorial (ADR-025).
+
+## LandingTeacher
+
+A teacher on the public site. Not a child of `LandingPage` any more (its
+`page` column was dropped in `website.0011`).
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| teacher | Optional `staff.TeacherProfile` (`SET_NULL`); the user's first and last name (never the username) and `field_of_study` are the only fallbacks |
+| name_override, specialty_override | Win over the account's name and the profile's field of study |
+| photo_override | The only photo ever published (never the account avatar); re-encoded on upload without metadata. Without it, the name's first letter |
+| group | Optional `TeacherGroup` (`SET_NULL`): the section and filter on the teachers page |
+| on_teachers_page | Shown on `/teachers/` (default off) |
+| on_home | Shown in the landing page's row (default off; rows that existed before `website.0009` were set on) |
+| is_active | Master switch: off hides the card everywhere |
+| experience, education, quote, bio | Typed text, shown as typed; never read from the staff record |
+| slug | Unique, generated from the name on first save, editable; the card's anchor (`/teachers/#<slug>`) |
+
+### Relationships
+
+* Optionally to one TeacherProfile and one TeacherGroup.
+* Rows whose linked Staff is inactive are not shown on either page; neither are rows of an inactive group on the teachers page.
 
 ---
 

@@ -29,6 +29,8 @@ from .models import (
     LearningPoint,
     NavMenuItem,
     SiteSettings,
+    TeacherGroup,
+    TeachersPage,
 )
 
 
@@ -96,6 +98,29 @@ class SiteSettingsAdmin(SingletonAdmin):
 
 # ----------------------------------------------------------------- landing page
 
+TEACHERS_SECTION_NOTE = (
+    "معلمان این سکشن در «{link}» انتخاب می‌شوند: «فعال» و «نمایش در صفحه اصلی». "
+    "لینک زیر سکشن به صفحه معلمان می‌رود؛ با خالی گذاشتن متن یا لینک نمایش داده نمی‌شود."
+)
+
+
+def with_teachers_link(fieldsets, title):
+    """
+    Put a link to the «معلمان سایت» list into the description of the
+    fieldset named ``title`` (reversed per request, not at import time).
+    """
+
+    link = format_html(
+        '<a href="{}">{}</a>', reverse("admin:website_landingteacher_changelist"), LandingTeacher._meta.verbose_name_plural
+    )
+    result = []
+    for name, options in fieldsets:
+        if name == title:
+            options = {**options, "description": format_html(options["description"], link=link)}
+        result.append((name, options))
+    return result
+
+
 COMPACT_TEXTAREA = {models.TextField: {"widget": Textarea(attrs={"rows": 3, "cols": 80})}}
 
 
@@ -140,22 +165,10 @@ class LearningPointInline(PreviewInlineMixin, admin.TabularInline):
     fields = ("title", "subtitle", "icon_emoji", "icon_image", "preview", "order", "is_active")
 
 
-class LandingTeacherInline(PreviewInlineMixin, admin.TabularInline):
-    model = LandingTeacher
-    extra = 0
-    preview_attr = "photo_url"
-    readonly_fields = ("preview",)
-    autocomplete_fields = ("teacher",)
-    fields = ("teacher", "name_override", "specialty_override", "photo_override", "preview", "order", "is_active")
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("teacher__staff__user")
-
-
 @admin.register(LandingPage)
 class LandingPageAdmin(SingletonAdmin):
     formfield_overrides = COMPACT_TEXTAREA
-    inlines = [HeroSlideInline, FeatureCardInline, LearningPointInline, LandingTeacherInline]
+    inlines = [HeroSlideInline, FeatureCardInline, LearningPointInline]
     readonly_fields = ("intro_image_preview", "learning_image_preview")
     fieldsets = (
         (
@@ -184,8 +197,17 @@ class LandingPageAdmin(SingletonAdmin):
             "سکشن یادگیری فعال",
             {"fields": ("learning_title", "learning_subtitle", "learning_image", "learning_image_preview", "learning_image_alt")},
         ),
-        ("سکشن اساتید", {"fields": ("teachers_title", "teachers_subtitle")}),
+        (
+            "سکشن اساتید",
+            {
+                "description": TEACHERS_SECTION_NOTE,
+                "fields": ("teachers_title", "teachers_subtitle", ("teachers_link_text", "teachers_link_url")),
+            },
+        ),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        return with_teachers_link(super().get_fieldsets(request, obj), "سکشن اساتید")
 
     @admin.display(description="پیش‌نمایش تصویر")
     def intro_image_preview(self, obj):
@@ -459,3 +481,114 @@ class AboutPageAdmin(SingletonAdmin):
     @admin.display(description="پیش‌نمایش عکس")
     def quote_photo_preview(self, obj):
         return image_preview(obj.quote_photo_url, 100)
+
+
+# ----------------------------------------------------------------- teachers page
+
+
+@admin.register(LandingTeacher)
+class LandingTeacherAdmin(admin.ModelAdmin):
+    """
+    The teachers of the public site, shared by the landing page's row and
+    the «معلمان» page: two ticks say where each one appears.
+    """
+
+    formfield_overrides = COMPACT_TEXTAREA
+    list_display = (
+        "thumbnail",
+        "name_column",
+        "specialty_column",
+        "group",
+        "on_teachers_page",
+        "on_home",
+        "is_active",
+        "order",
+    )
+    list_display_links = ("thumbnail", "name_column")
+    list_editable = ("on_teachers_page", "on_home", "is_active", "order")
+    list_filter = ("on_teachers_page", "on_home", "is_active", "group")
+    list_select_related = ("teacher__staff__user", "group")
+    search_fields = (
+        "name_override",
+        "specialty_override",
+        "teacher__staff__user__first_name",
+        "teacher__staff__user__last_name",
+    )
+    autocomplete_fields = ("teacher",)
+    readonly_fields = ("preview",)
+    fieldsets = (
+        (
+            "معلم",
+            {
+                "description": "معلم را از حساب‌های سامانه انتخاب کنید یا فقط نام نمایشی بنویسید. "
+                               "از حساب فقط نام و رشته تحصیلی خوانده می‌شود.",
+                "fields": ("teacher", "name_override", "specialty_override"),
+            },
+        ),
+        (
+            "نمایش",
+            {
+                "description": "تا یکی از دو گزینه نمایش زده نشود، معلم در سایت دیده نمی‌شود. "
+                               "«فعال» خاموش یعنی هیچ‌جا، بدون پاک شدن گزینه‌ها.",
+                "fields": (("is_active", "on_teachers_page", "on_home"), "group", "order"),
+            },
+        ),
+        ("عکس", {"fields": ("photo_override", "preview")}),
+        ("معرفی", {"fields": ("experience", "education", "quote", "bio")}),
+        ("لینک", {"fields": ("slug",)}),
+    )
+
+    @admin.display(description="عکس")
+    def thumbnail(self, obj):
+        return image_preview(obj.photo_url, 48)
+
+    @admin.display(description="پیش‌نمایش")
+    def preview(self, obj):
+        return image_preview(obj.photo_url, 140)
+
+    @admin.display(description="نام", ordering="name_override")
+    def name_column(self, obj):
+        return obj.display_name
+
+    @admin.display(description="تخصص")
+    def specialty_column(self, obj):
+        return obj.display_specialty or "—"
+
+
+class TeacherGroupInline(admin.TabularInline):
+    model = TeacherGroup
+    extra = 0
+    fields = ("title", "order", "is_active")
+
+
+@admin.register(TeachersPage)
+class TeachersPageAdmin(SingletonAdmin):
+    formfield_overrides = COMPACT_TEXTAREA
+    inlines = [TeacherGroupInline]
+    fieldsets = (
+        (
+            "نمایش سکشن‌ها",
+            {
+                "description": "معلمان این صفحه در «{link}» انتخاب می‌شوند (گزینه «نمایش در صفحه معلمان»). "
+                               "همه متن‌ها عمومی‌اند و از داده‌های سامانه محاسبه نمی‌شوند.",
+                "fields": (("show_intro", "show_filter", "show_cta"),),
+            },
+        ),
+        ("بالای صفحه", {"fields": ("hero_title", "hero_text")}),
+        ("فهرست", {"fields": ("filter_label", "all_text", "list_title", "other_group_title", "empty_text")}),
+        (
+            "دعوت پایانی",
+            {
+                "fields": (
+                    "cta_title",
+                    "cta_text",
+                    ("cta_primary_text", "cta_primary_url"),
+                    ("cta_secondary_text", "cta_secondary_url"),
+                )
+            },
+        ),
+        ("سئو", {"fields": ("meta_title", "meta_description")}),
+    )
+
+    def get_fieldsets(self, request, obj=None):
+        return with_teachers_link(super().get_fieldsets(request, obj), "نمایش سکشن‌ها")

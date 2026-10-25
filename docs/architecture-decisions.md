@@ -586,7 +586,13 @@ The "device" is an HMAC-SHA256 of the client IP keyed with `SECRET_KEY`; the raw
 
 Everything the public website states about the school (texts, numbers such as «۴۰۰+ دانش‌آموز», milestones, people, photos) is entered by hand in the admin and shown as typed. No public page counts or reads enrolments, staff, classes, attendance or any other school record to produce what it shows. First applied on «درباره ما» (`website:about`): `AboutFact.value` is free text, `AboutPerson.role` is typed, and seeded content that would read as a fact (milestones, numbers) is created inactive until the school fills it in.
 
-Where a public item links to a school record for convenience, only named, documented fields follow it: `ContactLocation` shows its branch's name, address and phone; `AboutPerson` shows its staff member's first and last name. Photos of people are published only when uploaded for that purpose: `AboutPerson` never falls back to the account avatar. (The landing page's teacher cards, `LandingTeacher`, still fall back to the avatar; that predates this decision and is to be revisited with the teachers page.)
+Where a public item links to a school record for convenience, only named, documented fields follow it: `ContactLocation` shows its branch's name, address and phone; `AboutPerson` shows its staff member's first and last name; `LandingTeacher` (the teacher cards of the landing page and the «معلمان» page) shows its teacher's first and last name and, as a fallback specialty, the profile's `field_of_study`. A name never falls back to the username.
+
+People are published one by one, on purpose: a teacher appears on a public page only when an admin ticks it for that page (`on_teachers_page`, `on_home`), and nobody is listed because they exist in the school's records. A card or person linked to someone who has left (inactive `Staff`) is hidden.
+
+Photos of people are published only when uploaded for that purpose, never the account avatar (`AboutPerson`, and since the teachers page also `LandingTeacher`), and an uploaded photo of a person is re-encoded on save (`website/images.py`: upright, at most 900 px, a fresh JPEG), so no EXIF data such as a phone's GPS position is published. Without a photo, the name's first letter is shown.
+
+Invented content presented as fact is not published either: the four made-up teachers the landing page was seeded with are deactivated (`website.0013`) unless an admin had already edited them.
 
 ## Rationale
 
@@ -597,7 +603,8 @@ Where a public item links to a school record for convenience, only named, docume
 ## Consequences
 
 * The school must keep these figures up to date by hand; the admin help texts say so.
-* A new public page (blog, registration) follows the same rule: content models, admin-edited, no queries into school apps beyond an explicit, documented fallback like the two above.
+* A new public page (blog, registration) follows the same rule: content models, admin-edited, no queries into school apps beyond an explicit, documented fallback like the ones above.
+* The About page's gallery and the other website images (slides, highlights) are not re-encoded yet; they are pictures of the school rather than portraits, and are a follow-up.
 
 ---
 

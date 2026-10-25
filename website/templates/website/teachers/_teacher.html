@@ -1,0 +1,50 @@
+{% comment %}
+One teacher. Needs `teacher` (a LandingTeacher). Only the card's own
+fields and its display_* properties are used, never `teacher.teacher`:
+nothing else of the account or the staff record reaches the page. The
+photo is only the one uploaded on the card; without it, the initial.
+{% endcomment %}
+<article class="tc-teacher" id="{{ teacher.slug }}" aria-labelledby="{{ teacher.slug }}-name">
+    <div class="tc-portrait"{% if not teacher.photo_url %} aria-hidden="true"{% endif %}>
+        {% if teacher.photo_url %}
+        <img src="{{ teacher.photo_url }}" alt="" width="600" height="800" loading="lazy" decoding="async">
+        {% else %}
+        <span class="tc-portrait__initial">{{ teacher.initial }}</span>
+        {% endif %}
+    </div>
+
+    <div class="tc-teacher__id">
+        <h3 class="tc-teacher__name" id="{{ teacher.slug }}-name">{{ teacher.display_name }}</h3>
+        {% if teacher.display_specialty %}<p class="tc-teacher__specialty">{{ teacher.display_specialty }}</p>{% endif %}
+        {% if teacher.experience %}
+        <dl class="tc-facts">
+            <div><dt>سابقه تدریس</dt><dd>{{ teacher.experience }}</dd></div>
+        </dl>
+        {% endif %}
+    </div>
+
+    {% if teacher.quote %}
+    {# The teacher's own words, in red pen on a strip of notebook paper. #}
+    <figure class="tc-note">
+        <blockquote>
+            <p>{{ teacher.quote }}<svg class="tc-note__tick" viewBox="0 0 28 20" width="28" height="20" aria-hidden="true" focusable="false"><path d="M3 11 C6 13 8 15 10 18 C14 10 19 5 26 2" /></svg></p>
+        </blockquote>
+        <figcaption class="visually-hidden">{{ teacher.display_name }}</figcaption>
+    </figure>
+    {% endif %}
+
+    {% if teacher.has_details %}
+    <details class="tc-more">
+        <summary><i class="fa-solid fa-chevron-left" aria-hidden="true"></i><span>درباره {{ teacher.display_name }}</span></summary>
+        <div class="tc-more__body">
+            {% if teacher.bio %}<p>{{ teacher.bio|linebreaksbr }}</p>{% endif %}
+            {% if teacher.education %}
+            <dl class="tc-facts">
+                <div><dt>تحصیلات</dt><dd>{{ teacher.education }}</dd></div>
+            </dl>
+            {% endif %}
+            {# Blog: a link to this teacher's posts («نوشته‌های …») goes here, once the blog decides how an author links to a teacher card. #}
+        </div>
+    </details>
+    {% endif %}
+</article>

@@ -1,3 +1,4 @@
+import io
 import shutil
 import tempfile
 
@@ -9,6 +10,7 @@ from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from PIL import Image
 
 from staff.models import Staff, TeacherProfile
 
@@ -31,6 +33,39 @@ PIXEL = (
     b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04"
     b"\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
 )
+
+
+def phone_photo(name="phone.jpg", size=(1800, 1200)):
+    """
+    A JPEG as a phone saves it: EXIF with the camera make, a GPS position
+    and orientation 6 (to be turned 90° when displayed).
+    """
+
+    exif = Image.Exif()
+    exif[271] = "SecretPhone"
+    exif[274] = 6
+    gps = exif.get_ifd(0x8825)
+    gps[1] = "N"
+    gps[2] = (35.0, 41.0, 20.0)
+    buffer = io.BytesIO()
+    Image.new("RGB", size, (200, 120, 80)).save(buffer, "JPEG", exif=exif)
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
+
+
+def assert_reencoded(test, field_file):
+    """The stored file is a fresh, upright JPEG of at most 900px with no metadata."""
+
+    field_file.open("rb")
+    data = field_file.read()
+    field_file.close()
+    test.assertNotIn(b"SecretPhone", data)
+    with Image.open(io.BytesIO(data)) as stored:
+        test.assertEqual(stored.format, "JPEG")
+        test.assertEqual(len(stored.getexif()), 0)
+        test.assertEqual(dict(stored.getexif().get_ifd(0x8825)), {})
+        # 1800×1200 turned upright is 1200×1800, then scaled to fit 900.
+        test.assertEqual(stored.size, (600, 900))
+    test.assertTrue(field_file.name.endswith(".jpg"))
 
 
 def clear_content():
@@ -115,12 +150,15 @@ class LandingPageViewTests(TestCase):
             "کلاس‌های رباتیک و کدنویسی نسل قلم",
             "رباتیک و برنامه نویسی",
             "برنامه های خلاقانه",
-            "علی رضایی",
             "تماس با ما",
             "Made with 💗 in Urmia",
         ):
             self.assertContains(response, text)
         self.assertContains(response, "website/images/robatic-slider.jpeg")
+        # The four invented seed teachers are deactivated (0013), so the
+        # section has nothing to show and isn't rendered.
+        self.assertNotContains(response, "علی رضایی")
+        self.assertNotContains(response, 'class="instructors-section"')
 
     def test_empty_database_renders_without_sections(self):
         clear_content()
@@ -162,10 +200,10 @@ class LandingPageViewTests(TestCase):
                 self.client.get(self.url)
             return len(ctx.captured_queries)
 
+        LandingTeacher.objects.create(name_override="معلم", on_home=True)
         before = count_queries()
-        page = LandingPage.load()
         for i in range(5):
-            LandingTeacher.objects.create(page=page, teacher=make_teacher(first_name=f"استاد{i}"), order=10 + i)
+            LandingTeacher.objects.create(teacher=make_teacher(first_name=f"استاد{i}"), on_home=True, order=10 + i)
         self.assertEqual(count_queries(), before)
 
 
@@ -173,20 +211,26 @@ class LandingTeacherPropertyTests(TestCase):
     def setUp(self):
         self.media = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.media, ignore_errors=True)
-        self.page = LandingPage.load()
 
-    def test_falls_back_to_linked_user(self):
+    def test_falls_back_to_linked_user_but_never_to_the_avatar(self):
         with override_settings(MEDIA_ROOT=self.media):
             profile = make_teacher(avatar=SimpleUploadedFile("a.png", PIXEL, content_type="image/png"))
-            card = LandingTeacher(page=self.page, teacher=profile)
+            card = LandingTeacher(teacher=profile)
             self.assertEqual(card.display_name, "سارا احمدی")
-            self.assertTrue(card.photo_url.startswith("/media/users/avatars/"))
             self.assertEqual(card.display_specialty, "ریاضی")
+            # ADR-025: only a photo uploaded on the card is published.
+            self.assertEqual(card.photo_url, "")
+            self.assertEqual(card.initial, "س")
+
+    def test_name_never_falls_back_to_the_username(self):
+        card = LandingTeacher(teacher=make_teacher(first_name="", last_name=""))
+        self.assertEqual(card.display_name, "")
+        with self.assertRaises(ValidationError):
+            card.clean()
 
     def test_overrides_win(self):
         with override_settings(MEDIA_ROOT=self.media):
             card = LandingTeacher(
-                page=self.page,
                 teacher=make_teacher(),
                 name_override="نام دلخواه",
                 specialty_override="استاد علوم",
@@ -198,14 +242,14 @@ class LandingTeacherPropertyTests(TestCase):
             self.assertIn("/media/website/teachers/", card.photo_url)
 
     def test_without_teacher_or_photo(self):
-        card = LandingTeacher(page=self.page, name_override="مهمان")
+        card = LandingTeacher(name_override="مهمان")
         self.assertEqual(card.display_name, "مهمان")
         self.assertEqual(card.photo_url, "")
         self.assertEqual(card.display_specialty, "")
 
     def test_clean_requires_teacher_or_name(self):
         with self.assertRaises(ValidationError):
-            LandingTeacher(page=self.page).clean()
+            LandingTeacher().clean()
 
 
 class ImageFileCleanupTests(TestCase):

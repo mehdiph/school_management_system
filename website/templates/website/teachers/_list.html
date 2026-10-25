@@ -1,0 +1,20 @@
+{% load jalali_tags %}
+{% comment %}
+The teachers, one section per group (or one flat list with a visually
+hidden heading), or the empty state. `data-tc-count` is what teachers.js
+announces after a filter.
+{% endcomment %}
+<div class="tc-list" id="tc-list" data-tc-swap="list" data-tc-count="{{ listing.count|fa_digits }} معلم">
+    {% for section in listing.sections %}
+    <section class="tc-group" aria-labelledby="{{ section.anchor }}">
+        <h2 class="tc-group__title{% if not listing.grouped %} visually-hidden{% endif %}" id="{{ section.anchor }}">{{ section.title }}</h2>
+        <ul class="tc-teachers">
+            {% for teacher in section.teachers %}
+            <li>{% include "website/teachers/_teacher.html" %}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% empty %}
+    <p class="tc-empty">{{ page.empty_text|linebreaksbr }}</p>
+    {% endfor %}
+</div>

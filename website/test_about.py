@@ -26,7 +26,7 @@ from .models import (
     FooterLink,
     NavMenuItem,
 )
-from .tests import PIXEL, make_teacher
+from .tests import PIXEL, assert_reencoded, make_teacher, phone_photo
 
 User = get_user_model()
 URL = "/about/"
@@ -272,6 +272,12 @@ class AboutPersonTests(TempMediaMixin, AboutFixture):
         self.assertNotContains(response, staff.user.avatar.name)
         self.assertContains(response, '<span class="ab-person__photo ab-person__initial" aria-hidden="true">س</span>', html=False)
 
+    def test_uploaded_photo_is_reencoded_without_metadata(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            person = AboutPerson.objects.create(page=self.page, name_override="مریم", role="مدیر", photo_override=phone_photo())
+        assert_reencoded(self, person.photo_override)
+        self.assertIn("website/about/people/", person.photo_override.name)
+
     def test_uploaded_photo_and_name_override_win(self):
         staff = make_teacher(first_name="سارا", last_name="احمدی").staff
         person = AboutPerson.objects.create(
@@ -399,6 +405,7 @@ class AboutMigrationTests(TestCase):
         NavMenuItem.objects.filter(title="درباره ما").update(url="#")
         FooterLink.objects.filter(title="درباره ما").update(url="#")
         NavMenuItem.objects.filter(title="کلاس ها").update(url="#", is_active=True)
+        NavMenuItem.objects.filter(title="معلمان").update(url="#")  # 0012 links it
 
     def test_about_rows_still_at_hash_are_linked_and_reversed(self):
         self.reset_menu()

@@ -1,17 +1,13 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from website.images import METADATA_HELP, PUBLIC_PHOTO_HELP, reencode_new_photo
 from website.validators import IMAGE_VALIDATORS
 
 from .base import OrderedItem, SingletonModel, image_url
 from .landing import _alt_field, _image_field, _link_field, _static_fallback_field
 
 HERO_IMAGE_FALLBACK = "website/images/happy_young_boy.png"
-
-PUBLIC_PHOTO_HELP = (
-    "این عکس در سایت عمومی نمایش داده می‌شود؛ فقط عکسی بگذارید که اجازه انتشارش را دارید. "
-    "عکس پروفایل حساب کاربری هیچ‌وقت خودکار نمایش داده نمی‌شود."
-)
 
 
 class AboutPage(SingletonModel):
@@ -287,7 +283,7 @@ class AboutPerson(OrderedItem):
         blank=True,
         validators=IMAGE_VALIDATORS,
         verbose_name="عکس",
-        help_text="ابعاد پیشنهادی ۴۰۰×۴۰۰ (مربع). " + PUBLIC_PHOTO_HELP
+        help_text="ابعاد پیشنهادی ۴۰۰×۴۰۰ (مربع). " + PUBLIC_PHOTO_HELP + " " + METADATA_HELP
                   + " بدون عکس، حرف اول نام نمایش داده می‌شود.",
     )
     bio = models.CharField(max_length=150, blank=True, verbose_name="توضیح کوتاه")
@@ -302,6 +298,10 @@ class AboutPerson(OrderedItem):
     def clean(self):
         if not self.name_override.strip() and not self._account_name:
             raise ValidationError("یک پرسنل دارای نام انتخاب کنید یا نام نمایشی را وارد کنید.")
+
+    def save(self, *args, **kwargs):
+        reencode_new_photo(self, "photo_override")
+        super().save(*args, **kwargs)
 
     @property
     def _account_name(self):

@@ -666,6 +666,41 @@ body.landing {
     object-fit: cover;
 }
 
+/* Without an uploaded photo: the name's first letter (≥ 4.2:1 on all
+   three backgrounds, large text). */
+.instructor-initial {
+    align-self: center;
+    color: var(--lp-ink);
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* The link to the «معلمان» page under the row (--lp-action: AA on the glass box). */
+.instructors-more {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.instructors-more a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--lp-touch);
+    color: var(--lp-action);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 5px;
+}
+
+.instructors-more a:hover {
+    color: var(--lp-action-hover);
+}
+
+.instructors-more a:focus-visible {
+    outline: 3px solid var(--lp-action);
+    outline-offset: 3px;
+}
+
 .bg-teal { background-color: #0d9488; }
 .bg-blue { background-color: #3b82f6; }
 .bg-pink { background-color: #f472b6; }

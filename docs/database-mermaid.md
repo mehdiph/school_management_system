@@ -3,7 +3,7 @@
 The school-domain tables and their relations, as Mermaid. Prose descriptions of each model are in [database.md](database.md); the academic calendar's rules are in [apps/academic_calendar.md](apps/academic_calendar.md).
 
 * Dates (`jdate`) are `django_jalali` `jDateField`s: stored in Gregorian, shown in Jalali.
-* The website CMS tables (`website` app: site settings, landing page, menus, contact page, contact messages and about page) and Django's own tables are left out. The contact and about tables are described in [database.md](database.md#public-website-contact-page); their links into the school domain are `ContactLocation.branch` → `Branch` and `AboutPerson.staff` → `Staff` (both optional, `SET_NULL`).
+* The website CMS tables (`website` app: site settings, landing page, menus, contact page, contact messages, about page and teachers page) and Django's own tables are left out. The contact, about and teachers tables are described in [database.md](database.md#public-website-contact-page); their links into the school domain are `ContactLocation.branch` → `Branch`, `AboutPerson.staff` → `Staff` and `LandingTeacher.teacher` → `TeacherProfile` (all optional, `SET_NULL`).
 * Every table also has an `id` primary key (not repeated below except where it helps).
 
 ```mermaid

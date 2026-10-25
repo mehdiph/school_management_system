@@ -3,6 +3,7 @@ from .base import OrderedItem, SingletonModel
 from .contact import ContactChannel, ContactLocation, ContactMessage, ContactPage, ContactTopic
 from .landing import FeatureCard, HeroSlide, LandingPage, LandingTeacher, LearningPoint
 from .site import FooterLink, NavMenuItem, SiteSettings
+from .teachers import TeacherGroup, TeachersPage
 
 __all__ = [
     "OrderedItem",
@@ -27,4 +28,6 @@ __all__ = [
     "AboutFact",
     "AboutPerson",
     "AboutPhoto",
+    "TeachersPage",
+    "TeacherGroup",
 ]

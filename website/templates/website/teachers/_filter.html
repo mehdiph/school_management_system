@@ -1,0 +1,17 @@
+{% comment %}
+The group chips: plain links (?group=<id>), so filtering works without JS.
+Shown only when two or more groups have published teachers. The wrapper
+is always there, so teachers.js has something to swap.
+{% endcomment %}
+<div class="tc-filter" data-tc-swap="filter">
+    {% if page.show_filter and listing.show_chips %}
+    <nav aria-label="{{ page.filter_label }}">
+        <ul class="tc-chips">
+            <li><a class="tc-chip" href="{{ request.path }}#tc-list"{% if not listing.selected %} aria-current="true"{% endif %}>{{ page.all_text }}</a></li>
+            {% for group in listing.groups %}
+            <li><a class="tc-chip" href="{{ request.path }}?group={{ group.pk }}#tc-list"{% if listing.selected == group %} aria-current="true"{% endif %}>{{ group.title }}</a></li>
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>

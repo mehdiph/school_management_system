@@ -22,9 +22,10 @@ from .models import (
     FeatureCard,
     HeroSlide,
     LandingPage,
-    LandingTeacher,
     LearningPoint,
+    TeachersPage,
 )
+from .selectors import public_teachers, teachers_page_listing
 from .services import client_ip_hash, rate_limited, submit_contact_message
 
 RATE_LIMIT_MESSAGE = (
@@ -41,7 +42,6 @@ def website(request):
         ("show_hero_slider", "slides", HeroSlide.objects.all()),
         ("show_features", "features", FeatureCard.objects.all()),
         ("show_learning", "learning_points", LearningPoint.objects.all()),
-        ("show_teachers", "teachers", LandingTeacher.objects.select_related("teacher__staff__user")),
     ]
     lookups = [
         Prefetch(relation, queryset=queryset.filter(is_active=True), to_attr=f"active_{relation}")
@@ -53,6 +53,8 @@ def website(request):
     context = {"page": page}
     for flag, relation, _ in sections:
         context[relation] = getattr(page, f"active_{relation}", [])
+    # The teachers are shared with the «معلمان» page, not the landing page's own rows.
+    context["teachers"] = list(public_teachers().filter(on_home=True)) if page.show_teachers else []
 
     return render(request, "website/index.html", context)
 
@@ -186,3 +188,18 @@ def about(request):
         context[relation] = getattr(page, f"active_{relation}", [])
 
     return render(request, "website/about.html", context)
+
+
+@require_safe
+def teachers(request):
+    """
+    The «معلمان» page. ``?group=<id>`` shows one group; with
+    ``?partial=1`` (the page's JS) only the filter and the list are
+    rendered, to be swapped into the page (ADR-015).
+    """
+
+    page = TeachersPage.load()
+    context = {"page": page, "listing": teachers_page_listing(page, request.GET.get("group"))}
+    if request.GET.get("partial") == "1":
+        return render(request, "website/teachers/_directory.html", context)
+    return render(request, "website/teachers.html", context)

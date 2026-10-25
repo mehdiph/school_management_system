@@ -1,0 +1,505 @@
+/* ==========================================================================
+   Teachers page (website/teachers.html) — mobile-first.
+   Loaded after index.css: reuses its --lp-* tokens (including the shared
+   --lp-action) and adds only the teacher's red pen and the notebook paper
+   it writes on. Breakpoints: 576 / 768 / 992 / 1200px.
+   ========================================================================== */
+
+:root {
+    /* The teacher's red pen: each teacher's note and its tick. Nothing
+       else on the page is red. 6.4:1 on the paper, 6.0:1 on cream. */
+    --tc-redpen: #b3202e;
+    /* The notebook paper of the contact page's form (contact.css --ct-*,
+       not loaded here). */
+    --tc-paper: #fffaf6;
+    --tc-rule: #f0dccd;
+    /* A real notebook's margin line is red too. */
+    --tc-margin: rgba(179, 32, 46, 0.45);
+
+    --tc-note-line: 2.1rem;
+    --tc-portrait: 96px;
+}
+
+.teachers .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.teachers a:focus-visible,
+.teachers summary:focus-visible {
+    outline: 3px solid var(--lp-action);
+    outline-offset: 3px;
+}
+
+/* ===== Buttons (the about page's .ab-btn) ===== */
+.tc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 10px 26px;
+    border: 2px solid var(--lp-action);
+    border-radius: var(--lp-radius-md);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+    text-align: center;
+    transition: background-color var(--lp-speed), color var(--lp-speed);
+}
+
+.tc-btn--primary {
+    background-color: var(--lp-action);
+    color: #fff;
+}
+
+.tc-btn--primary:hover {
+    border-color: var(--lp-action-hover);
+    background-color: var(--lp-action-hover);
+}
+
+.tc-btn--outline {
+    background-color: #fff;
+    color: var(--lp-action);
+}
+
+.tc-btn--outline:hover {
+    background-color: var(--lp-action);
+    color: #fff;
+}
+
+/* ===== Intro ===== */
+.tc-intro {
+    margin-block: 20px;
+    padding: 32px 20px 28px;
+    border-radius: 0 0 var(--lp-radius-xl) var(--lp-radius-xl);
+    background-color: var(--lp-cream);
+    box-shadow: var(--lp-shadow-soft);
+    text-align: center;
+}
+
+.tc-intro h1 {
+    margin-bottom: 12px;
+    color: var(--lp-intro-heading);
+    font-size: clamp(1.55rem, 1.1rem + 1.9vw, 2.45rem);
+    font-weight: 800;
+    line-height: 1.55;
+    text-wrap: balance;
+}
+
+.tc-intro__text {
+    max-width: 36rem;
+    margin-inline: auto;
+    color: #555;
+    font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+    font-weight: 500;
+    line-height: 1.95;
+}
+
+/* ===== Group filter ===== */
+.tc-filter:not(:empty) {
+    margin-top: 22px;
+}
+
+/* Without the intro panel the chips stand on their own. */
+.teachers > .tc-filter:not(:empty) {
+    margin-block: 20px;
+}
+
+.tc-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tc-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--lp-touch);
+    padding: 6px 18px;
+    border: 2px solid var(--lp-action);
+    border-radius: var(--lp-radius-pill);
+    background-color: #fff;
+    color: var(--lp-action);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.5;
+    transition: background-color var(--lp-speed), color var(--lp-speed);
+}
+
+.tc-chip:hover {
+    background-color: var(--tc-paper);
+    color: var(--lp-action-hover);
+}
+
+.tc-chip[aria-current="true"] {
+    background-color: var(--lp-action);
+    color: #fff;
+}
+
+/* ===== Groups ===== */
+.tc-group,
+.tc-empty {
+    margin-bottom: 20px;
+    padding: var(--lp-box-pad) clamp(16px, 3vw, 32px);
+    border-radius: var(--lp-radius-lg);
+    background-color: var(--lp-glass);
+    backdrop-filter: blur(2px);
+    box-shadow: var(--lp-shadow-section);
+}
+
+.tc-group__title {
+    margin-bottom: 20px;
+    color: var(--lp-heading);
+    font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.tc-empty {
+    color: #555;
+    font-size: 1.05rem;
+    line-height: 1.95;
+    text-align: center;
+}
+
+/* ===== Teachers: no card boxes; faces on the group's panel ===== */
+.tc-teachers {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+}
+
+/* Phones: a row per teacher (portrait at the start, name beside it), the
+   note and «درباره …» full width below; a light rule between teachers. */
+.tc-teachers > li + li {
+    padding-top: 24px;
+    border-top: 1px solid rgba(180, 80, 28, 0.15);
+}
+
+.tc-teacher {
+    display: grid;
+    grid-template-columns: var(--tc-portrait) minmax(0, 1fr);
+    grid-template-areas:
+        "portrait id"
+        "note note"
+        "more more";
+    align-items: center;
+    column-gap: 16px;
+}
+
+/* The landing page's portrait frame (.instructor-img-wrapper). */
+.tc-portrait {
+    grid-area: portrait;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tc-portrait);
+    aspect-ratio: 13 / 15;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background-color: var(--lp-peach);
+    overflow: hidden;
+}
+
+.tc-teachers > li:nth-child(3n + 2) .tc-portrait {
+    background-color: var(--lp-yellow);
+}
+
+.tc-teachers > li:nth-child(3n + 3) .tc-portrait {
+    background-color: var(--lp-sand);
+}
+
+.tc-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+}
+
+.tc-portrait__initial {
+    color: var(--lp-heading);
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.tc-teacher__id {
+    grid-area: id;
+    min-width: 0;
+}
+
+.tc-teacher__name {
+    color: var(--lp-ink);
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.tc-teacher__specialty {
+    color: var(--lp-action);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.tc-facts > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 6px;
+    margin-top: 2px;
+    font-size: 0.925rem;
+    line-height: 1.8;
+}
+
+.tc-facts dt {
+    color: #555;
+    font-weight: 600;
+}
+
+.tc-facts dt::after {
+    content: ":";
+}
+
+.tc-facts dd {
+    color: #444;
+}
+
+/* ===== The red-pen note =====
+   A strip of the contact page's notebook paper: ruled lines on the line
+   height, a red margin line at the start (right) edge, and the teacher's
+   words in red ink after it, closed by a hand-drawn tick. */
+.tc-note {
+    grid-area: note;
+    position: relative;
+    margin-top: 16px;
+    padding: 4px 14px 4px 12px;
+    padding-inline-start: 26px;
+    border-radius: 6px;
+    background-color: var(--tc-paper);
+    background-image: linear-gradient(to bottom, transparent calc(var(--tc-note-line) - 1px), var(--tc-rule) calc(var(--tc-note-line) - 1px));
+    background-size: 100% var(--tc-note-line);
+    background-origin: content-box;
+    box-shadow: 0 2px 10px rgba(215, 107, 60, 0.12);
+}
+
+.tc-note::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 14px;
+    width: 2px;
+    background-color: var(--tc-margin);
+}
+
+.tc-note p {
+    color: var(--tc-redpen);
+    font-size: 1.05rem;
+    font-weight: 400;
+    line-height: var(--tc-note-line);
+    overflow-wrap: anywhere;
+}
+
+.tc-note__tick {
+    display: inline-block;
+    width: 1.5em;
+    height: 1.05em;
+    margin-inline-start: 0.35em;
+    vertical-align: -0.15em;
+    fill: none;
+    stroke: var(--tc-redpen);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ===== «درباره …»: the bio and education ===== */
+.tc-more {
+    grid-area: more;
+    margin-top: 8px;
+}
+
+.tc-more summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    min-height: var(--lp-touch);
+    color: var(--lp-action);
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+
+/* Underline the words only: on the icon it would turn with it. */
+.tc-more summary span {
+    text-decoration: underline;
+    text-underline-offset: 5px;
+}
+
+.tc-more summary::-webkit-details-marker {
+    display: none;
+}
+
+.tc-more summary:hover {
+    color: var(--lp-action-hover);
+}
+
+.tc-more summary i {
+    font-size: 0.8rem;
+}
+
+.tc-more[open] summary i {
+    transform: rotate(-90deg);
+}
+
+.tc-more__body {
+    max-width: 38rem;
+    padding-bottom: 4px;
+    color: #444;
+    font-size: 0.95rem;
+    line-height: 1.9;
+}
+
+/* The one movement on the page answers the visitor: the expansion opens. */
+@media (prefers-reduced-motion: no-preference) {
+    .tc-more summary i {
+        transition: transform 0.2s ease;
+    }
+
+    @supports selector(::details-content) {
+        .tc-more {
+            interpolate-size: allow-keywords;
+        }
+
+        .tc-more::details-content {
+            block-size: 0;
+            overflow: hidden;
+            transition: block-size 0.25s ease, content-visibility 0.25s allow-discrete;
+        }
+
+        .tc-more[open]::details-content {
+            block-size: auto;
+        }
+    }
+}
+
+/* ===== Closing call to action (the about page's paper panel) ===== */
+.tc-cta {
+    margin-bottom: 20px;
+    padding: 40px 20px;
+    border-radius: var(--lp-radius-xl);
+    background-color: var(--tc-paper);
+    box-shadow: 0 10px 30px rgba(215, 107, 60, 0.12);
+    text-align: center;
+}
+
+.tc-cta__title {
+    margin-bottom: 10px;
+    color: var(--lp-intro-heading);
+    font-size: clamp(1.45rem, 1.2rem + 1vw, 2rem);
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.tc-cta p {
+    max-width: 34rem;
+    margin-inline: auto;
+    color: #555;
+    line-height: 1.95;
+}
+
+.tc-cta__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+/* ===== ≥ 576px: teachers side by side, each one stacked ===== */
+@media (min-width: 576px) {
+    .teachers {
+        --tc-portrait: 150px;
+    }
+
+    .tc-teachers {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 36px 28px;
+    }
+
+    .tc-teachers > li + li {
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .tc-teacher {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "portrait"
+            "id"
+            "note"
+            "more";
+        align-items: start;
+    }
+
+    .tc-portrait {
+        margin-bottom: 14px;
+    }
+
+    .tc-portrait__initial {
+        font-size: 3rem;
+    }
+
+    .tc-cta__actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* ===== ≥ 768px ===== */
+@media (min-width: 768px) {
+    .tc-intro {
+        padding: 48px 56px 44px;
+        border-radius: 0 0 60px 60px;
+        text-align: start;
+    }
+
+    .tc-intro__text {
+        margin-inline: 0;
+    }
+
+    .tc-chips {
+        justify-content: flex-start;
+    }
+
+    .tc-cta {
+        padding: 56px 40px;
+    }
+}
+
+/* ===== ≥ 992px ===== */
+@media (min-width: 992px) {
+    .tc-teachers {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* ===== ≥ 1200px ===== */
+@media (min-width: 1200px) {
+    .tc-teachers {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tc-btn,
+    .tc-chip {
+        transition: none;
+    }
+}
