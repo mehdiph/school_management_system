@@ -27,7 +27,8 @@ POSTGRES_DB= .venv/bin/python manage.py test --noinput attendance    # on SQLite
 ```
 
 Notes on testing:
-- Don't use `--parallel`. A known Postgres-only failure, `scheduling.tests.WeeklyScheduleServiceTests.test_invalid_color_in_database_never_reaches_style`, can't be pickled and the error cascades. That test passes on SQLite and is the only expected error.
+- Don't use `--parallel`; the suite has only been verified running serially.
+- The suite is expected to pass on both PostgreSQL and SQLite with no known failures; report any failure.
 - The full suite takes about 17 minutes. Run it in the background and grep the log for `^Ran|FAILED|^ERROR:|^FAIL:`.
 - Two runs can't share the Postgres test database at once.
 - Test files are `tests.py` plus `test_*.py` per app.
