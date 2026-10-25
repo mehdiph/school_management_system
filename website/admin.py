@@ -4,8 +4,16 @@ from django.forms import Textarea
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.text import Truncator
+
+from core.templatetags.jalali_tags import jalali_datetime
 
 from .models import (
+    ContactChannel,
+    ContactLocation,
+    ContactMessage,
+    ContactPage,
+    ContactTopic,
     FeatureCard,
     FooterLink,
     HeroSlide,
@@ -179,3 +187,129 @@ class LandingPageAdmin(SingletonAdmin):
     @admin.display(description="پیش‌نمایش تصویر")
     def learning_image_preview(self, obj):
         return image_preview(obj.learning_image_url, 140)
+
+
+# ----------------------------------------------------------------- contact page
+
+
+class ContactLocationInline(PreviewInlineMixin, admin.StackedInline):
+    model = ContactLocation
+    extra = 0
+    preview_attr = "map_image_url"
+    readonly_fields = ("preview",)
+    fields = (
+        ("order", "is_active"),
+        "branch",
+        "title_override",
+        "address_override",
+        "hours",
+        "map_image",
+        "preview",
+        "map_image_alt",
+        ("neshan_url", "balad_url", "google_maps_url"),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("branch")
+
+
+class ContactChannelInline(admin.TabularInline):
+    model = ContactChannel
+    extra = 0
+    fields = ("label", "kind", "value", "note", "location", "order", "is_active")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "location":
+            kwargs["queryset"] = ContactLocation.objects.select_related("branch")
+        field = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == "location":
+            # Every row's dropdown lists the same locations: query them once.
+            if not hasattr(request, "_contact_location_choices"):
+                request._contact_location_choices = list(field.choices)
+            field.choices = request._contact_location_choices
+        return field
+
+
+class ContactTopicInline(admin.TabularInline):
+    model = ContactTopic
+    extra = 0
+    fields = ("title", "order", "is_active")
+
+
+@admin.register(ContactPage)
+class ContactPageAdmin(SingletonAdmin):
+    formfield_overrides = COMPACT_TEXTAREA
+    inlines = [ContactLocationInline, ContactChannelInline, ContactTopicInline]
+    readonly_fields = ("hero_image_preview",)
+    fieldsets = (
+        (
+            "نمایش سکشن‌ها",
+            {
+                "description": "سکشن خاموش یا سکشنی که آیتم فعالی ندارد، در صفحه نمایش داده نمی‌شود. "
+                               "شبکه‌های اجتماعی همان لینک‌های «شبکه اجتماعی» فوتر در «تنظیمات سایت» هستند.",
+                "fields": ("show_social", "show_channels", "show_locations", "show_form", "show_faq"),
+            },
+        ),
+        (
+            "بالای صفحه",
+            {
+                "fields": (
+                    "hero_title",
+                    "hero_text",
+                    "hero_image",
+                    "hero_image_preview",
+                    "hero_image_alt",
+                    ("hero_call_text", "hero_message_text"),
+                )
+            },
+        ),
+        ("عنوان سکشن‌ها", {"fields": ("channels_title", "locations_title")}),
+        ("فرم پیام", {"fields": ("form_title", "form_intro", "submit_text", "success_message")}),
+        ("کادر سوالات متداول", {"fields": ("faq_title", "faq_text", ("faq_link_text", "faq_url"))}),
+        ("سئو", {"fields": ("meta_title", "meta_description")}),
+    )
+
+    @admin.display(description="پیش‌نمایش تصویر")
+    def hero_image_preview(self, obj):
+        return image_preview(obj.hero_image_url, 140)
+
+
+_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    """
+    Read-only, except «پیگیری شد». Office staff need view_contactmessage,
+    plus change_contactmessage to tick «پیگیری شد» (see docs/apps/website.md).
+    """
+
+    list_display = ("name", "mobile_display", "topic", "location", "short_message", "sent_at", "is_handled")
+    list_editable = ("is_handled",)
+    list_filter = ("is_handled", "topic", "location")
+    search_fields = ("name", "mobile")
+    fields = ("name", "mobile", "topic", "location", "message", "sent_at", "is_handled")
+    readonly_fields = ("name", "mobile", "topic", "location", "message", "sent_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Spam cleanup only; office staff never delete.
+        return request.user.is_superuser
+
+    def get_search_results(self, request, queryset, search_term):
+        # Mobiles are stored with ASCII digits; staff may type Persian ones.
+        return super().get_search_results(request, queryset, search_term.translate(_TO_ASCII_DIGITS))
+
+    @admin.display(description="شماره موبایل", ordering="mobile")
+    def mobile_display(self, obj):
+        return obj.mobile_display
+
+    @admin.display(description="متن پیام")
+    def short_message(self, obj):
+        return Truncator(obj.message).chars(60)
+
+    @admin.display(description="تاریخ ارسال", ordering="created_at")
+    def sent_at(self, obj):
+        return jalali_datetime(obj.created_at)

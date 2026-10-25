@@ -24,6 +24,17 @@
 
 # [Unreleased]
 
+## Added (public «تماس با ما» page)
+
+- New public page `/contact/` (`website:contact`), in the landing page's look: hero with a call button and «پیام بگذارید», the footer's social links (those not set to `#`), school-wide phones / mobiles / email with copy buttons, one address block per branch (address, working hours, phones, a map picture in the landing page's blob frame, Neshan / Balad / Google Maps links) and a contact form drawn as a notebook page. Below 768px, a phone bar with «تماس با دفتر» and «مسیریابی» (under the nav drawer, safe-area aware, hidden while typing).
+- Everything is edited in the admin under «صفحه تماس با ما» (`ContactPage` with `ContactLocation`, `ContactChannel`, `ContactTopic` inlines, one switch per section). A location linked to a branch shows the branch's name, address and phone unless overridden; locations of inactive branches are hidden.
+- Contact form: name, mobile (Persian digits and `+98` accepted), topic, branch (with two or more), message; Persian errors linked to their fields; Post/Redirect/Get with the confirmation inside the form. Messages are stored in «پیام‌های تماس با ما», read-only except «پیگیری شد»; no email is sent.
+- Spam protection (ADR-024): honeypot, signed render time (3 s minimum, 2 h maximum), and a rate limit counted in the database: 3 per 10 minutes per mobile and per device, 50 per device per 24 hours (HTTP 429). Only an HMAC of the IP is stored.
+- New settings: `CONTACT_RATE_LIMIT`, `CONTACT_DAILY_LIMIT`, `CONTACT_MIN_FILL_SECONDS`, `CONTACT_MAX_FORM_AGE_SECONDS`, and `CLIENT_IP_HEADER` (environment variable; the CDN's client-IP header in production, see `docs/apps/website.md` §5).
+- Migrations: `website.0003_contact` (tables), `0004_seed_contact` (page row, five topics, one location per active branch; creates only), `0005_link_contact_menu` (the «تماس با ما» menu and footer rows still at `#` now point to `/contact/`; reversible).
+- `template/base.html`: `messages` and `viewport` blocks (default output unchanged).
+- Docs: `docs/apps/website.md` (§5: spam rules, client IP behind the CDN, permissions for office staff), `docs/database.md`, `docs/database-mermaid.md`, ADR-024, report `docs/plans/2026-10-contact-page.md`.
+
 ## Changed (director panel: daily attendance at a glance)
 
 - The director panel is rebuilt around the supporters' daily attendance, for a reader who wants the school's situation at a glance (ADR-023): plain Persian sentences with names, larger text and tap targets, only green / yellow / red with words, percentages as secondary text only.

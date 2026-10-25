@@ -553,6 +553,33 @@ The panel computes no metric: everything comes from `attendance.services` (`clas
 
 ---
 
+# ADR-024: Public Form Submissions Are Stored, Rate-Limited in the Database, and Not Emailed by Default
+
+## Decision
+
+A form on the public website (first: «تماس با ما», `website:contact`) saves each submission as a row that staff read in the admin (`ContactMessage`), and sends no email unless a later decision adds it. Spam is held off in three layers, all server-side:
+
+* a honeypot field hidden from people; when it is filled, the visitor sees the normal success message and nothing is saved;
+* a signed render timestamp: submissions faster than `CONTACT_MIN_FILL_SECONDS` or older than `CONTACT_MAX_FORM_AGE_SECONDS` are refused;
+* a rate limit counted on the stored rows themselves: `CONTACT_RATE_LIMIT` (3 per 10 minutes) per normalised mobile number **and** per device, and `CONTACT_DAILY_LIMIT` (50 per 24 hours) per device. Refused with HTTP 429; what the visitor typed is kept.
+
+The "device" is an HMAC-SHA256 of the client IP keyed with `SECRET_KEY`; the raw IP is never stored. The client IP is read from the header named in `CLIENT_IP_HEADER` (from the environment: the CDN's client-IP header in production, nginx's `X-Real-IP` without a CDN), falling back to `REMOTE_ADDR`.
+
+## Rationale
+
+* No cache is configured and gunicorn's worker count comes from `WEB_CONCURRENCY`: a per-process cache would count each worker separately. Rows in PostgreSQL are shared by all workers and need no new service; two indexes keep the one aggregate query cheap.
+* Iranian mobile carriers put many users behind one IP (CGNAT). The short window therefore also counts per mobile number, and the per-IP cap is only a daily ceiling, high enough for a school's real traffic from one carrier address.
+* Email is not configured on the server, and a stored row cannot be lost in a spam folder.
+* Keeping only an HMAC of the IP is enough for the limit and keeps one less piece of personal data about parents.
+
+## Consequences
+
+* `CLIENT_IP_HEADER` must name the CDN's header in production. If the origin can be reached without going through the CDN, that header can be forged and only the per-mobile limit holds; the origin should accept traffic from the CDN only.
+* The office needs `website.view_contactmessage` (and `change_contactmessage` to tick «پیگیری شد») to read messages; permissions are granted by hand, never in migrations.
+* Messages are kept until a superuser deletes them; there is no automatic retention period yet.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:

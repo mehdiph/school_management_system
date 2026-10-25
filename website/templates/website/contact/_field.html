@@ -1,0 +1,12 @@
+{% comment %}
+One form field. Django adds aria-invalid and aria-describedby pointing at
+<auto_id>_helptext and <auto_id>_error; the ids below match them.
+{% endcomment %}
+<div class="ct-field{% if field.errors %} has-error{% endif %}">
+    <label for="{{ field.id_for_label }}" class="ct-field__label">
+        {{ field.label }}{% if not field.field.required %} <span class="ct-field__optional">(اختیاری)</span>{% endif %}
+    </label>
+    {{ field }}
+    {% if field.help_text %}<p class="ct-field__help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+    {% if field.errors %}<p class="ct-field__error" id="{{ field.auto_id }}_error">{{ field.errors.0 }}</p>{% endif %}
+</div>

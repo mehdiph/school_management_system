@@ -1,0 +1,10 @@
+{% comment %}One contact channel (phone, mobile or email). Needs `channel`.{% endcomment %}
+<span class="ct-channel__icon" aria-hidden="true"><i class="{{ channel.icon }}"></i></span>
+<span class="ct-channel__body">
+    <span class="ct-channel__label">{{ channel.label }}</span>
+    <a href="{{ channel.href }}" class="ct-channel__value" dir="ltr">{{ channel.display_value }}</a>
+    {% if channel.note %}<span class="ct-channel__note">{{ channel.note }}</span>{% endif %}
+</span>
+<button type="button" class="ct-copy" data-copy="{{ channel.raw_value }}" aria-label="کپی {{ channel.label }}" hidden>
+    <i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ct-copy__text">کپی</span>
+</button>

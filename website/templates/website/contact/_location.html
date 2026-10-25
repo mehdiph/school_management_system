@@ -1,0 +1,54 @@
+{% comment %}One branch's address block. Needs `location` (with contact_channels set by the view).{% endcomment %}
+<article class="ct-location" aria-labelledby="ct-location-{{ location.pk }}">
+    <div class="ct-location__body">
+        <h3 class="ct-location__title" id="ct-location-{{ location.pk }}">{{ location.display_title }}</h3>
+
+        {% if location.display_address %}
+        <div class="ct-location__row">
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <address><span class="visually-hidden">نشانی: </span>{{ location.display_address|linebreaksbr }}</address>
+            <button type="button" class="ct-copy" data-copy="{{ location.display_address }}" aria-label="کپی نشانی {{ location.display_title }}" hidden>
+                <i class="fa-regular fa-copy" aria-hidden="true"></i><span class="ct-copy__text">کپی</span>
+            </button>
+        </div>
+        {% endif %}
+
+        {% if location.hours %}
+        <div class="ct-location__row">
+            <i class="fa-regular fa-clock" aria-hidden="true"></i>
+            <p><span class="visually-hidden">ساعت کاری: </span>{{ location.hours|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+
+        {% if location.contact_channels %}
+        <ul class="ct-location__channels">
+            {% for channel in location.contact_channels %}
+            <li class="ct-channel ct-channel--compact">{% include "website/contact/_channel.html" %}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% if not location.phone_channels and location.branch_phone %}
+        <div class="ct-location__row">
+            <i class="fa-solid fa-phone" aria-hidden="true"></i>
+            <p><span class="visually-hidden">تلفن: </span><a href="{{ location.branch_phone_href }}" class="ct-channel__value" dir="ltr">{{ location.branch_phone_display }}</a></p>
+        </div>
+        {% endif %}
+
+        {% if location.map_links %}
+        <div class="ct-maps">
+            <span class="ct-maps__caption" id="ct-maps-{{ location.pk }}">مسیریابی با</span>
+            <ul class="ct-maps__list" aria-labelledby="ct-maps-{{ location.pk }}">
+                {% for label, url in location.map_links %}
+                <li><a href="{{ url }}" class="ct-maps__link" target="_blank" rel="noopener noreferrer">{{ label }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if location.map_image_url %}
+    <div class="ct-location__map">
+        <img src="{{ location.map_image_url }}" alt="{{ location.map_alt_text }}" width="800" height="600" loading="lazy" decoding="async">
+    </div>
+    {% endif %}
+</article>
