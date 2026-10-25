@@ -1,3 +1,4 @@
+from .about import AboutFact, AboutHighlight, AboutMilestone, AboutPage, AboutPerson, AboutPhoto, AboutValue
 from .base import OrderedItem, SingletonModel
 from .contact import ContactChannel, ContactLocation, ContactMessage, ContactPage, ContactTopic
 from .landing import FeatureCard, HeroSlide, LandingPage, LandingTeacher, LearningPoint
@@ -19,4 +20,11 @@ __all__ = [
     "ContactChannel",
     "ContactTopic",
     "ContactMessage",
+    "AboutPage",
+    "AboutMilestone",
+    "AboutValue",
+    "AboutHighlight",
+    "AboutFact",
+    "AboutPerson",
+    "AboutPhoto",
 ]

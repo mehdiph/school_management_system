@@ -10,6 +10,10 @@ from django.db import models, transaction
 from django.db.models.signals import post_delete, pre_save
 
 from .models import (
+    AboutHighlight,
+    AboutPage,
+    AboutPerson,
+    AboutPhoto,
     ContactLocation,
     ContactPage,
     FeatureCard,
@@ -29,6 +33,10 @@ MODELS_WITH_IMAGES = (
     LandingTeacher,
     ContactPage,
     ContactLocation,
+    AboutPage,
+    AboutHighlight,
+    AboutPerson,
+    AboutPhoto,
 )
 
 

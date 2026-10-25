@@ -580,6 +580,27 @@ The "device" is an HMAC-SHA256 of the client IP keyed with `SECRET_KEY`; the raw
 
 ---
 
+# ADR-025: Public Website Content Is Editorial, Never Computed From School Data
+
+## Decision
+
+Everything the public website states about the school (texts, numbers such as «۴۰۰+ دانش‌آموز», milestones, people, photos) is entered by hand in the admin and shown as typed. No public page counts or reads enrolments, staff, classes, attendance or any other school record to produce what it shows. First applied on «درباره ما» (`website:about`): `AboutFact.value` is free text, `AboutPerson.role` is typed, and seeded content that would read as a fact (milestones, numbers) is created inactive until the school fills it in.
+
+Where a public item links to a school record for convenience, only named, documented fields follow it: `ContactLocation` shows its branch's name, address and phone; `AboutPerson` shows its staff member's first and last name. Photos of people are published only when uploaded for that purpose: `AboutPerson` never falls back to the account avatar. (The landing page's teacher cards, `LandingTeacher`, still fall back to the avatar; that predates this decision and is to be revisited with the teachers page.)
+
+## Rationale
+
+* A public number is a claim to parents. It should say what the school decides to say, rounded and worded as it wants, not whatever a query happened to return that day (mid-year transfers, test accounts, inactive rows).
+* Internal data stays internal: the public site can't leak counts, names or photos the school never chose to publish.
+* Metrics with a definition belong to `analytics` (ADR-019) and to logged-in panels; the website is not one of them.
+
+## Consequences
+
+* The school must keep these figures up to date by hand; the admin help texts say so.
+* A new public page (blog, registration) follows the same rule: content models, admin-edited, no queries into school apps beyond an explicit, documented fallback like the two above.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:

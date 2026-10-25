@@ -18,7 +18,7 @@ The database is divided into the following domains:
 * Teaching Sessions
 * Academic Calendar
 * Attendance
-* Public website: contact page (the other `website` CMS tables are documented in `docs/apps/website.md`)
+* Public website: contact and about pages (the other `website` CMS tables are documented in `docs/apps/website.md`)
 
 The full entity relationship diagram (Mermaid) is in [database-mermaid.md](database-mermaid.md).
 
@@ -594,6 +594,39 @@ A message sent from the public contact form.
 
 * Indexes on `(ip_hash, created_at)` and `(mobile, created_at)` serve the rate limit (ADR-024).
 * No foreign keys: messages are independent records.
+
+---
+
+# Public Website: About Page
+
+`AboutPage` is a singleton (texts and one switch per section) with six
+ordered, soft-deactivated inlines: `AboutMilestone` (year as typed, title,
+text), `AboutValue` (`related_name="belief_values"`), `AboutHighlight`
+(image with a bundled `static_fallback`), `AboutFact` (value as typed,
+label), `AboutPerson` and `AboutPhoto` (required image, alt, caption). All of
+it is editorial content entered in the admin; nothing is computed from
+school data (ADR-025). The page's branches are the `ContactLocation` rows
+above; no address is stored here.
+
+## AboutPerson
+
+A leader or office colleague shown on the about page («همکاران ما»).
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| page | The `AboutPage` singleton |
+| staff | Optional `staff.Staff` (`SET_NULL`); the user's first and last name are shown unless `name_override` is filled in (never the username) |
+| name_override | Wins over the account's name |
+| role | Typed by the admin (e.g. «مدیر مدرسه»); never derived |
+| photo_override | The only photo ever published; the account's avatar is never used. Without it, the name's first letter is shown |
+| bio | One short line |
+
+### Relationships
+
+* Belongs to one AboutPage; optionally to one Staff.
+* Rows whose linked Staff is inactive are not shown.
 
 ---
 

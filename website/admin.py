@@ -9,6 +9,13 @@ from django.utils.text import Truncator
 from core.templatetags.jalali_tags import jalali_datetime
 
 from .models import (
+    AboutFact,
+    AboutHighlight,
+    AboutMilestone,
+    AboutPage,
+    AboutPerson,
+    AboutPhoto,
+    AboutValue,
     ContactChannel,
     ContactLocation,
     ContactMessage,
@@ -313,3 +320,142 @@ class ContactMessageAdmin(admin.ModelAdmin):
     @admin.display(description="تاریخ ارسال", ordering="created_at")
     def sent_at(self, obj):
         return jalali_datetime(obj.created_at)
+
+
+# -------------------------------------------------------------------- about page
+
+
+class AboutMilestoneInline(admin.TabularInline):
+    model = AboutMilestone
+    extra = 0
+    formfield_overrides = COMPACT_TEXTAREA
+    fields = ("year", "title", "text", "order", "is_active")
+
+
+class AboutValueInline(admin.TabularInline):
+    model = AboutValue
+    extra = 0
+    fields = ("emoji", "title", "text", "order", "is_active")
+
+
+class AboutHighlightInline(PreviewInlineMixin, admin.StackedInline):
+    model = AboutHighlight
+    extra = 0
+    readonly_fields = ("preview",)
+    fields = (("order", "is_active"), "title", "text", "image", "preview", "image_alt")
+
+
+class AboutFactInline(admin.TabularInline):
+    model = AboutFact
+    extra = 0
+    fields = ("value", "label", "order", "is_active")
+
+
+class AboutPersonInline(PreviewInlineMixin, admin.TabularInline):
+    model = AboutPerson
+    extra = 0
+    preview_attr = "photo_url"
+    readonly_fields = ("preview",)
+    autocomplete_fields = ("staff",)
+    fields = ("staff", "name_override", "role", "bio", "photo_override", "preview", "order", "is_active")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("staff__user")
+
+
+class AboutPhotoInline(PreviewInlineMixin, admin.TabularInline):
+    model = AboutPhoto
+    extra = 0
+    readonly_fields = ("preview",)
+    fields = ("image", "preview", "image_alt", "caption", "order", "is_active")
+
+
+@admin.register(AboutPage)
+class AboutPageAdmin(SingletonAdmin):
+    formfield_overrides = COMPACT_TEXTAREA
+    inlines = [
+        AboutMilestoneInline,
+        AboutValueInline,
+        AboutHighlightInline,
+        AboutFactInline,
+        AboutPersonInline,
+        AboutPhotoInline,
+    ]
+    readonly_fields = ("hero_image_preview", "quote_photo_preview")
+    fieldsets = (
+        (
+            "نمایش سکشن‌ها",
+            {
+                "description": "سکشن خاموش یا سکشنی که آیتم فعالی ندارد، در صفحه نمایش داده نمی‌شود. "
+                               "همه متن‌ها، اعداد و عکس‌های این صفحه عمومی‌اند و از داده‌های سامانه "
+                               "محاسبه نمی‌شوند.",
+                "fields": (
+                    ("show_story", "show_timeline", "show_quote"),
+                    ("show_values", "show_highlights", "show_facts"),
+                    ("show_team", "show_gallery", "show_branches", "show_cta"),
+                ),
+            },
+        ),
+        (
+            "بالای صفحه",
+            {
+                "fields": (
+                    "hero_title",
+                    "hero_text",
+                    "hero_image",
+                    "hero_image_preview",
+                    "hero_image_alt",
+                    ("hero_button_text", "hero_button_url"),
+                )
+            },
+        ),
+        (
+            "داستان ما",
+            {
+                "description": "رویدادهای مسیر سال‌ها در جدول «مسیر سال‌ها» پایین صفحه وارد می‌شوند.",
+                "fields": ("story_title", "story_text", "timeline_title"),
+            },
+        ),
+        (
+            "سخن مدیر",
+            {"fields": ("quote_text", ("quote_name", "quote_role"), "quote_photo", "quote_photo_preview", "quote_photo_alt")},
+        ),
+        (
+            "باورهای ما",
+            {"fields": ("values_title", "mission_title", "mission_text", "vision_title", "vision_text")},
+        ),
+        ("در نسل قلم، بچه‌ها…", {"fields": ("highlights_title", "highlights_text")}),
+        (
+            "اعداد، همکاران و گالری",
+            {
+                "description": "سکشن همکاران فقط برای مدیران و کارکنان دفتر است؛ معلمان در صفحه "
+                               "جداگانه معلمان معرفی می‌شوند. عکس همکاران فقط همان عکسی است که "
+                               "اینجا بارگذاری می‌کنید.",
+                "fields": ("facts_title", "team_title", "team_text", "gallery_title"),
+            },
+        ),
+        (
+            "شعبه‌ها",
+            {"fields": ("branches_title", "branches_text", ("branches_link_text", "branches_link_url"))},
+        ),
+        (
+            "دعوت پایانی",
+            {
+                "fields": (
+                    "cta_title",
+                    "cta_text",
+                    ("cta_primary_text", "cta_primary_url"),
+                    ("cta_secondary_text", "cta_secondary_url"),
+                )
+            },
+        ),
+        ("سئو", {"fields": ("meta_title", "meta_description")}),
+    )
+
+    @admin.display(description="پیش‌نمایش تصویر")
+    def hero_image_preview(self, obj):
+        return image_preview(obj.hero_image_url, 140)
+
+    @admin.display(description="پیش‌نمایش عکس")
+    def quote_photo_preview(self, obj):
+        return image_preview(obj.quote_photo_url, 100)

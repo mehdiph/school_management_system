@@ -24,6 +24,27 @@
 
 # [Unreleased]
 
+## Added (public «درباره ما» page)
+
+- New public page `/about/` (`website:about`, GET/HEAD), for parents choosing a school. Sections, in order:
+  - hero: the school's story in one sentence (the page's only `h1`), a photo in an arch frame, «هماهنگی بازدید از مدرسه» → `/contact/`;
+  - «داستان ما»: the story and a timeline of milestones along a blue-ink pen line, which draws itself as the story scrolls by where the browser supports it and motion is allowed (CSS only);
+  - the director's words;
+  - mission, vision and values;
+  - «در نسل قلم، بچه‌ها…» (teaching approach, robotics, art, sport);
+  - headline numbers;
+  - «همکاران ما» (leadership and office staff only; teachers get their own page);
+  - a photo gallery (swipeable strip on phones);
+  - the branches (the contact page's locations: name and address, linking to `/contact/`);
+  - a closing call to action.
+- Everything is edited in the admin under «صفحه درباره ما» (`AboutPage` with `AboutMilestone`, `AboutValue`, `AboutHighlight`, `AboutFact`, `AboutPerson`, `AboutPhoto` inlines, one switch per section). Numbers and years are typed text, never computed (ADR-025). A person may link a staff member for the name; the photo is only one uploaded on the page, never the account avatar (initial otherwise).
+- Migrations:
+  - `website.0006_about`: tables.
+  - `0007_seed_about`: page row, four values, four highlights; milestones and numbers as inactive examples; no people or photos; the director's words off. Creates only.
+  - `0008_about_menu`: «درباره ما» menu and footer rows still at `#` → `/about/`; the «کلاس ها» menu item still at `#` is deactivated, not deleted. Reversible; edited rows untouched.
+- `index.css` defines the shared action colour `--lp-action` / `--lp-action-hover`; `contact.css`'s `--ct-action*` now reference it (no visual change; computed styles verified identical).
+- Docs: `docs/apps/website.md`, `docs/database.md`, `docs/database-mermaid.md`, ADR-025, report `docs/plans/2026-10-about-page.md`.
+
 ## Added (public «تماس با ما» page)
 
 - New public page `/contact/` (`website:contact`), in the landing page's look: hero with a call button and «پیام بگذارید», the footer's social links (those not set to `#`), school-wide phones / mobiles / email with copy buttons, one address block per branch (address, working hours, phones, a map picture in the landing page's blob frame, Neshan / Balad / Google Maps links) and a contact form drawn as a notebook page. Below 768px, a phone bar with «تماس با دفتر» and «مسیریابی» (under the nav drawer, safe-area aware, hidden while typing).
