@@ -1,7 +1,44 @@
 # Plan: public «معلمان» page
 
-Status: **waiting for approval.** Nothing is implemented yet. After approval,
-the work goes on `feature/teachers-page`, created from `main`.
+Status: **approved 2026-10-25** with the changes below. Implementation goes on
+`feature/teachers-page`, created from `main` after this update.
+
+## Approval (2026-10-25)
+
+Approved as recommended:
+- D1, D2, D5, D6, D8, D9, D10, D11, D12;
+- D3, keeping the model name `LandingTeacher`;
+- D4: the photo is `photo_override` only, with no avatar fallback, on both
+  pages, and the name never falls back to the username;
+- D7: yes;
+- D13: amend ADR-025, no new ADR.
+
+Changes to the plan (they supersede the text below where they differ):
+
+1. **Blog hook.** The blog's author model is **not** decided here. Blog
+   authors will include counselors and supervisors who aren't public
+   teachers. This task keeps only:
+   - the stable slug, used as the card's anchor;
+   - the commented «نوشته‌های …» slot in the card's expansion.
+
+   The blog plan will decide how an author optionally links to a
+   `LandingTeacher` card. The statement in D8 that `blog.Post.author` would
+   be an FK to `LandingTeacher` is withdrawn.
+2. **The four invented seed teachers** from `0002` contradict ADR-025.
+   - A reversible data migration, `0013_hide_seed_teachers`, sets
+     `is_active=False` **only on untouched seed rows**. A row counts as
+     untouched when it has the exact seed `name_override` **and**
+     `specialty_override`, no linked teacher and no `photo_override`. Rows an
+     admin has edited are left alone.
+   - The reverse re-activates only those same rows.
+   - Both directions are tested.
+   - A test confirms that the landing teachers section is simply not
+     rendered when no row is both active and `on_home`.
+3. **D7, one shared helper.** The re-encoding lives in one helper,
+   `website/images.py`, and is applied now to both `LandingTeacher` and
+   `AboutPerson.photo_override` (same GPS and metadata risk). The same EXIF
+   test runs for `AboutPerson`. The About gallery and the other website
+   images stay a follow-up.
 
 Skills: both were loaded with the Skill tool before planning.
 - **`teachlog-workflow`**: this plan follows its read → plan → approve order.
@@ -237,15 +274,12 @@ no detail pages now.**
   `/teachers/#سارا-احمدی`, so a card can be linked to today. A small script
   opens the `<details>` of a linked card.
 
-**Blog hook (not built):**
-- the future `blog.Post.author` would be an FK to `LandingTeacher`, the
-  published identity, so the byline shows the same name and photo as the
-  teachers page;
-- the byline links to the card (`/teachers/#<slug>`);
-- the card gets a «نوشته‌های …» link in its expansion: the template has a
-  marked slot for it;
-- if the blog ever wants an author page, `/teachers/<slug>/` can be added on
-  the same `slug` with no data change.
+**Blog hook (not built; see Approval, change 1):**
+- each card has a stable anchor (`/teachers/#<slug>`) that a byline can link
+  to;
+- the card's expansion has a commented slot for a «نوشته‌های …» link;
+- how a blog author optionally links to a card is for the blog plan to
+  decide. Nothing here fixes the author model.
 
 The slug is generated from the display name (`slugify(..., allow_unicode=True)`,
 Persian kept, ZWNJ dropped). On a clash, `-2`, `-3`… are added. The admin
