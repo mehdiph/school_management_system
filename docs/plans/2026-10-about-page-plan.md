@@ -1,7 +1,38 @@
 # Plan: public «درباره ما» page, and removing «کلاس ها» from the menu
 
-Status: **waiting for approval.** Nothing is implemented yet. After approval
-the work goes on `feature/about-page`, created from `main` after this plan.
+Status: **approved 2026-10-25** with the changes below. Implementation goes on
+`feature/about-page`, created from `main` after this update.
+
+## Approval (2026-10-25)
+
+Approved:
+- D1, D2, D4, D6, D7, D8, D10 and D11, as recommended.
+- D5: yes, recorded as **ADR-025** (D12).
+
+Changes to the plan (they supersede the text below where they differ):
+
+1. **D3, privacy.** A staff member's internal avatar is never published
+   automatically:
+   - a person's photo comes **only** from `photo_override`, which the admin
+     uploads on purpose;
+   - without it, the card shows the initial;
+   - the name may still fall back to the linked user.
+
+   The admin help text says photos here are public. Tests: a linked staff
+   member with an avatar but no override shows the initial.
+2. **«همکاران ما» is for leadership and office staff only, not teachers.**
+   The dedicated teachers page is the next task, and the section's admin
+   help text says so. Open question 1 is dropped: «معلمان» does **not**
+   point to `/about/#team`, and its row is left untouched.
+3. **D9, one shared action colour instead of a third copy:**
+   - `index.css` gets `--lp-action` and `--lp-action-hover`, as token
+     definitions only; no existing landing rule changes;
+   - `about.css` uses them;
+   - `contact.css`'s `--ct-action` and `--ct-action-hover` reference them.
+
+   Screenshots before and after verify that the landing and contact pages
+   look unchanged. Fixing the landing page's button contrast stays a
+   separate follow-up.
 
 Skills: both were loaded with the Skill tool before planning.
 - **`teachlog-workflow`**: this plan follows its read → plan → approve order.
