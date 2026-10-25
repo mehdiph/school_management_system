@@ -102,9 +102,8 @@ choose the option most consistent with existing code and record it in the report
 - Update existing tests that the change legitimately affects; never delete a test just to
   make the suite pass.
 - Full run: `POSTGRES_HOST=localhost .venv/bin/python manage.py test --noinput`.
-  Run a baseline on `main` first and compare. Known pre-existing failure (PostgreSQL only):
-  `scheduling.tests.WeeklyScheduleServiceTests.test_invalid_color_in_database_never_reaches_style`
-  (`Subject.color varchar(7)`). Report any other failure.
+  Run a baseline on `main` first and compare. The suite has no known failures; report
+  any failure.
 
 ## 6. Documentation (required, part of the task)
 

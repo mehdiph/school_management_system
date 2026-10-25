@@ -1,0 +1,795 @@
+/* ==========================================================================
+   Contact page (website/contact.html) — mobile-first.
+   Loaded after index.css: reuses its --lp-* tokens and adds only what the
+   page needs. Breakpoints: 576 / 768 / 992 / 1200px.
+   ========================================================================== */
+
+:root {
+    /* The brand orange fails AA under white text (2.7:1); this darker
+       step of the same hue passes on white (5.1:1) and cream (4.5:1). */
+    --ct-action: #b4501c;
+    --ct-action-hover: #9a4416;
+    --ct-action-ring: rgba(180, 80, 28, 0.25);
+    /* Notebook paper */
+    --ct-paper: #fffaf6;
+    --ct-rule: #f0dccd;
+    --ct-margin: rgba(180, 80, 28, 0.55);
+    --ct-field-line: #a8775a;  /* 3.7:1 on the paper: visible input edge */
+    /* States */
+    --ct-error: #b42318;
+    --ct-error-bg: #fff5f4;
+    --ct-success: #0b5e43;
+    --ct-success-bg: #ecfdf3;
+
+    --ct-bar-height: 68px;
+}
+
+/* viewport-fit=cover (this page only) lets the phone bar reach the
+   home-indicator area; keep the header and content clear of the notch. */
+.contact-page .main-header {
+    padding-left: max(clamp(16px, 3vw, 20px), env(safe-area-inset-left));
+    padding-right: max(clamp(16px, 3vw, 20px), env(safe-area-inset-right));
+}
+
+.contact-page .container {
+    padding-left: max(clamp(12px, 3vw, 20px), env(safe-area-inset-left));
+    padding-right: max(clamp(12px, 3vw, 20px), env(safe-area-inset-right));
+}
+
+.contact .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* ===== Buttons ===== */
+.ct-btn {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 10px;
+    min-height: 48px;
+    padding: 10px 22px;
+    border: 2px solid var(--ct-action);
+    border-radius: var(--lp-radius-md);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: background-color var(--lp-speed), color var(--lp-speed);
+}
+
+.ct-btn--primary {
+    background-color: var(--ct-action);
+    color: #fff;
+}
+
+.ct-btn--primary:hover {
+    border-color: var(--ct-action-hover);
+    background-color: var(--ct-action-hover);
+}
+
+.ct-btn--outline {
+    background-color: #fff;
+    color: var(--ct-action);
+}
+
+.ct-btn--outline:hover {
+    background-color: var(--ct-action);
+    color: #fff;
+}
+
+.ct-btn__number {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.contact a:focus-visible,
+.contact button:focus-visible,
+.ct-bar a:focus-visible {
+    outline: 3px solid var(--ct-action);
+    outline-offset: 2px;
+}
+
+/* ===== Hero ===== */
+.ct-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    margin-block: 20px;
+    padding: 32px 20px;
+    border-radius: 0 0 var(--lp-radius-xl) var(--lp-radius-xl);
+    background-color: var(--lp-cream);
+    box-shadow: var(--lp-shadow-soft);
+    text-align: center;
+}
+
+.ct-hero h1 {
+    margin-bottom: 12px;
+    color: var(--lp-intro-heading);
+    font-size: clamp(1.6rem, 1.1rem + 2vw, 2.4rem);
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.ct-hero__text {
+    max-width: 34rem;
+    margin-inline: auto;
+    margin-bottom: 24px;
+    color: var(--lp-text);
+    font-size: clamp(1rem, 0.95rem + 0.3vw, 1.1rem);
+    font-weight: 600;
+    line-height: 1.9;
+}
+
+.ct-hero__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ct-social {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.ct-social__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--lp-touch);
+    padding: 6px 16px;
+    border: 1px solid var(--lp-glass-border);
+    border-radius: var(--lp-radius-pill);
+    background-color: rgba(255, 255, 255, 0.7);
+    color: var(--lp-ink);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ct-social__link i {
+    color: var(--ct-action);
+}
+
+.ct-social__link:hover {
+    background-color: #fff;
+}
+
+/* The landing page's blob, here around the picture. */
+.ct-hero__image {
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 1;
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    background-color: var(--lp-peach);
+    overflow: hidden;
+}
+
+.ct-hero__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ===== Sections ===== */
+.ct-section {
+    margin-bottom: 20px;
+    padding: var(--lp-box-pad) clamp(16px, 3vw, 28px);
+    border-radius: var(--lp-radius-lg);
+    background-color: var(--lp-glass);
+    backdrop-filter: blur(2px);
+    box-shadow: var(--lp-shadow-section);
+}
+
+.ct-section__title {
+    margin-bottom: 20px;
+    color: var(--lp-heading);
+    font-size: clamp(1.35rem, 1.15rem + 0.8vw, 1.6rem);
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+/* ===== Channels ===== */
+.ct-channels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+}
+
+.ct-channel {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--lp-radius-sm);
+    background-color: #fff;
+    box-shadow: var(--lp-shadow-card);
+}
+
+/* Same yellow disc as the landing page's learning items. */
+.ct-channel__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--lp-yellow);
+    color: var(--lp-ink);
+    font-size: 1.05rem;
+}
+
+.ct-channel__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    line-height: 1.6;
+}
+
+.ct-channel__label {
+    color: var(--lp-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.ct-channel__value {
+    max-width: 100%;
+    color: var(--lp-ink);
+    font-size: 1.15rem;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.ct-channel__value:hover {
+    color: var(--ct-action);
+}
+
+.ct-channel__note {
+    color: var(--lp-text);
+    font-size: 0.875rem;
+}
+
+.ct-channel--compact {
+    padding: 10px 12px;
+    background-color: var(--lp-item-bg);
+    box-shadow: none;
+}
+
+.ct-channel--compact .ct-channel__icon {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+}
+
+.ct-channel--compact .ct-channel__value {
+    font-size: 1.05rem;
+}
+
+/* Copy buttons are rendered hidden and revealed by contact.js. */
+.ct-copy {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--lp-touch);
+    min-width: var(--lp-touch);
+    padding: 4px 12px;
+    border: 1px solid #ecd2c2;
+    border-radius: var(--lp-radius-pill);
+    background-color: transparent;
+    color: var(--ct-action);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ct-copy[hidden] {
+    display: none;
+}
+
+.ct-copy:hover {
+    background-color: #fff3ec;
+}
+
+.ct-copy.is-done {
+    border-color: var(--ct-success);
+    color: var(--ct-success);
+}
+
+/* ===== Locations ===== */
+.ct-locations {
+    display: grid;
+    gap: 20px;
+}
+
+.ct-location {
+    display: grid;
+    gap: 20px;
+    padding: 20px;
+    border-radius: var(--lp-radius-md);
+    background-color: #fff;
+    box-shadow: var(--lp-shadow-card);
+}
+
+.ct-location__title {
+    margin-bottom: 12px;
+    color: var(--lp-ink);
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.6;
+}
+
+.ct-location__row {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 4px 10px;
+    margin-bottom: 12px;
+    color: #444;
+    line-height: 1.9;
+}
+
+.ct-location__row > i {
+    margin-top: 0.45em;
+    color: var(--ct-action);
+    text-align: center;
+}
+
+.ct-location__row address {
+    font-style: normal;
+}
+
+.ct-location__row .ct-copy {
+    margin-top: -4px;
+}
+
+.ct-location__channels {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ct-maps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.ct-maps__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ct-maps__caption {
+    color: var(--lp-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.ct-maps__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--lp-touch);
+    padding: 6px 18px;
+    border-radius: var(--lp-radius-pill);
+    background-color: var(--lp-peach);
+    color: var(--lp-ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.ct-maps__link:hover {
+    background-color: var(--lp-sand);
+}
+
+/* On phones the map comes first, inside the landing page's blob. */
+.ct-location__map {
+    order: -1;
+    width: 100%;
+    max-width: 420px;
+    justify-self: center;
+    aspect-ratio: 4 / 3;
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    background-color: var(--lp-peach-soft);
+    box-shadow: 0 8px 25px rgba(215, 107, 60, 0.1);
+    overflow: hidden;
+}
+
+.ct-location__map img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ===== Form: a page of the school notebook ===== */
+.ct-write {
+    display: grid;
+    gap: 20px;
+}
+
+/* Clear the sticky header when #contact-form or the error summary is
+   scrolled to (the redirect's anchor, the summary's focus). */
+.ct-write,
+.ct-errors {
+    scroll-margin-top: 110px;
+}
+
+.ct-write__intro p {
+    max-width: 34rem;
+    color: var(--lp-text);
+    line-height: 1.9;
+}
+
+.ct-faq {
+    margin-top: 20px;
+    padding: 16px 18px;
+    border-radius: var(--lp-radius-sm);
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.ct-faq h3 {
+    margin-bottom: 4px;
+    color: var(--lp-ink);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.ct-faq h3 i {
+    color: var(--ct-action);
+}
+
+.ct-link {
+    color: var(--ct-action);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.ct-paper {
+    position: relative;
+    min-width: 0;
+    padding: 24px 18px 28px;
+    padding-inline-start: 40px;
+    border-radius: var(--lp-radius-md);
+    background-color: var(--ct-paper);
+    box-shadow: 0 10px 30px rgba(215, 107, 60, 0.12);
+}
+
+/* The notebook's margin line, on the inline-start (right) side. */
+.ct-paper::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 24px;
+    width: 2px;
+    background-color: var(--ct-margin);
+}
+
+.ct-form__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 16px;
+}
+
+.ct-field {
+    margin-bottom: 18px;
+}
+
+.ct-field__label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--lp-ink);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.ct-field__optional {
+    color: var(--lp-text);
+    font-weight: 500;
+}
+
+.ct-field input,
+.ct-field select,
+.ct-field textarea {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 14px;
+    border: 0;
+    border-bottom: 2px solid var(--ct-field-line);
+    border-radius: 10px 10px 0 0;
+    background-color: rgba(255, 255, 255, 0.85);
+    color: var(--lp-ink);
+    font: inherit;
+    font-size: 1rem;
+}
+
+.ct-field input[dir="ltr"] {
+    text-align: right;
+}
+
+.ct-field input::placeholder {
+    color: #8a7a70;
+}
+
+.ct-field select {
+    padding-inline-end: 40px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a8775a' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 14px center;
+    cursor: pointer;
+}
+
+/* Ruled like the notebook: each line of text sits on a rule. */
+.ct-field textarea {
+    --line: 2rem;
+    min-height: calc(var(--line) * 6);
+    padding-block: 0;
+    line-height: var(--line);
+    background-image: linear-gradient(to bottom, transparent calc(var(--line) - 1px), var(--ct-rule) calc(var(--line) - 1px));
+    background-size: 100% var(--line);
+    background-attachment: local;
+    resize: vertical;
+}
+
+.ct-field input:focus-visible,
+.ct-field select:focus-visible,
+.ct-field textarea:focus-visible {
+    outline: 3px solid var(--ct-action);
+    outline-offset: 2px;
+    border-bottom-color: var(--ct-action);
+}
+
+.ct-field__help {
+    margin-top: 4px;
+    color: var(--lp-text);
+    font-size: 0.875rem;
+    line-height: 1.7;
+}
+
+.ct-field__error {
+    margin-top: 4px;
+    color: var(--ct-error);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.7;
+}
+
+.ct-field.has-error input,
+.ct-field.has-error select,
+.ct-field.has-error textarea {
+    border-bottom-color: var(--ct-error);
+    background-color: var(--ct-error-bg);
+}
+
+.ct-errors {
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    border-inline-start: 4px solid var(--ct-error);
+    border-radius: var(--lp-radius-sm);
+    background-color: var(--ct-error-bg);
+    color: var(--ct-error);
+    line-height: 1.8;
+}
+
+.ct-errors:focus-visible {
+    outline: 3px solid var(--ct-error);
+    outline-offset: 2px;
+}
+
+.ct-errors__title {
+    font-weight: 800;
+}
+
+.ct-errors ul {
+    padding-inline-start: 18px;
+    list-style: disc;
+}
+
+.ct-errors a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.ct-success {
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    border-inline-start: 4px solid var(--ct-success);
+    border-radius: var(--lp-radius-sm);
+    background-color: var(--ct-success-bg);
+    color: var(--ct-success);
+    font-weight: 700;
+    line-height: 1.8;
+}
+
+/* Honeypot: out of sight and out of the accessibility tree. */
+.ct-hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.ct-form__submit {
+    width: 100%;
+}
+
+.ct-form__submit[aria-disabled="true"] {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+/* ===== Phone action bar (below 768px) =====
+   Under the header (z-index 100), so the nav drawer and its overlay
+   cover it. Hidden while a form field has focus: on phones the keyboard
+   is open then, and the bar would sit on top of the input. */
+.ct-bar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    border-top: 1px solid #f1e0d4;
+    background-color: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.ct-bar__btn {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 6px 12px;
+    border-radius: 14px;
+    background-color: var(--lp-peach);
+    color: var(--lp-ink);
+    font-weight: 700;
+}
+
+.ct-bar__btn--call {
+    background-color: var(--ct-action);
+    color: #fff;
+}
+
+body:has(.ct-form :is(input, select, textarea):focus) .ct-bar,
+body.ct-typing .ct-bar {
+    display: none;
+}
+
+/* Room under the footer so the bar never covers it. */
+@media (max-width: 767.98px) {
+    .has-ct-bar .app-shell__main {
+        padding-bottom: calc(var(--ct-bar-height) + env(safe-area-inset-bottom));
+    }
+}
+
+/* ===== ≥ 576px ===== */
+@media (min-width: 576px) {
+    .ct-channels,
+    .ct-form__row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ct-hero__actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .ct-paper {
+        padding: 32px 28px 32px;
+        padding-inline-start: 56px;
+    }
+
+    .ct-paper::before {
+        inset-inline-start: 34px;
+    }
+
+    .ct-form__submit {
+        width: auto;
+        min-width: 200px;
+    }
+}
+
+/* ===== ≥ 768px ===== */
+@media (min-width: 768px) {
+    .ct-bar {
+        display: none;
+    }
+
+    .ct-hero {
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 40px;
+        padding: 56px 48px;
+        border-radius: 0 0 60px 60px;
+        text-align: start;
+    }
+
+    .ct-hero__body {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .ct-hero__text {
+        margin-inline: 0;
+    }
+
+    .ct-hero__actions,
+    .ct-social {
+        justify-content: flex-start;
+    }
+
+    .ct-hero__image {
+        flex: 0 0 34%;
+        max-width: 340px;
+    }
+
+    .ct-location {
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+        align-items: center;
+        gap: 32px;
+        padding: 28px;
+    }
+
+    .ct-location__map {
+        order: 0;
+    }
+
+    /* Alternate sides so a long list doesn't read as a column of cards. */
+    .ct-location:nth-child(even) .ct-location__map {
+        order: -1;
+    }
+}
+
+/* ===== ≥ 992px ===== */
+@media (min-width: 992px) {
+    .ct-channels {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .ct-write {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+        align-items: start;
+        gap: 40px;
+    }
+
+    .ct-write__intro {
+        position: sticky;
+        top: 110px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ct-btn,
+    .ct-copy {
+        transition: none;
+    }
+}

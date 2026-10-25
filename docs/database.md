@@ -18,6 +18,7 @@ The database is divided into the following domains:
 * Teaching Sessions
 * Academic Calendar
 * Attendance
+* Public website: contact page (the other `website` CMS tables are documented in `docs/apps/website.md`)
 
 The full entity relationship diagram (Mermaid) is in [database-mermaid.md](database-mermaid.md).
 
@@ -538,6 +539,61 @@ Assigns a SchoolClass to a supervisor.
 * Belongs to one SupervisorProfile.
 * Belongs to one SchoolClass.
 * Defines everything a supervisor may see (see `docs/apps/supervisor.md`).
+
+---
+
+# Public Website: Contact Page
+
+The `website` app's other tables (site settings, menus, landing page) are
+page content and documented in `docs/apps/website.md`. The contact page's
+tables are listed here because two of them touch the school domain or hold
+visitor data.
+
+## ContactLocation
+
+One branch's address block on the contact page.
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| page | The `ContactPage` singleton |
+| branch | Optional `school.Branch` (`SET_NULL`); its name, address and phone are shown unless overridden |
+| title_override, address_override | Win over the branch's values when filled in |
+| hours | Free-text working hours |
+| map_image, neshan_url, balad_url, google_maps_url | Static map picture and the map apps' share links |
+
+### Relationships
+
+* Belongs to one ContactPage; optionally to one Branch.
+* Has many ContactChannels (CASCADE).
+* Only locations of active branches (or with no branch) are shown.
+
+## ContactChannel / ContactTopic
+
+A phone, mobile or email (school-wide, or under one ContactLocation), and
+the topics offered in the form. Both are ordered, soft-deactivated items of
+the ContactPage.
+
+## ContactMessage
+
+A message sent from the public contact form.
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| name, mobile | Sender; mobile normalised to `09xxxxxxxxx` |
+| topic, location | Copied as text, so the record survives renaming or deleting either |
+| message | The text (10–2000 characters) |
+| ip_hash | HMAC-SHA256 of the client IP keyed with `SECRET_KEY`; the raw IP is never stored |
+| created_at | Jalali date and time sent |
+| is_handled | «پیگیری شد», the only field staff can change |
+
+### Rules
+
+* Indexes on `(ip_hash, created_at)` and `(mobile, created_at)` serve the rate limit (ADR-024).
+* No foreign keys: messages are independent records.
 
 ---
 

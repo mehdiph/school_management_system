@@ -208,6 +208,23 @@ DIRECTOR_FREQUENT_ABSENCE_DAYS = 3
 DIRECTOR_CLASS_ABSENCE_YELLOW = 5
 DIRECTOR_CLASS_ABSENCE_RED = 10
 
+# Public contact form (see website/services.py and docs/apps/website.md)
+#
+# Anti-spam limits. Mobile carriers put many users behind one IP (CGNAT),
+# so the short window counts per mobile number AND per device (an HMAC of
+# the IP); either one reaching the limit refuses the message. The daily cap
+# is per device only, over the last 24 hours.
+CONTACT_RATE_LIMIT = (3, 600)          # messages, seconds
+CONTACT_DAILY_LIMIT = 50               # messages per device per 24 hours
+CONTACT_MIN_FILL_SECONDS = 3           # a faster submission is a bot
+CONTACT_MAX_FORM_AGE_SECONDS = 2 * 60 * 60
+
+# The request header holding the visitor's real IP. Behind the CDN, set it
+# in .env to the CDN's client-IP header, e.g. CF-Connecting-IP (Cloudflare)
+# or AR-Real-IP (ArvanCloud); without a CDN, nginx's X-Real-IP is right.
+# A missing or malformed value falls back to REMOTE_ADDR.
+CLIENT_IP_HEADER = os.environ.get('CLIENT_IP_HEADER', 'X-Real-IP')
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/

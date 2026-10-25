@@ -370,14 +370,15 @@ class WeeklyScheduleServiceTests(ScheduleFixtureMixin, TestCase):
 
     def test_invalid_color_in_database_never_reaches_style(self):
         class_subject = self.class_subject("ریاضی")
+        # Seven characters: Subject.color is varchar(7), which PostgreSQL enforces.
         type(class_subject.subject).objects.filter(pk=class_subject.subject_id).update(
-            color="red;background:url(x)"
+            color="red;x:y"
         )
         self.slot(class_subject, Day.SATURDAY, self.bell_1)
 
         entry = self.build().week(2).days[0].slots[0].entry
         self.assertEqual(entry.color, "#d96a30")
-        self.assertNotIn("url", entry.style)
+        self.assertNotIn("x:y", entry.style)
 
     def test_both_weeks_in_constant_queries(self):
         for day in (Day.SATURDAY, Day.SUNDAY, Day.MONDAY):

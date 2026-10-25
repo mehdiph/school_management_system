@@ -10,6 +10,8 @@ from django.db import models, transaction
 from django.db.models.signals import post_delete, pre_save
 
 from .models import (
+    ContactLocation,
+    ContactPage,
     FeatureCard,
     HeroSlide,
     LandingPage,
@@ -18,7 +20,16 @@ from .models import (
     SiteSettings,
 )
 
-MODELS_WITH_IMAGES = (SiteSettings, LandingPage, HeroSlide, FeatureCard, LearningPoint, LandingTeacher)
+MODELS_WITH_IMAGES = (
+    SiteSettings,
+    LandingPage,
+    HeroSlide,
+    FeatureCard,
+    LearningPoint,
+    LandingTeacher,
+    ContactPage,
+    ContactLocation,
+)
 
 
 def _file_fields(model):

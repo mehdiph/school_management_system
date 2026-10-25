@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% load static website_tags %}
+
+{% block title %}{{ page.meta_title }} | {{ site_settings.site_name }}{% endblock title %}
+
+{# viewport-fit=cover: env(safe-area-inset-*) is non-zero, for the phone bar. #}
+{% block viewport %}<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">{% endblock viewport %}
+
+{% block meta %}
+{% if page.meta_description %}<meta name="description" content="{{ page.meta_description }}">{% endif %}
+{% endblock meta %}
+
+{% block body_class %}public-page landing contact-page{% if call or directions_url %} has-ct-bar{% endif %}{% endblock %}
+
+{% block navlinks %}
+{% include "website/partials/public_navbar.html" %}
+{% endblock navlinks %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'website/css/nav.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/index.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/contact.css' %}">
+{% endblock styles %}
+
+{# With the form on the page, its confirmation is shown inside the form card. #}
+{% block messages %}{% if not page.show_form %}{{ block.super }}{% endif %}{% endblock messages %}
+
+
+{% block content %}
+<div class="contact">
+
+<!-- ===== HERO ===== -->
+<section class="ct-hero" aria-labelledby="ct-hero-title">
+    <div class="ct-hero__body">
+        <h1 id="ct-hero-title">{{ page.hero_title }}</h1>
+        {% if page.hero_text %}<p class="ct-hero__text">{{ page.hero_text|linebreaksbr }}</p>{% endif %}
+
+        {% if call or page.show_form and page.hero_message_text %}
+        <div class="ct-hero__actions">
+            {% if call %}
+            <a href="{{ call.href }}" class="ct-btn ct-btn--primary ct-btn--call">
+                <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                <span>{{ page.hero_call_text }}</span>
+                <span class="ct-btn__number" dir="ltr">{{ call.display }}</span>
+            </a>
+            {% endif %}
+            {% if page.show_form and page.hero_message_text %}
+            <a href="#contact-form" class="ct-btn ct-btn--outline">{{ page.hero_message_text }}</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if page.show_social %}
+        {% with social=footer_links|social_only %}
+        {% if social %}
+        <ul class="ct-social" aria-label="شبکه‌های اجتماعی">
+            {% for link in social %}
+            <li>
+                <a href="{{ link.url }}" class="ct-social__link"{% if link.opens_externally %} target="_blank" rel="noopener noreferrer"{% endif %}>
+                    {% if link.icon %}<i class="{{ link.icon }}" aria-hidden="true"></i>{% endif %}
+                    {{ link.title }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        {% endif %}
+    </div>
+
+    <div class="ct-hero__image">
+        <img src="{{ page.hero_image_url }}" alt="{{ page.hero_image_alt }}" width="600" height="600" decoding="async">
+    </div>
+</section>
+
+{% if channels %}
+<!-- ===== CHANNELS ===== -->
+<section class="ct-section" aria-labelledby="ct-channels-title">
+    <h2 class="ct-section__title" id="ct-channels-title">{{ page.channels_title }}</h2>
+    <ul class="ct-channels">
+        {% for channel in channels %}
+        <li class="ct-channel">{% include "website/contact/_channel.html" %}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if locations %}
+<!-- ===== LOCATIONS ===== -->
+<section class="ct-section" aria-labelledby="ct-locations-title">
+    <h2 class="ct-section__title" id="ct-locations-title">{{ page.locations_title }}</h2>
+    <div class="ct-locations">
+        {% for location in locations %}
+        {% include "website/contact/_location.html" %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if page.show_form %}
+<!-- ===== FORM ===== -->
+<section class="ct-section ct-write" id="contact-form" aria-labelledby="ct-form-title">
+    <div class="ct-write__intro">
+        <h2 class="ct-section__title" id="ct-form-title">{{ page.form_title }}</h2>
+        {% if page.form_intro %}<p>{{ page.form_intro|linebreaksbr }}</p>{% endif %}
+
+        {% if page.show_faq and page.faq_title %}
+        <aside class="ct-faq" aria-labelledby="ct-faq-title">
+            <h3 id="ct-faq-title"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> {{ page.faq_title }}</h3>
+            {% if page.faq_text %}<p>{{ page.faq_text|linebreaksbr }}</p>{% endif %}
+            {% if page.faq_link_text %}<a href="{{ page.faq_url|default:'#' }}" class="ct-link">{{ page.faq_link_text }}</a>{% endif %}
+        </aside>
+        {% endif %}
+    </div>
+
+    {% include "website/contact/_form.html" %}
+</section>
+{% endif %}
+
+</div>
+
+{% if call or directions_url %}
+<!-- ===== PHONE ACTION BAR (below 768px) ===== -->
+<nav class="ct-bar" aria-label="تماس سریع">
+    {% if call %}
+    <a href="{{ call.href }}" class="ct-bar__btn ct-bar__btn--call">
+        <i class="fa-solid fa-phone" aria-hidden="true"></i> {{ page.hero_call_text }}
+    </a>
+    {% endif %}
+    {% if directions_url %}
+    <a href="{{ directions_url }}" class="ct-bar__btn" target="_blank" rel="noopener noreferrer">
+        <i class="fa-solid fa-location-dot" aria-hidden="true"></i> مسیریابی
+    </a>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock content %}
+
+
+{% block scripts %}
+<script src="{% static 'website/js/nav.js' %}"></script>
+<script src="{% static 'website/js/contact.js' %}"></script>
+{% endblock scripts %}

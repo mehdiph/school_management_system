@@ -1,0 +1,46 @@
+{% comment %}The contact form as a notebook page. Works without JS; contact.js only enhances.{% endcomment %}
+<div class="ct-paper">
+    {% if messages %}
+    <div class="ct-success" role="status">
+        {% for message in messages %}
+        <p><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ message }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'website:contact' %}#contact-form" class="ct-form" novalidate data-contact-form>
+        {% csrf_token %}
+        <input type="hidden" name="started" value="{{ form_started }}">
+
+        {% if form.errors %}
+        <div class="ct-errors" id="ct-errors" role="alert" tabindex="-1">
+            <p class="ct-errors__title">پیام ثبت نشد؛ این موارد را بررسی کنید:</p>
+            <ul>
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                {% for field in form.visible_fields %}{% if field.errors %}
+                <li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ field.errors.0 }}</a></li>
+                {% endif %}{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="ct-form__row">
+            {% include "website/contact/_field.html" with field=form.name %}
+            {% include "website/contact/_field.html" with field=form.mobile %}
+        </div>
+        {% if form.topic or form.location %}
+        <div class="ct-form__row">
+            {% if form.topic %}{% include "website/contact/_field.html" with field=form.topic %}{% endif %}
+            {% if form.location %}{% include "website/contact/_field.html" with field=form.location %}{% endif %}
+        </div>
+        {% endif %}
+        {% include "website/contact/_field.html" with field=form.message %}
+
+        <div class="ct-hp" aria-hidden="true">
+            <label for="{{ form.website.id_for_label }}">{{ form.website.label }}</label>
+            {{ form.website }}
+        </div>
+
+        <button type="submit" class="ct-btn ct-btn--primary ct-form__submit" data-busy-text="در حال ثبت…">{{ page.submit_text }}</button>
+    </form>
+</div>
