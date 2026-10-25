@@ -1,0 +1,13 @@
+{% comment %}
+One leader or office colleague. Needs `person`. The photo is only the one
+uploaded on the about page (never the account's avatar); without it, the
+name's first letter.
+{% endcomment %}
+{% if person.photo_url %}
+<img class="ab-person__photo" src="{{ person.photo_url }}" alt="" width="400" height="400" loading="lazy" decoding="async">
+{% else %}
+<span class="ab-person__photo ab-person__initial" aria-hidden="true">{{ person.initial }}</span>
+{% endif %}
+<h3 class="ab-person__name">{{ person.display_name }}</h3>
+<p class="ab-person__role">{{ person.role }}</p>
+{% if person.bio %}<p class="ab-person__bio">{{ person.bio }}</p>{% endif %}

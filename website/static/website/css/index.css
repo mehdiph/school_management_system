@@ -22,6 +22,12 @@
     --lp-glass: rgba(255, 255, 255, 0.4);
     --lp-glass-border: rgba(255, 255, 255, 0.8);
     --lp-item-bg: #f8f9fa;
+    /* Buttons and orange text on the public pages: the brand orange fails
+       AA under white text (2.7:1); this darker step of the same hue passes
+       on white (5.1:1) and cream (4.5:1). Used by contact.css and about.css;
+       the landing page's own buttons don't use it yet. */
+    --lp-action: #b4501c;
+    --lp-action-hover: #9a4416;
 
     /* shadows */
     --lp-shadow-section: 0 10px 30px rgba(239, 126, 65, 0.2);

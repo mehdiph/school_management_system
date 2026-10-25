@@ -2,12 +2,19 @@ from django.contrib import messages
 from django.db.models import Prefetch, Q, prefetch_related_objects
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_safe
 
 from accounts.validators import normalize_mobile
 
 from .forms import ContactForm, form_token
 from .models import (
+    AboutFact,
+    AboutHighlight,
+    AboutMilestone,
+    AboutPage,
+    AboutPerson,
+    AboutPhoto,
+    AboutValue,
     ContactChannel,
     ContactLocation,
     ContactPage,
@@ -50,6 +57,15 @@ def website(request):
     return render(request, "website/index.html", context)
 
 
+def _public_locations():
+    """Locations shown on the public site: active, of an active branch (or none)."""
+    return (
+        ContactLocation.objects.filter(is_active=True)
+        .filter(Q(branch__isnull=True) | Q(branch__is_active=True))
+        .select_related("branch")
+    )
+
+
 def _load_contact_page():
     """
     The page with its active locations (of active branches only), channels
@@ -59,13 +75,7 @@ def _load_contact_page():
 
     page = ContactPage.load()
     lookups = [
-        Prefetch(
-            "locations",
-            queryset=ContactLocation.objects.filter(is_active=True)
-            .filter(Q(branch__isnull=True) | Q(branch__is_active=True))
-            .select_related("branch"),
-            to_attr="active_locations",
-        ),
+        Prefetch("locations", queryset=_public_locations(), to_attr="active_locations"),
         Prefetch("channels", queryset=ContactChannel.objects.filter(is_active=True), to_attr="active_channels"),
     ]
     if page.show_form:
@@ -140,3 +150,39 @@ def contact(request):
         "directions_url": _directions_url(page),
     }
     return render(request, "website/contact.html", context, status=status)
+
+
+ABOUT_SECTIONS = [
+    ("show_timeline", "milestones", AboutMilestone.objects.all()),
+    ("show_values", "belief_values", AboutValue.objects.all()),
+    ("show_highlights", "highlights", AboutHighlight.objects.all()),
+    ("show_facts", "facts", AboutFact.objects.all()),
+    (
+        "show_team",
+        "people",
+        AboutPerson.objects.filter(Q(staff__isnull=True) | Q(staff__is_active=True)).select_related("staff__user"),
+    ),
+    ("show_gallery", "photos", AboutPhoto.objects.all()),
+]
+
+
+@require_safe
+def about(request):
+    page = AboutPage.load()
+
+    # One query per enabled section; disabled sections cost nothing.
+    lookups = [
+        Prefetch(relation, queryset=queryset.filter(is_active=True), to_attr=f"active_{relation}")
+        for flag, relation, queryset in ABOUT_SECTIONS
+        if getattr(page, flag)
+    ]
+    prefetch_related_objects([page], *lookups)
+
+    context = {
+        "page": page,
+        "locations": list(_public_locations()) if page.show_branches else [],
+    }
+    for flag, relation, _ in ABOUT_SECTIONS:
+        context[relation] = getattr(page, f"active_{relation}", [])
+
+    return render(request, "website/about.html", context)

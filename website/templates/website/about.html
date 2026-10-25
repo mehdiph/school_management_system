@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ page.meta_title }} | {{ site_settings.site_name }}{% endblock title %}
+
+{% block meta %}
+{% if page.meta_description %}<meta name="description" content="{{ page.meta_description }}">{% endif %}
+{% endblock meta %}
+
+{% block body_class %}public-page landing about-page{% endblock %}
+
+{% block navlinks %}
+{% include "website/partials/public_navbar.html" %}
+{% endblock navlinks %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'website/css/nav.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/index.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/about.css' %}">
+{% endblock styles %}
+
+
+{% block content %}
+<main class="about">
+
+<!-- ===== HERO ===== -->
+<section class="ab-hero" aria-labelledby="ab-hero-title">
+    <div class="ab-hero__body">
+        <h1 id="ab-hero-title">{{ page.hero_title|linebreaksbr }}</h1>
+        {% if page.hero_text %}<p class="ab-hero__text">{{ page.hero_text|linebreaksbr }}</p>{% endif %}
+        {% if page.hero_button_text %}
+        <a href="{{ page.hero_button_url|default:'#' }}" class="ab-btn ab-btn--primary">{{ page.hero_button_text }}</a>
+        {% endif %}
+    </div>
+    <div class="ab-hero__arch">
+        <img src="{{ page.hero_image_url }}" alt="{{ page.hero_image_alt }}" width="600" height="800" decoding="async" fetchpriority="high">
+    </div>
+</section>
+
+{% if page.show_story and page.story_text or milestones %}
+<!-- ===== STORY: the pen line ===== -->
+<section class="ab-panel ab-story" aria-labelledby="ab-story-title">
+    <h2 class="ab-title ab-story__title" id="ab-story-title">{{ page.story_title }}</h2>
+
+    <div class="ab-story__body">
+        {# The ink line; decorative, drawn with CSS (see about.css). #}
+        <span class="ab-ink" aria-hidden="true">
+            <svg class="ab-ink__start" viewBox="0 0 40 44" width="40" height="44" focusable="false">
+                <path d="M20 44 C20 30 20 24 23 17 C27 8 18 2 13 8 C8 14 15 22 20 17" />
+            </svg>
+            <span class="ab-ink__track"></span>
+            <span class="ab-ink__line"></span>
+        </span>
+
+        {% if page.show_story and page.story_text %}
+        <div class="ab-story__text">{{ page.story_text|linebreaks }}</div>
+        {% endif %}
+
+        {% if milestones %}
+        <h3 class="visually-hidden">{{ page.timeline_title }}</h3>
+        <ol class="ab-timeline">
+            {% for milestone in milestones %}
+            <li class="ab-milestone">
+                <span class="ab-milestone__dot" aria-hidden="true"></span>
+                <h4 class="ab-milestone__head">
+                    <span class="ab-milestone__year">{{ milestone.year }}</span>
+                    <span class="ab-milestone__title">{{ milestone.title }}</span>
+                </h4>
+                {% if milestone.text %}<p class="ab-milestone__text">{{ milestone.text|linebreaksbr }}</p>{% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+{% if page.show_quote and page.quote_text %}
+<!-- ===== DIRECTOR'S WORDS ===== -->
+<section class="ab-quote"{% if page.quote_name or page.quote_role %} aria-labelledby="ab-quote-by"{% else %} aria-label="سخن مدیر"{% endif %}>
+    <figure>
+        <blockquote class="ab-quote__text">
+            <p>{{ page.quote_text|linebreaksbr }}</p>
+        </blockquote>
+        {% if page.quote_name or page.quote_role or page.quote_photo %}
+        <figcaption class="ab-quote__by">
+            {% if page.quote_photo %}
+            <img src="{{ page.quote_photo_url }}" alt="{{ page.quote_photo_alt }}" width="64" height="64" loading="lazy" decoding="async">
+            {% endif %}
+            <span id="ab-quote-by">
+                {% if page.quote_name %}<span class="ab-quote__name">{{ page.quote_name }}</span>{% endif %}
+                {% if page.quote_role %}<span class="ab-quote__role">{{ page.quote_role }}</span>{% endif %}
+            </span>
+        </figcaption>
+        {% endif %}
+    </figure>
+</section>
+{% endif %}
+
+{% if page.show_values %}{% if page.mission_text or page.vision_text or belief_values %}
+<!-- ===== BELIEFS ===== -->
+<section class="ab-panel" aria-labelledby="ab-values-title">
+    <h2 class="ab-title" id="ab-values-title">{{ page.values_title }}</h2>
+
+    {% if page.mission_text or page.vision_text %}
+    <div class="ab-beliefs">
+        {% if page.mission_text %}
+        <div class="ab-belief">
+            {% if page.mission_title %}<h3>{{ page.mission_title }}</h3>{% endif %}
+            <p>{{ page.mission_text|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+        {% if page.vision_text %}
+        <div class="ab-belief">
+            {% if page.vision_title %}<h3>{{ page.vision_title }}</h3>{% endif %}
+            <p>{{ page.vision_text|linebreaksbr }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if belief_values %}
+    <ul class="ab-values">
+        {% for value in belief_values %}
+        <li class="ab-value">
+            {% if value.emoji %}<span class="ab-value__icon" aria-hidden="true">{{ value.emoji }}</span>{% endif %}
+            <div>
+                <h3 class="ab-value__title">{{ value.title }}</h3>
+                {% if value.text %}<p>{{ value.text }}</p>{% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
+{% endif %}{% endif %}
+
+{% if highlights %}
+<!-- ===== WHAT MAKES US DIFFERENT ===== -->
+<section class="ab-panel" aria-labelledby="ab-highlights-title">
+    <h2 class="ab-title" id="ab-highlights-title">{{ page.highlights_title }}</h2>
+    {% if page.highlights_text %}<p class="ab-lead">{{ page.highlights_text|linebreaksbr }}</p>{% endif %}
+    <ul class="ab-highlights">
+        {% for item in highlights %}
+        <li class="ab-highlight">
+            {% if item.image_url %}
+            <img src="{{ item.image_url }}" alt="{{ item.alt_text }}" width="800" height="600" loading="lazy" decoding="async">
+            {% endif %}
+            <h3>{{ item.title }}</h3>
+            {% if item.text %}<p>{{ item.text|linebreaksbr }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if facts %}
+<!-- ===== FACTS ===== -->
+<section class="ab-panel" aria-labelledby="ab-facts-title">
+    <h2 class="ab-title" id="ab-facts-title">{{ page.facts_title }}</h2>
+    <dl class="ab-facts">
+        {% for fact in facts %}
+        <div class="ab-fact">
+            <dt>{{ fact.label }}</dt>
+            <dd>{{ fact.value }}</dd>
+        </div>
+        {% endfor %}
+    </dl>
+</section>
+{% endif %}
+
+{% if people %}
+<!-- ===== TEAM (leadership and office) ===== -->
+<section class="ab-panel" id="team" aria-labelledby="ab-team-title">
+    <h2 class="ab-title" id="ab-team-title">{{ page.team_title }}</h2>
+    {% if page.team_text %}<p class="ab-lead">{{ page.team_text|linebreaksbr }}</p>{% endif %}
+    <ul class="ab-people">
+        {% for person in people %}
+        <li class="ab-person">{% include "website/about/_person.html" %}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if photos %}
+<!-- ===== GALLERY ===== -->
+<section class="ab-panel" aria-labelledby="ab-gallery-title">
+    <h2 class="ab-title" id="ab-gallery-title">{{ page.gallery_title }}</h2>
+    {# Below 768px a swipeable strip: focusable so the keyboard can scroll it. #}
+    <ul class="ab-gallery" tabindex="0" aria-labelledby="ab-gallery-title">
+        {% for photo in photos %}
+        <li>
+            <figure class="ab-photo">
+                <img src="{{ photo.image_url }}" alt="{{ photo.alt_text }}" width="1200" height="900" loading="lazy" decoding="async">
+                {% if photo.caption %}<figcaption>{{ photo.caption }}</figcaption>{% endif %}
+            </figure>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if locations %}
+<!-- ===== BRANCHES (the contact page's locations) ===== -->
+<section class="ab-panel" aria-labelledby="ab-branches-title">
+    <h2 class="ab-title" id="ab-branches-title">{{ page.branches_title }}</h2>
+    {% if page.branches_text %}<p class="ab-lead">{{ page.branches_text|linebreaksbr }}</p>{% endif %}
+    <ul class="ab-branches">
+        {% for location in locations %}
+        <li class="ab-branch">
+            <h3 class="ab-branch__title">{{ location.display_title }}</h3>
+            {% if location.display_address %}
+            <address class="ab-branch__address">
+                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                <span>{{ location.display_address|linebreaksbr }}</span>
+            </address>
+            {% endif %}
+            {% if page.branches_link_text and page.branches_link_url %}
+            <a href="{{ page.branches_link_url }}" class="ab-link">{{ page.branches_link_text }}<span class="visually-hidden"> {{ location.display_title }}</span></a>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if page.show_cta %}
+<!-- ===== CLOSING CALL TO ACTION ===== -->
+<section class="ab-cta" aria-labelledby="ab-cta-title">
+    <h2 class="ab-cta__title" id="ab-cta-title">{{ page.cta_title }}</h2>
+    {% if page.cta_text %}<p>{{ page.cta_text|linebreaksbr }}</p>{% endif %}
+    {% if page.cta_primary_text or page.has_cta_secondary %}
+    <div class="ab-cta__actions">
+        {% if page.cta_primary_text %}
+        <a href="{{ page.cta_primary_url|default:'#' }}" class="ab-btn ab-btn--primary">{{ page.cta_primary_text }}</a>
+        {% endif %}
+        {% if page.has_cta_secondary %}
+        <a href="{{ page.cta_secondary_url }}" class="ab-btn ab-btn--outline">{{ page.cta_secondary_text }}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endif %}
+
+</main>
+{% endblock content %}
+
+
+{% block scripts %}
+<script src="{% static 'website/js/nav.js' %}"></script>
+{% endblock scripts %}

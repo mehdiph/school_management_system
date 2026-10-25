@@ -5,10 +5,9 @@
    ========================================================================== */
 
 :root {
-    /* The brand orange fails AA under white text (2.7:1); this darker
-       step of the same hue passes on white (5.1:1) and cream (4.5:1). */
-    --ct-action: #b4501c;
-    --ct-action-hover: #9a4416;
+    /* The shared action colour (index.css: --lp-action). */
+    --ct-action: var(--lp-action);
+    --ct-action-hover: var(--lp-action-hover);
     --ct-action-ring: rgba(180, 80, 28, 0.25);
     /* Notebook paper */
     --ct-paper: #fffaf6;
