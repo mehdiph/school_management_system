@@ -24,6 +24,27 @@
 
 # [Unreleased]
 
+## Added (public «معلمان» page)
+
+- New public page `/teachers/` (`website:teachers`, GET/HEAD): an intro, the published teachers grouped by department with filter chips (`?group=<id>`; works without JS, `teachers.js` swaps a `?partial=1` fragment), and a closing call to action to the contact page. Each teacher shows a portrait (or their initial), name, specialty and experience; their own sentence is written in red pen on a strip of notebook paper; «درباره …» opens the bio and education. A link `/teachers/#<slug>` opens that teacher.
+- One teacher list for the whole site: `LandingTeacher` now has «نمایش در صفحه معلمان» and «نمایش در صفحه اصلی» ticks (both off for new teachers; existing ones stay on the home page), a group, experience, education, quote, bio and a unique slug. It is edited in its own admin list «معلمان سایت» instead of an inline on «مدیریت صفحه اصلی». Page texts and groups: «صفحه معلمان».
+- The landing page's teachers row links to the new page («آشنایی با همه معلمان», editable, hidden when blank).
+- Privacy (ADR-025, amended):
+  - teacher photos are only the ones uploaded on the card; the account avatar is never shown (also on the landing page, which now shows the initial instead);
+  - names never fall back to the username;
+  - teachers linked to someone who has left are hidden on both pages;
+  - only the user's name and the profile's field of study are read from school records; a test checks that no other personal field reaches the pages;
+  - uploaded photos of people (teacher cards and «همکاران ما» on the about page) are re-encoded without metadata, so no phone GPS position is published.
+- Migrations:
+  - `website.0009_teachers`: tables and fields;
+  - `0010_seed_teachers`: the page row and slugs; creates no teachers or groups;
+  - `0011_teacher_slug`: drops `LandingTeacher.page`, makes `slug` unique;
+  - `0012_teachers_menu`: the «معلمان» menu row still at `#` → `/teachers/`;
+  - `0013_hide_seed_teachers`: deactivates the four invented seed teachers where untouched.
+  
+  All are reversible, and admin-edited rows are left alone.
+- Docs: `docs/apps/website.md`, `docs/database.md`, `docs/database-mermaid.md`, ADR-025, `docs/apps/staff.md` (stale `national_code` / `is_homeroom_teacher` entries removed), report `docs/plans/2026-10-teachers-page.md`.
+
 ## Added (public «درباره ما» page)
 
 - New public page `/about/` (`website:about`, GET/HEAD), for parents choosing a school. Sections, in order:

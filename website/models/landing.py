@@ -1,6 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.text import slugify
 
+from website.images import METADATA_HELP, PUBLIC_PHOTO_HELP, reencode_new_photo
 from website.validators import IMAGE_VALIDATORS, validate_link
 
 from .base import OrderedItem, SingletonModel, image_url
@@ -102,6 +104,10 @@ class LandingPage(SingletonModel):
         default="با اساتید متخصص و متعهد مدرسه پیشرو آشنا شوید",
         verbose_name="زیرعنوان",
     )
+    teachers_link_text = models.CharField(
+        max_length=40, blank=True, default="آشنایی با همه معلمان", verbose_name="متن لینک صفحه معلمان"
+    )
+    teachers_link_url = _link_field("لینک صفحه معلمان", default="/teachers/")
 
     class Meta:
         verbose_name = "مدیریت صفحه اصلی"
@@ -206,66 +212,143 @@ class LearningPoint(OrderedItem):
 
 class LandingTeacher(OrderedItem):
     """
-    A teacher card. Linked to a real ``TeacherProfile`` when possible, so
-    the name and photo stay in sync with the user's account; the
-    ``*_override`` fields win whenever they are filled in.
+    A teacher on the public site: the landing page's row and the «معلمان»
+    page share these rows; ``on_home`` and ``on_teachers_page`` say where
+    each one appears, and nothing is shown unless ticked.
+
+    Linked to a real ``TeacherProfile`` when possible, so the name follows
+    the user's account (never the username) and the specialty the
+    profile's ``field_of_study``; the ``*_override`` fields win whenever
+    they are filled in. Nothing else is read from the account or profile:
+    the photo is only the one uploaded here (ADR-025), and experience and
+    education are typed on the card.
     """
 
-    page = models.ForeignKey(LandingPage, on_delete=models.CASCADE, related_name="teachers", verbose_name="صفحه اصلی")
     teacher = models.ForeignKey(
         "staff.TeacherProfile",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="landing_cards",
-        verbose_name="استاد",
+        verbose_name="معلم",
+        help_text="اختیاری. از حساب معلم فقط نام و نام خانوادگی و رشته تحصیلی خوانده می‌شود؛ "
+                  "عکس و اطلاعات دیگر حساب هرگز نمایش داده نمی‌شود.",
     )
     name_override = models.CharField(
         max_length=100,
         blank=True,
         verbose_name="نام نمایشی",
-        help_text="اگر خالی باشد، نام حساب کاربری استاد نمایش داده می‌شود.",
+        help_text="اگر خالی باشد، نام و نام خانوادگی حساب معلم نمایش داده می‌شود.",
     )
-    photo_override = _image_field("website/teachers/", "۳۹۰×۴۵۰ (عمودی)", "عکس")
+    photo_override = models.ImageField(
+        upload_to="website/teachers/",
+        blank=True,
+        validators=IMAGE_VALIDATORS,
+        verbose_name="عکس",
+        help_text="ابعاد پیشنهادی ۶۰۰×۸۰۰ (عمودی)؛ jpg، png یا webp، حداکثر ۲ مگابایت. "
+                  + PUBLIC_PHOTO_HELP + " " + METADATA_HELP + " بدون عکس، حرف اول نام نمایش داده می‌شود.",
+    )
     specialty_override = models.CharField(
         max_length=80,
         blank=True,
         verbose_name="عنوان تخصص",
-        help_text="مثال: استاد علوم. اگر خالی باشد، رشته تحصیلی استاد نمایش داده می‌شود.",
+        help_text="مثال: آموزگار پایه دوم، معلم زبان انگلیسی. اگر خالی باشد، رشته تحصیلی پروفایل معلم "
+                  "نمایش داده می‌شود، که معمولاً رشته دانشگاهی است، نه درسی که تدریس می‌کند.",
+    )
+    group = models.ForeignKey(
+        "website.TeacherGroup",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="teachers",
+        verbose_name="گروه آموزشی",
+        help_text="گروه‌ها در «صفحه معلمان» تعریف می‌شوند. معلمان گروه غیرفعال نمایش داده نمی‌شوند.",
+    )
+    on_teachers_page = models.BooleanField(
+        default=False,
+        verbose_name="نمایش در صفحه معلمان",
+        help_text="فقط با رضایت خود معلم منتشر کنید.",
+    )
+    on_home = models.BooleanField(default=False, verbose_name="نمایش در صفحه اصلی")
+    experience = models.CharField(
+        max_length=30,
+        blank=True,
+        verbose_name="سابقه تدریس",
+        help_text="همان‌طور که نوشته شود نمایش داده می‌شود؛ مثال: ۱۲ سال. از اطلاعات پرسنلی خوانده نمی‌شود.",
+    )
+    education = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name="تحصیلات",
+        help_text="مثال: کارشناسی ارشد آموزش ابتدایی. از پروفایل معلم خوانده نمی‌شود.",
+    )
+    quote = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="سخن یا باور آموزشی",
+        help_text="یک یا دو جمله از زبان خود معلم؛ با جوهر قرمز روی کاغذ دفتر نمایش داده می‌شود.",
+    )
+    bio = models.TextField(
+        max_length=400,
+        blank=True,
+        verbose_name="معرفی کوتاه",
+        help_text="حداکثر ۴۰۰ کاراکتر؛ با «درباره …» باز می‌شود.",
+    )
+    slug = models.SlugField(
+        max_length=80,
+        unique=True,
+        blank=True,
+        allow_unicode=True,
+        verbose_name="نامک (برای لینک)",
+        help_text="اگر خالی باشد، از نام ساخته می‌شود و بعد از آن با تغییر نام عوض نمی‌شود. "
+                  "لینک مستقیم به این معلم: /teachers/#نامک",
     )
 
     class Meta(OrderedItem.Meta):
-        verbose_name = "استاد صفحه اصلی"
-        verbose_name_plural = "اساتید صفحه اصلی"
+        verbose_name = "معلم سایت"
+        verbose_name_plural = "معلمان سایت"
 
     def __str__(self):
-        return self.display_name or "استاد"
+        return self.display_name or "معلم"
 
     def clean(self):
-        if not self.teacher_id and not self.name_override.strip():
-            raise ValidationError("یک استاد انتخاب کنید یا نام نمایشی را وارد کنید.")
+        if not self.display_name:
+            raise ValidationError("یک معلم دارای نام انتخاب کنید یا نام نمایشی را وارد کنید.")
+
+    def save(self, *args, **kwargs):
+        reencode_new_photo(self, "photo_override")
+        if not self.slug:
+            self.slug = self._unique_slug()
+        super().save(*args, **kwargs)
+
+    def _unique_slug(self):
+        base = slugify(self.display_name, allow_unicode=True)[:70].strip("-") or "teacher"
+        others = type(self).objects.exclude(pk=self.pk)
+        slug, n = base, 2
+        while others.filter(slug=slug).exists():
+            slug, n = f"{base}-{n}", n + 1
+        return slug
 
     @property
-    def _user(self):
-        return self.teacher.staff.user if self.teacher else None
+    def _account_name(self):
+        # Never the username: it is an internal login, not a public name.
+        if not self.teacher_id:
+            return ""
+        user = self.teacher.staff.user
+        return f"{user.first_name} {user.last_name}".strip()
 
     @property
     def display_name(self):
-        if self.name_override:
-            return self.name_override
-        user = self._user
-        if user is None:
-            return ""
-        return f"{user.first_name} {user.last_name}".strip() or user.username
+        return self.name_override.strip() or self._account_name
 
     @property
     def photo_url(self):
-        if self.photo_override:
-            return self.photo_override.url
-        user = self._user
-        if user is not None:
-            return user.avatar_url or ""
-        return ""
+        return image_url(self.photo_override)
+
+    @property
+    def initial(self):
+        name = self.display_name
+        return name[0] if name else "?"
 
     @property
     def display_specialty(self):
@@ -274,3 +357,7 @@ class LandingTeacher(OrderedItem):
         if self.teacher and self.teacher.field_of_study:
             return self.teacher.field_of_study
         return ""
+
+    @property
+    def has_details(self):
+        return bool(self.bio.strip() or self.education.strip())

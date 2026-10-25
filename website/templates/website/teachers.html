@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ page.meta_title }} | {{ site_settings.site_name }}{% endblock title %}
+
+{% block meta %}
+{% if page.meta_description %}<meta name="description" content="{{ page.meta_description }}">{% endif %}
+{% endblock meta %}
+
+{% block body_class %}public-page landing teachers-page{% endblock %}
+
+{% block navlinks %}
+{% include "website/partials/public_navbar.html" %}
+{% endblock navlinks %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'website/css/nav.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/index.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/teachers.css' %}">
+{% endblock styles %}
+
+
+{% block content %}
+<main class="teachers">
+
+<!-- ===== INTRO (and the group filter) ===== -->
+{% if page.show_intro %}
+<section class="tc-intro" aria-labelledby="tc-title">
+    <h1 id="tc-title">{{ page.hero_title|linebreaksbr }}</h1>
+    {% if page.hero_text %}<p class="tc-intro__text">{{ page.hero_text|linebreaksbr }}</p>{% endif %}
+    {% include "website/teachers/_filter.html" %}
+</section>
+{% else %}
+<h1 class="visually-hidden">{{ page.hero_title }}</h1>
+{% include "website/teachers/_filter.html" %}
+{% endif %}
+
+{# Filled in by teachers.js after a filter is applied. #}
+<p class="visually-hidden" aria-live="polite" data-tc-status></p>
+
+<!-- ===== TEACHERS ===== -->
+{% include "website/teachers/_list.html" %}
+
+{% if page.show_cta %}
+<!-- ===== CLOSING CALL TO ACTION ===== -->
+<section class="tc-cta" aria-labelledby="tc-cta-title">
+    <h2 class="tc-cta__title" id="tc-cta-title">{{ page.cta_title }}</h2>
+    {% if page.cta_text %}<p>{{ page.cta_text|linebreaksbr }}</p>{% endif %}
+    {% if page.cta_primary_text or page.has_cta_secondary %}
+    <div class="tc-cta__actions">
+        {% if page.cta_primary_text %}
+        <a href="{{ page.cta_primary_url|default:'#' }}" class="tc-btn tc-btn--primary">{{ page.cta_primary_text }}</a>
+        {% endif %}
+        {% if page.has_cta_secondary %}
+        <a href="{{ page.cta_secondary_url }}" class="tc-btn tc-btn--outline">{{ page.cta_secondary_text }}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endif %}
+
+</main>
+{% endblock content %}
+
+
+{% block scripts %}
+<script src="{% static 'website/js/nav.js' %}"></script>
+<script src="{% static 'website/js/teachers.js' %}"></script>
+{% endblock scripts %}

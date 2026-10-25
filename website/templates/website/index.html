@@ -171,6 +171,8 @@
                     <div class="instructor-img-wrapper {% cycle 'bg-teal' 'bg-blue' 'bg-pink' %}">
                         {% if card.photo_url %}
                         <img src="{{ card.photo_url }}" alt="{{ card.display_name }}" width="390" height="450" loading="lazy" decoding="async">
+                        {% else %}
+                        <span class="instructor-initial" aria-hidden="true">{{ card.initial }}</span>
                         {% endif %}
                     </div>
                     <h3>{{ card.display_name }}</h3>
@@ -183,6 +185,10 @@
                 <i class="fas fa-chevron-left" aria-hidden="true"></i>
             </button>
         </div>
+
+        {% if page.teachers_link_text and page.teachers_link_url %}
+        <p class="instructors-more"><a href="{{ page.teachers_link_url }}">{{ page.teachers_link_text }}</a></p>
+        {% endif %}
     </div>
 </section>
 {% endif %}

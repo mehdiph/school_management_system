@@ -23,7 +23,6 @@ Stores core identity and employment details for all employees. It links directly
 | :--- | :--- | :--- |
 | `user` | `OneToOneField(AUTH_USER_MODEL)` | Unique mapping to the authentication user record. Relates back as `staff_profile`. |
 | `personnel_code` | `CharField(max_length=20)` | Unique employee identification code (e.g., "کد پرسنلی"). |
-| `national_code` | `CharField(max_length=10)` | Unique national identification number (e.g., "کد ملی"). |
 | `gender` | `CharField(choices=Gender)` | Employee gender. Options: `male` ("مرد") or `female` ("زن"). |
 | `birth_date` | `jmodels.jDateField` | Employee date of birth (Jalali calendar). Optional. |
 | `hire_date` | `jmodels.jDateField` | Employment commencement date (Jalali calendar). |
@@ -47,7 +46,6 @@ Maintains teaching-specific credentials. This profile is only applicable to staf
 | `education` | `CharField(max_length=255)` | Highest educational degree attained (e.g., "مدرک تحصیلی"). Optional. |
 | `field_of_study` | `CharField(max_length=255)` | Area of academic specialization (e.g., "رشته تحصیلی"). Optional. |
 | `teaching_experience` | `PositiveIntegerField` | Accumulated years of teaching experience. Defaults to `0`. |
-| `is_homeroom_teacher` | `BooleanField` | Designates if the teacher acts as a fixed class homeroom teacher ("معلم ثابت"). Defaults to `True`. |
 | `created_at` | `jmodels.jDateTimeField` | Record creation timestamp. |
 | `updated_at` | `jmodels.jDateTimeField` | Record modification timestamp. |
 
@@ -57,6 +55,8 @@ Maintains teaching-specific credentials. This profile is only applicable to staf
     ```
     This ensures that only staff members whose linked authentication user account has the role designation of `'teacher'` can have an associated `TeacherProfile` record.
 *   **String Representation:** Returns the full name of the teacher through the parent staff and user objects.
+*   **National code:** lives on `accounts.User` (the single source of truth); `Staff` no longer has its own copy (`staff` migrations 0004–0005). The admin's «کد ملی» column reads `user.national_code`.
+*   **Public website:** a profile can be linked from a public teacher card (`website.LandingTeacher.teacher`). Only the user's first and last name and `field_of_study` are read there, as fallbacks; the photo, experience, education and every other field stay internal (ADR-025, `docs/apps/website.md`).
 
 ---
 
