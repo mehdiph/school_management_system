@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.http import HttpResponse
 from django.db.models import Prefetch, Q, prefetch_related_objects
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -203,3 +204,29 @@ def teachers(request):
     if request.GET.get("partial") == "1":
         return render(request, "website/teachers/_directory.html", context)
     return render(request, "website/teachers.html", context)
+
+
+#: Paths crawlers have no business in: the logged-in panels, the admin,
+#: the blog's authoring area and its previews.
+ROBOTS_DISALLOW = [
+    "/admin/",
+    "/auth/",
+    "/dashboard/",
+    "/teaching/",
+    "/school/",
+    "/report/",
+    "/student/",
+    "/scheduling/",
+    "/attendance/",
+    "/supervisor/",
+    "/director/",
+    "/blog/write/",
+    "/blog/preview/",
+]
+
+
+@require_safe
+def robots_txt(request):
+    lines = ["User-agent: *", *(f"Disallow: {path}" for path in ROBOTS_DISALLOW), ""]
+    lines.append(f"Sitemap: {request.build_absolute_uri(reverse('sitemap'))}")
+    return HttpResponse("\n".join(lines) + "\n", content_type="text/plain; charset=utf-8")

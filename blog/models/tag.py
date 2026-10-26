@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.urls import reverse
 
 from blog.text import normalize, search_key, unique_slug
 
@@ -36,6 +37,9 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.name if self.is_active else f"{self.name} (غیرفعال)"
+
+    def get_absolute_url(self):
+        return reverse("blog:tag", args=[self.slug])
 
     def save(self, *args, **kwargs):
         self.name = normalize(self.name)

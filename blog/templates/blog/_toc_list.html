@@ -1,0 +1,5 @@
+<ol class="bl-toc__list">
+    {% for heading in post.toc %}
+    <li class="bl-toc__item{% if heading.level == 3 %} bl-toc__item--sub{% endif %}"><a href="#{{ heading.id }}">{{ heading.title }}</a></li>
+    {% endfor %}
+</ol>

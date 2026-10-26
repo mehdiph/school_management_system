@@ -24,6 +24,16 @@
 
 # [Unreleased]
 
+## Added (school blog, Phase 2 of 3: the public blog)
+
+- The blog is public at `/blog/` (`docs/apps/blog.md` §6): the blog home (featured posts, latest posts, sections, tags), section, category, tag and author pages, search (`?q=`, at least two letters), and the post page with a table of contents, reading time, share and copy-link, the author box, related posts and the previous/next post in the same section. Everything works without JS; `blog.js` only adds the copy button and a calmer masthead on later pages.
+- Design «روزنامه دیواری»: a school wall newspaper (paper sheets, pins and stickers) in `blog/static/blog/css/blog.css`, inside the public site's navbar and footer; print styles for the post page.
+- One public rule (`blog.models.post.public_q`): published, its publish time passed, its section active. Drafts, scheduled and archived posts are a 404 everywhere; editors and the author see them through «پیش‌نمایش» (`/blog/preview/<id>/`, linked from the admin and the review page).
+- Search engines and readers: canonical, Open Graph and Twitter tags, `BlogPosting` and `BreadcrumbList` JSON-LD, Atom feeds for the blog and each section (summary only), `/sitemap.xml` (public pages and blog) and `/robots.txt` (panels, admin and preview disallowed; search results are `noindex`).
+- Security: blog pages send a strict Content-Security-Policy (no inline scripts or styles; the JSON-LD block is data); bodies are sanitized again on output.
+- Public site: the navbar's «وبلاگ» row now links to `/blog/` and the unused «مقاله» row is hidden, never deleted (`website.0014_blog_menu`, data only, reversible, skips rows an admin changed); the navbar marks the current section. A teacher card on «معلمان» links to its author's blog page while that page exists (one extra query on that page).
+- Fixed: on SQLite a re-saved post could drop out of the blog for 3.5 hours (django_jalali stores datetimes with their own offset there); post moments are now stored in UTC. PostgreSQL was not affected.
+
 ## Added (school blog, Phase 1 of 3: foundations; not public yet)
 
 - New `blog` app (ADR-026, `docs/apps/blog.md`): sections («پرورشی» and «مشاوره» seeded), categories, tags, authors with per-section grants, posts with inline images. Nothing is public yet; editors work in the admin.

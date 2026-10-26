@@ -1,4 +1,5 @@
 from datetime import timedelta
+from datetime import timezone as dt_timezone
 from unittest import mock
 
 from django.core.exceptions import ValidationError
@@ -7,7 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
-from blog.models import AuthorSection, BlogAuthor, Post, PostImage, Tag
+from blog.models import AuthorSection, BlogAuthor, Category, Post, PostImage, Tag
 from blog.testing import make_author, make_category, make_post, make_section, make_tag
 from core.testing import make_user
 from website.models import LandingTeacher
@@ -136,11 +137,42 @@ class PublicQuerySetTests(TestCase):
         self.assertFalse(post.is_scheduled)
         self.assertEqual(list(Post.objects.public()), [post])
 
+    def test_saving_a_loaded_post_keeps_its_moment(self, now):
+        """
+        A loaded post holds aware jdatetimes; saved as they are, SQLite got
+        «…13:00+03:30» text and compared it as text, hiding the post for
+        hours. The instant must survive any number of saves, on any database.
+        """
+
+        now.return_value = NOW.astimezone(dt_timezone.utc)  # what Django's timezone.now() returns
+        post = make_post(self.author, status=Post.Status.PUBLISHED, published_at=NOW - timedelta(minutes=1))
+        for _ in range(2):
+            post = Post.objects.get(pk=post.pk)
+            post.title = "ویرایش‌شده"
+            post.save()
+        self.assertEqual(list(Post.objects.public()), [post])
+        self.assertEqual(Post.objects.get(pk=post.pk).published_dt, NOW - timedelta(minutes=1))
+
+        now.return_value = (NOW - timedelta(minutes=1, seconds=1)).astimezone(dt_timezone.utc)
+        self.assertFalse(Post.objects.public().exists())
+
     def test_inactive_category_or_tag_does_not_hide_the_post(self, _now):
         category = make_category(self.section, is_active=False)
         post = make_post(self.author, category=category, status=Post.Status.PUBLISHED)
         post.tags.add(make_tag(is_active=False))
         self.assertEqual(list(Post.objects.public()), [post])
+
+
+class CategoryTests(TestCase):
+    def test_the_feed_slug_stays_free(self):
+        """A category called «feed» would hide behind its section's feed URL."""
+
+        section = make_section()
+        self.assertEqual(make_category(section, "feed").slug, "feed-2")
+        with self.assertRaises(ValidationError) as caught:
+            Category(section=section, title="خوراک", slug="feed").full_clean()
+        self.assertIn("slug", caught.exception.message_dict)
+        Category(section=section, title="خوراک", slug="feeds").full_clean()
 
 
 class TagTests(TestCase):

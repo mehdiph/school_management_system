@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.urls import reverse
 from django_jalali.db import models as jmodels
 
 from blog.text import normalize, unique_slug
@@ -104,6 +105,9 @@ class BlogAuthor(models.Model):
     def __str__(self):
         return self.name or "نویسنده"
 
+    def get_absolute_url(self):
+        return reverse("blog:author", args=[self.slug])
+
     def clean(self):
         if self.user_id is None:
             return
@@ -145,6 +149,22 @@ class BlogAuthor(models.Model):
         if self.teacher_card_id and self.teacher_card.photo_override:
             return image_url(self.teacher_card.photo_override)
         return ""
+
+    @property
+    def teacher_page_url(self):
+        """
+        «صفحه معلم»: the linked card on the teachers page, only while that
+        page shows it. The same rule as ``website.selectors.public_teachers``
+        plus its ``on_teachers_page`` tick; needs
+        ``select_related("teacher_card__teacher__staff")``.
+        """
+
+        card = self.teacher_card if self.teacher_card_id else None
+        if card is None or not (card.is_active and card.on_teachers_page):
+            return ""
+        if card.teacher_id and not card.teacher.staff.is_active:
+            return ""
+        return f"{reverse('website:teachers')}#{card.slug}"
 
     @property
     def public_bio(self):

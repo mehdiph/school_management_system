@@ -33,7 +33,7 @@ photo is only the one uploaded on the card; without it, the initial.
     </figure>
     {% endif %}
 
-    {% if teacher.has_details %}
+    {% if teacher.has_details or teacher.blog_url %}
     <details class="tc-more">
         <summary><i class="fa-solid fa-chevron-left" aria-hidden="true"></i><span>درباره {{ teacher.display_name }}</span></summary>
         <div class="tc-more__body">
@@ -43,7 +43,9 @@ photo is only the one uploaded on the card; without it, the initial.
                 <div><dt>تحصیلات</dt><dd>{{ teacher.education }}</dd></div>
             </dl>
             {% endif %}
-            {# Blog: a link to this teacher's posts («نوشته‌های …») goes here, once the blog decides how an author links to a teacher card. #}
+            {% if teacher.blog_url %}
+            <p class="tc-more__blog"><a href="{{ teacher.blog_url }}">نوشته‌های {{ teacher.display_name }} در وبلاگ</a></p>
+            {% endif %}
         </div>
     </details>
     {% endif %}

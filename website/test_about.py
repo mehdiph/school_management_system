@@ -406,6 +406,7 @@ class AboutMigrationTests(TestCase):
         FooterLink.objects.filter(title="درباره ما").update(url="#")
         NavMenuItem.objects.filter(title="کلاس ها").update(url="#", is_active=True)
         NavMenuItem.objects.filter(title="معلمان").update(url="#")  # 0012 links it
+        NavMenuItem.objects.filter(title="وبلاگ").update(url="#")  # 0014 links it
 
     def test_about_rows_still_at_hash_are_linked_and_reversed(self):
         self.reset_menu()

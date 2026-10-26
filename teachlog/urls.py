@@ -17,9 +17,13 @@ Including another URLconf
 import re
 
 from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.views.static import serve
+
+from blog.sitemaps import SITEMAPS as BLOG_SITEMAPS
+from website.sitemaps import PagesSitemap
 
 # Admin branding. Set here (rather than with a custom AdminSite) because the
 # project uses the default admin.site everywhere; these three feed the header,
@@ -41,6 +45,8 @@ urlpatterns = [
     path('attendance/', include('attendance.urls')),
     path('supervisor/', include('supervisor.urls')),
     path('director/', include('director.urls')),
+    path('blog/', include('blog.urls')),
+    path('sitemap.xml', sitemap, {'sitemaps': {'pages': PagesSitemap, **BLOG_SITEMAPS}}, name='sitemap'),
 ]
 
 # Serve user uploads (MEDIA_URL) from MEDIA_ROOT through Django.

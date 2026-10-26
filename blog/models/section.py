@@ -1,4 +1,6 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.urls import reverse
 from django_jalali.db import models as jmodels
 
 from blog.text import normalize, unique_slug
@@ -43,11 +45,18 @@ class Section(models.Model):
     def __str__(self):
         return self.title if self.is_active else f"{self.title} (غیرفعال)"
 
+    def get_absolute_url(self):
+        return reverse("blog:section", args=[self.slug])
+
     def save(self, *args, **kwargs):
         self.title = normalize(self.title)
         if not self.slug:
             self.slug = unique_slug(self, self.title, fallback="section")
         super().save(*args, **kwargs)
+
+
+# A category's URL sits beside its section's feed (blog/urls.py): /blog/section/<section>/feed/.
+RESERVED_CATEGORY_SLUGS = ("feed",)
 
 
 class Category(models.Model):
@@ -74,8 +83,17 @@ class Category(models.Model):
     def __str__(self):
         return self.title if self.is_active else f"{self.title} (غیرفعال)"
 
+    def get_absolute_url(self):
+        return reverse("blog:category", args=[self.section.slug, self.slug])
+
+    def clean(self):
+        if self.slug in RESERVED_CATEGORY_SLUGS:
+            raise ValidationError({"slug": f"نامک «{self.slug}» برای نشانی خوراک بخش کنار گذاشته شده است؛ نامک دیگری بنویسید."})
+
     def save(self, *args, **kwargs):
         self.title = normalize(self.title)
         if not self.slug:
-            self.slug = unique_slug(self, self.title, fallback="category", section_id=self.section_id)
+            self.slug = unique_slug(
+                self, self.title, fallback="category", reserved=RESERVED_CATEGORY_SLUGS, section_id=self.section_id,
+            )
         super().save(*args, **kwargs)

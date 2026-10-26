@@ -166,10 +166,11 @@ class TeachersViewTests(TeachersFixture):
         for i in range(12):
             published(teacher=make_teacher(first_name=f"معلم{i}"), group=groups[i % 4], quote="جمله", bio="معرفی")
         published(name_override="بی‌گروه")
-        self.assertEqual(count_queries(), 5)
-        self.assertEqual(count_queries(f"{URL}?group={groups[1].pk}"), 5)
-        # The fragment: page row + teachers.
-        self.assertEqual(count_queries(f"{URL}?group={groups[1].pk}&partial=1"), 2)
+        # With teachers, + the blog author pages linked to their cards (one query, D21 of the blog plan).
+        self.assertEqual(count_queries(), 6)
+        self.assertEqual(count_queries(f"{URL}?group={groups[1].pk}"), 6)
+        # The fragment: page row + teachers + blog author pages.
+        self.assertEqual(count_queries(f"{URL}?group={groups[1].pk}&partial=1"), 3)
 
 
 # ------------------------------------------------------------ groups, filter
@@ -506,6 +507,7 @@ class TeachersMigrationTests(TestCase):
 
     def test_menu_row_still_at_hash_is_linked_and_reversed(self):
         NavMenuItem.objects.filter(title="معلمان").update(url="#")
+        NavMenuItem.objects.filter(title="وبلاگ").update(url="#")  # the seed's state; 0014 links it
         others = dict(NavMenuItem.objects.exclude(title="معلمان").values_list("title", "url"))
 
         self.menu.link_teachers(django_apps, None)

@@ -636,6 +636,8 @@ Post bodies are written in Trix (vendored, ADR-021) and stored as HTML that `blo
 * Images uploaded into a draft are served from `/media/` like every upload: their names are random and unguessable, but not secret.
 * What an author can format is limited on purpose (paragraphs, two heading levels, lists, quotes, links, images); colours, fonts and embeds are not possible.
 * The body pipeline parses HTML with `tinyhtml5`, already pinned in `requirements.txt` for WeasyPrint.
+* The CSP is set per view (`blog.views.public.public_csp`; `SECURE_CSP` stays empty for the rest of the site): everything from the site itself, no inline script or style. Blog templates therefore carry no `style` attribute and no inline script; the one `<script>` is the JSON-LD block (`type="application/ld+json"`, data the browser never runs), built with `blog_tags.ld_json`, which escapes `<`, `>` and `&`. A test keeps every public blog page that way.
+* Post moments (`published_at`, `submitted_at`, …; `MOMENT_FIELDS` in `blog/models/post.py`) are stored in UTC and compared with `utc_now()`. On SQLite, `django_jalali` stores a datetime as text with its own offset, so a Tehran-time value compares wrong against a UTC one; PostgreSQL compares real timestamps and was never affected.
 
 ---
 

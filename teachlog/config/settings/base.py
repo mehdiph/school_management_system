@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',
     'django_jalali',
     'school',
     'teaching',
@@ -85,6 +86,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Sends a Content-Security-Policy only where a view sets one (the blog's
+    # public pages, blog.views.public_csp); SECURE_CSP is left empty.
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'core.middleware.branch.BranchMiddleware',
     'accounts.middleware.ForcePasswordChangeMiddleware',
 ]

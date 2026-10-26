@@ -75,16 +75,17 @@ def summary(text, limit=200):
     return f"{cut}…"
 
 
-def unique_slug(instance, text, *, field="slug", max_length=80, fallback="item", **scope):
+def unique_slug(instance, text, *, field="slug", max_length=80, fallback="item", reserved=(), **scope):
     """
     A Unicode slug from ``text`` that no other row of ``instance``'s model
-    (limited to ``scope``, e.g. ``section=...``) uses: «جشن-پاییز»,
-    «جشن-پاییز-2»… The shape of ``LandingTeacher._unique_slug``.
+    (limited to ``scope``, e.g. ``section=...``) uses and that isn't in
+    ``reserved``: «جشن-پاییز», «جشن-پاییز-2»… The shape of
+    ``LandingTeacher._unique_slug``.
     """
 
     base = slugify(normalize(text), allow_unicode=True)[: max_length - 4].strip("-") or fallback
     others = type(instance)._default_manager.filter(**scope).exclude(pk=instance.pk)
     slug, n = base, 2
-    while others.filter(**{field: slug}).exists():
+    while slug in reserved or others.filter(**{field: slug}).exists():
         slug, n = f"{base}-{n}", n + 1
     return slug

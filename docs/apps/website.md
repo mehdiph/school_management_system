@@ -52,9 +52,10 @@ read; see below.
   * `group` optionally links a `TeacherGroup` (`SET_NULL`).
   * `slug` (unique, Persian kept) is generated from the name on first save
     (`-2`, `-3`… on a clash), never regenerated, editable; it is the card's
-    `id`, so `/teachers/#<slug>` links to a teacher. It is the hook for the
-    blog, whose plan decides how an author optionally links to a card; the
-    card's expansion has a commented slot for a «نوشته‌های …» link.
+    `id`, so `/teachers/#<slug>` links to a teacher. A blog author may be
+    linked to a card (`BlogAuthor.teacher_card`): the card then shows
+    «نوشته‌های … در وبلاگ» (see §3), and the author's byline links back to
+    `/teachers/#<slug>` while the card is on the teachers page.
   * Cards linked to an inactive `Staff` are hidden on both pages
     (`selectors.public_teachers()`).
 * `TeacherGroup` (inline of `TeachersPage`): an editorial department
@@ -130,6 +131,10 @@ Teachers page migrations:
   they are untouched: exact seed name and specialty, no linked teacher, no
   photo. The reverse re-activates only inactive rows matching the same
   conditions (one an admin had deactivated by hand would come back on).
+* `0014_blog_menu`: the «وبلاگ» menu row still at `#` → `/blog/`, and the
+  «مقاله» row (active, still at `#`) deactivated, not deleted: the blog
+  replaces it. The reverse resets only a «وبلاگ» row still at `/blog/` and
+  re-activates only an inactive «مقاله» row still at `#`.
 
 ## 2. Admin
 
@@ -167,7 +172,10 @@ Teachers page migrations:
   `nav_items` and `footer_links` lazily to every template (the header logo and
   footer live in `template/base.html`).
 * `templates/website/partials/public_navbar.html` is the public menu, shared by
-  the landing, contact and login pages. A section with no active items, or
+  the public pages, the blog and the login page. An item is marked active
+  (`is-active`) on its own URL and on pages under it (`/blog/post/…/` under
+  `/blog/`; filter `website_tags.nav_state`); `aria-current="page"` only on
+  its own URL. `/` is never a prefix. A section with no active items, or
   switched off, is not rendered.
 * `views.contact` (`website:contact`, GET and POST) loads `ContactPage` with
   its active locations (`select_related("branch")`), channels and topics in
@@ -199,12 +207,20 @@ Teachers page migrations:
   The chips («همه» + groups in use) appear only with two or more groups and
   `show_filter`. With `?partial=1` only `website/teachers/_directory.html`
   (the filter and the list) is rendered, for `teachers.js` (ADR-015).
-  5 queries for the page and 2 for the fragment, whatever the number of
-  teachers and groups (tested). One `h1`, visually hidden when the intro is
+  With teachers, one more query finds the blog author pages linked to the
+  cards (`blog.selectors.author_pages_by_card`): a card whose author has a
+  public author page shows «نوشته‌های … در وبلاگ» in its expansion, which
+  is then shown even without a bio. 6 queries for the page and 3 for the
+  fragment (5 and 2 with no teacher), whatever the number of teachers and
+  groups (tested). One `h1`, visually hidden when the intro is
   off; an empty state (`empty_text`) until a teacher is published.
   Templates: `website/teachers.html` and `website/teachers/_filter.html`,
   `_list.html`, `_teacher.html`, `_directory.html`. The template only uses
   a card's own fields and `display_*` properties, never `card.teacher`.
+* `views.robots_txt` (`website:robots`, `/robots.txt`) disallows the panels,
+  the admin, `/auth/`, `/blog/write/` and `/blog/preview/`, and points to
+  `/sitemap.xml` (project URLconf), which lists the site's pages
+  (`website/sitemaps.py`) and the blog's.
 * `template/base.html` has a `messages` block (default markup unchanged) and
   a `viewport` block; the contact page shows its confirmation inside the
   form card and sets `viewport-fit=cover` for the phone bar.

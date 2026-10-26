@@ -9,8 +9,8 @@ The rules are in ADR-026; the plan is `docs/plans/2026-10-blog-plan.md`.
 
 | Phase | Contents | State |
 |---|---|---|
-| 1. Foundations | models, migrations, seed; body pipeline and sanitizer; permissions; workflow services; admin (editor, review, bulk actions); Trix vendored | done, admin only; nothing public |
-| 2. Public blog | public pages, SEO, feeds, sitemap, robots, CSP, menu | not yet |
+| 1. Foundations | models, migrations, seed; body pipeline and sanitizer; permissions; workflow services; admin (editor, review, bulk actions); Trix vendored | done |
+| 2. Public blog | public pages, preview, SEO, feeds, sitemap, robots, CSP, menu, teachers page link | done |
 | 3. Authoring area | «نوشته‌های من» in the panels, sidebar item, login landing | not yet |
 
 Until Phase 3, editors write posts in the admin themselves.
@@ -51,9 +51,17 @@ Until Phase 3, editors write posts in the admin themselves.
 
 Indexes: `(status, published_at)`, `(section, status, published_at)`, `(author, status)`.
 
-**The public rule** is one queryset method, `Post.objects.public()`: status published,
-`published_at <= now`, section active. There is no scheduler: a scheduled post becomes
-public when its time comes. An inactive category or tag doesn't hide a post.
+**The public rule** is one `Q`, `blog.models.post.public_q(prefix)`, used as
+`Post.objects.public()` and inside counts (sections, categories, tags, the admin): status
+published, `published_at <= now`, section active. There is no scheduler: a scheduled post
+becomes public when its time comes. An inactive category or tag doesn't hide a post.
+
+**Moments are written in UTC.** django_jalali stores a `jDateTimeField` value as text with
+its own offset on SQLite, and a loaded row holds Tehran-time jdatetimes; re-saved as they
+were, an edited post would compare as 3½ hours in the future and drop out of the public
+pages. `Post.save()` writes `published_at`, `submitted_at`, `privacy_ack_at`,
+`reviewed_at` and `content_updated_at` in UTC, and queries compare with `utc_now()`.
+PostgreSQL compares instants and was never affected.
 
 **Files:** every image field (`BlogPage.og_image`, `BlogAuthor.photo`, `Post.cover`,
 `PostImage.image`) is removed from storage after commit when replaced or deleted
@@ -85,7 +93,8 @@ textarea is the editor: text without tags becomes paragraphs at blank lines.
    (`toc`: level, id, title); `body_text` (one line per block); `reading_minutes`
    (`BLOG_WORDS_PER_MINUTE`, at least 1); `search_text`.
 
-`sanitize` is idempotent and is run again when a body is shown (Phase 2). `to_editor` turns
+`sanitize` is idempotent and is run again when a body is shown (the `body` template
+filter, `blog/templatetags/blog_tags.py`). `to_editor` turns
 a stored body back into Trix's attachment markup, so captions survive editing.
 
 **Persian text** (`blog/text.py`): `normalize` fixes ي/ى→ی, ك→ک, tatweel, repeated
@@ -167,27 +176,123 @@ Posts are never deleted by editors (superusers only, for spam or test rows); arc
 3. Add each author under «نویسندگان وبلاگ» and tick their sections.
 4. Check the texts on «صفحه وبلاگ».
 
-## 6. Settings (`teachlog/config/settings/base.py`)
+## 6. The public blog
+
+### URLs (`blog/urls.py`, namespace `blog`)
+
+| URL | Name | Page |
+|---|---|---|
+| `/blog/` | `home` | masthead, sections, up to 3 featured posts, the latest posts (paginated, without the featured ones), tags |
+| `/blog/post/<slug>/` | `post` | a public post; anything else is a 404, for everyone |
+| `/blog/preview/<id>/` | `preview` | any post, for its author (while they can write) and editors; 404 for anyone else; a public post redirects to its URL; `noindex` |
+| `/blog/section/<section>/` | `section` | the section's posts and its category chips (categories with public posts) |
+| `/blog/section/<section>/<category>/` | `category` | the category's posts |
+| `/blog/tag/<tag>/` | `tag` | 404 while the tag is inactive or has no public post |
+| `/blog/author/<slug>/` | `author` | 404 while `show_profile` is off or the author has no public post |
+| `/blog/search/?q=` | `search` | title, excerpt and text in any spelling (`search_key`); two letters at least; `noindex` |
+| `/blog/feed/`, `/blog/section/<section>/feed/` | `feed`, `section_feed` | Atom, newest `BLOG_FEED_ITEMS`, title + summary + link (not the full text) |
+| `/sitemap.xml` | `sitemap` (project) | the site's pages (`website.sitemaps`) and the blog's (`blog.sitemaps`): home, active sections, categories / tags / author pages with public posts, public posts with `lastmod` |
+| `/robots.txt` | `website:robots` | disallows the panels, the admin, `/auth/`, `/blog/write/`, `/blog/preview/`; points to the sitemap |
+
+Lists take `?page=`; a page that doesn't exist is a 404. The category slug `feed` is
+reserved (`RESERVED_CATEGORY_SLUGS`), since that URL is the section feed: typed in the admin
+it is refused, and a title that would make it gets `feed-2`.
+
+### Code
+
+- `blog/selectors.py`: every page's data, each in a fixed number of queries (below).
+- `blog/views/public.py`: thin views, `require_safe`, each under `public_csp`.
+- `blog/seo.py`: `PageMeta` per page (title, description, canonical, Open Graph, feed link,
+  breadcrumbs, JSON-LD), rendered by `blog/_meta.html`.
+- `blog/feeds.py`, `blog/sitemaps.py`, `website/sitemaps.py`, `website.views.robots_txt`.
+- Templates `blog/templates/blog/`: `base_public.html` (extends `base.html` with the
+  public navbar), `home.html`, `listing.html` (section, category, tag, author and search),
+  `post.html`, and partials (`_sheet`, `_grid`, `_pagination`, `_byline`, `_toc`, `_share`,
+  `_author_box`, `_avatar`, `_stickers`, `_breadcrumbs`, `_search_form`, `_meta`).
+- `blog/static/blog/css/blog.css` (the design, plan §4), `blog/static/blog/js/blog.js`
+  (only «کپی پیوند» and the masthead's one-time settle; every page works without it).
+
+### Query counts (locked in `blog.tests.test_public.QueryCountTests`)
+
+With 1 post or 13 posts and 13 tags; the navbar and footer are 3 of each.
+
+| Page | Queries |
+|---|---|
+| home | 9: page row, sections with counts, featured, count, latest, tags |
+| section, category | 8: the section or category, chips, count, posts, page row |
+| tag, author | 7 |
+| search | 6 |
+| post | 9: post, its tags, related, newer, older, page row |
+
+Related posts: up to 3, the same category first, then shared tags, then the same section.
+Newer / older: within the post's section.
+
+### Security and privacy
+
+- **CSP (D12):** `django.middleware.csp.ContentSecurityPolicyMiddleware` is installed with
+  `SECURE_CSP` empty, so only views that set a policy send one: the blog's public views and
+  the preview, through `public_csp` (`default-src`, `script-src`, `style-src`, `img-src`,
+  `font-src` `'self'`; `object-src 'none'`; `base-uri`, `form-action`, `frame-ancestors`
+  `'self'`). The rest of the site sends no CSP.
+- **No inline styles or scripts** on blog pages, except the JSON-LD data blocks (which are
+  not scripts); a test parses every public page for `style` attributes, `<style>`,
+  inline `<script>`, `on*` attributes and `javascript:` URLs.
+- **JSON-LD** is escaped like `json_script` (`<`, `>`, `&` as `\u` escapes).
+- **The author's account** gives only their first and last name (when there is no display
+  name). The photo is the author's own or their teacher card's, never the account avatar
+  (ADR-025). A test fills the account and staff record with marker values and checks that
+  none reaches any blog page, feed or the sitemap.
+
+### Design (plan §4, «روزنامه دیواری»)
+
+The painted wall (`--bl-wall`), white sheets with a pinking-shear edge (CSS mask) and a
+strip of tape in the section's paper colour, photo corners on covers. The masthead's words
+are cut-outs of coloured card; on the first visit of a session they drop onto the board
+once (never with reduced motion). Sheets lean slightly on desktop grids and straighten on
+hover and focus; the post page is a straight sheet with its table of contents as a yellow
+sticky note from 1200 px (a `<details>` below). A print stylesheet prints the post alone,
+with its address. The variable Vazirmatn (`static/fonts/Vazirmatn-Variable.woff2`) is used
+inside `main.bl` only.
+
+### The site around it
+
+- `website.0014_blog_menu`: the seeded menu row «وبلاگ» still at `#` → `/blog/`; the
+  seeded «مقاله» row (still at `#`) is hidden, not deleted. Edited rows are left alone.
+- The navbar marks «وبلاگ» on every page under `/blog/` (`website_tags.nav_state`);
+  `aria-current="page"` stays on the exact page only.
+- The teachers page: a card whose linked author has a public author page shows «نوشته‌های
+  … در وبلاگ» (D21), in one query for all cards.
+- Admin: «مشاهده در سایت» on a post opens its preview; the review page and the
+  «در انتظار بررسی» queue link to it too.
+
+## 7. Settings (`teachlog/config/settings/base.py`)
 
 | Setting | Value | Read in |
 |---|---|---|
 | `BLOG_AUTHOR_ROLES` | teacher, counselor, supervisor, director, admin | `blog.permissions` (policy, D3) |
 | `BLOG_WORDS_PER_MINUTE` | 180 | `blog.text.reading_minutes` |
-| `BLOG_PAGE_SIZE` | 9 | public lists (Phase 2) |
+| `BLOG_PAGE_SIZE` | 9 | `blog.selectors.paginate` |
 | `BLOG_MAX_TAGS_PER_POST` | 5 | `blog.services.sync_tags`, the admin form |
-| `BLOG_FEED_ITEMS` | 20 | feeds (Phase 2) |
-| `BLOG_TOC_MIN_HEADINGS` | 3 | the post page (Phase 2) |
+| `BLOG_FEED_ITEMS` | 20 | `blog.feeds` |
+| `BLOG_TOC_MIN_HEADINGS` | 3 | `blog.selectors.PostPage.show_toc` |
 
-## 7. Migrations
+`INSTALLED_APPS` also gains `django.contrib.sitemaps` (no tables).
+
+## 8. Migrations
 
 | Migration | Contents | Reverse |
 |---|---|---|
 | `blog.0001_initial` | All tables, constraints, indexes, the `publish_post` permission | drops them |
 | `blog.0002_seed` | The «صفحه وبلاگ» row; sections «پرورشی» (tomato) and «مشاوره» (sky). Create only | removes the seeded sections no post uses |
+| `website.0014_blog_menu` | «وبلاگ» at `#` → `/blog/`; active «مقاله» at `#` → hidden | resets «وبلاگ» still at `/blog/`; re-activates an inactive «مقاله» still at `#` |
 
-## 8. Tests (`blog/tests/`)
+## 9. Tests (`blog/tests/`)
 
 `test_content` (sanitizer, Trix reshaping, round trip, Persian text), `test_models`,
 `test_permissions` (every role), `test_workflow`, `test_admin`, `test_migrations`,
 `test_assets` (no external script or stylesheet in any blog template or stylesheet;
-vendored Trix matches its README). Factories in `blog/testing.py`.
+vendored Trix matches its README), `test_public` (visibility on every page, feed and the
+sitemap; preview; each page; search spellings; query counts; CSP and the inline check;
+private data), `test_seo` (meta, JSON-LD, feeds, sitemap, robots). `website/test_blog.py`:
+the menu migration, the navbar rule, the teachers page link. Factories in
+`blog/testing.py`.

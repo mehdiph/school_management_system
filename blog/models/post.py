@@ -1,9 +1,11 @@
 from datetime import timedelta
+from datetime import timezone as dt_timezone
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.urls import reverse
 from django.utils import timezone
 from django_jalali.db import models as jmodels
 from PIL import Image
@@ -15,22 +17,43 @@ from website.models.base import image_url
 from website.validators import IMAGE_VALIDATORS
 
 COVER_MAX_SIDE = 1600
+#: The post's own moments, compared with ``timezone.now()`` in queries.
+MOMENT_FIELDS = ("published_at", "submitted_at", "privacy_ack_at", "reviewed_at", "content_updated_at")
 IMAGE_MAX_SIDE = 1600
+
+
+def public_q(prefix=""):
+    """
+    The one rule of what the public sees (D8), as a ``Q`` over the posts
+    at ``prefix`` ("" for posts themselves, "posts__" from a section or a
+    tag): published, its time has come, and its section is active.
+    """
+
+    return Q(**{
+        f"{prefix}status": Post.Status.PUBLISHED,
+        f"{prefix}published_at__lte": utc_now(),
+        f"{prefix}section__is_active": True,
+    })
+
+
+def utc_now():
+    """
+    ``timezone.now()`` in UTC, the zone the post's moments are written in
+    (``Post.save``): on SQLite, django_jalali compares them as text, so
+    both sides must carry the same offset.
+    """
+
+    return timezone.now().astimezone(dt_timezone.utc)
 
 
 class PostQuerySet(models.QuerySet):
     def public(self):
         """
-        The one rule of what the public sees (D8): published, its time has
-        come, and its section is active. Every public page, feed and the
+        Public posts (``public_q``). Every public page, feed and the
         sitemap start here; anything else is a 404 on a public URL.
         """
 
-        return self.filter(
-            status=Post.Status.PUBLISHED,
-            published_at__lte=timezone.now(),
-            section__is_active=True,
-        )
+        return self.filter(public_q())
 
     def for_author(self, author):
         return self.filter(author=author)
@@ -163,6 +186,13 @@ class Post(models.Model):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return reverse("blog:post", args=[self.slug])
+
+    @property
+    def preview_url(self):
+        return reverse("blog:preview", args=[self.pk])
+
     # ------------------------------------------------------------- validation
 
     def clean(self):
@@ -182,6 +212,15 @@ class Post(models.Model):
         old = None
         if self.pk:
             old = type(self).objects.filter(pk=self.pk).values("title", "body", "excerpt", "published_at").first()
+
+        # django_jalali writes a moment as text with its own UTC offset, and
+        # a loaded row holds Tehran-time jdatetimes: re-saved as they are,
+        # SQLite (which compares the text) would put an edited post 3½ hours
+        # into the future and drop it from ``public()``. Write every moment
+        # in UTC, like ``timezone.now()`` that queries compare it with.
+        for name in MOMENT_FIELDS:
+            value = _aware(getattr(self, name))
+            setattr(self, name, value.astimezone(dt_timezone.utc) if value else value)
 
         self.title = normalize(self.title)
         self.excerpt = normalize(self.excerpt)
@@ -261,6 +300,27 @@ class Post(models.Model):
         """Published at least once: its slug is frozen for the author."""
 
         return self.published_at is not None
+
+    @property
+    def published_dt(self):
+        """``published_at`` as an aware ``datetime`` (feeds, the sitemap, ``<time datetime>``)."""
+
+        return _aware(self.published_at) if self.published_at else None
+
+    @property
+    def modified_dt(self):
+        """When the text last changed in public: a later edit, else the publication."""
+
+        return _aware(self.content_updated_at) if self.content_updated_at else self.published_dt
+
+    @property
+    def shows_updated(self):
+        """«به‌روزرسانی: …» only for an edit more than a day after publication."""
+
+        return bool(
+            self.content_updated_at and self.published_at
+            and self.modified_dt - self.published_dt > timedelta(days=1)
+        )
 
     @property
     def seo_title(self):

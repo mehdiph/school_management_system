@@ -18,7 +18,7 @@
     <div class="form-row"><div class="flex-container"><label>نویسنده:</label><div class="readonly">{{ post.author.name }}</div></div></div>
     <div class="form-row"><div class="flex-container"><label>وضعیت:</label><div class="readonly">{{ post.status_label }}{% if post.published_at %} — زمان انتشار: {{ post.published_at|jalali_datetime }}{% endif %}</div></div></div>
     {% if post.submitted_at %}<div class="form-row"><div class="flex-container"><label>ارسال برای بررسی:</label><div class="readonly">{{ post.submitted_at|jalali_datetime }}{% if post.privacy_ack_at %} (نویسنده جمله حریم خصوصی را تأیید کرده است){% endif %}</div></div></div>{% endif %}
-    <div class="form-row"><a href="{% url 'admin:blog_post_change' post.pk %}">دیدن و ویرایش متن نوشته</a></div>
+    <div class="form-row"><a href="{{ post.preview_url }}" target="_blank" rel="noopener">پیش‌نمایش نوشته در سایت</a> | <a href="{% url 'admin:blog_post_change' post.pk %}">ویرایش متن نوشته</a></div>
   </fieldset>
 
   {% if can_publish %}

@@ -366,6 +366,18 @@
     line-height: 1.9;
 }
 
+/* The teacher's posts in the blog: a plain link in the action colour. */
+.tc-more__blog a {
+    color: var(--lp-action);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 5px;
+}
+
+.tc-more__blog a:hover {
+    color: var(--lp-action-hover);
+}
+
 /* The one movement on the page answers the visitor: the expansion opens. */
 @media (prefers-reduced-motion: no-preference) {
     .tc-more summary i {

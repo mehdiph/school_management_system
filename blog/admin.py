@@ -9,11 +9,10 @@ required) or the bulk actions, which need ``blog.publish_post`` (D8).
 
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
-from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
 from core.templatetags.jalali_tags import jalali_datetime
@@ -22,6 +21,7 @@ from website.admin import COMPACT_TEXTAREA, SingletonAdmin, image_preview
 from . import permissions, services
 from .forms import BlogAuthorAdminForm, BulkPublishForm, PostAdminForm, PublishForm, ReturnForm, TagMergeForm
 from .models import AuthorSection, BlogAuthor, BlogPage, Category, Paper, Post, PostAwaitingReview, Section, Tag
+from .models.post import public_q, utc_now
 from .text import search_key
 from .widgets import EditorWidget
 
@@ -33,16 +33,6 @@ PAPER_SWATCH = {
     Paper.GRAPE: "#a58bff",
     Paper.BUBBLEGUM: "#ff94c6",
 }
-
-
-def _public_posts_filter(prefix="posts__"):
-    return Q(
-        **{
-            f"{prefix}status": Post.Status.PUBLISHED,
-            f"{prefix}published_at__lte": timezone.now(),
-            f"{prefix}section__is_active": True,
-        }
-    )
 
 
 # ------------------------------------------------------------------ page, sections
@@ -84,7 +74,7 @@ class SectionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
-            public_count=Count("posts", filter=_public_posts_filter(), distinct=True)
+            public_count=Count("posts", filter=public_q("posts__"), distinct=True)
         )
 
     @admin.display(description="رنگ کاغذ", ordering="paper")
@@ -114,7 +104,7 @@ class TagAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
-            public_count=Count("posts", filter=_public_posts_filter(), distinct=True)
+            public_count=Count("posts", filter=public_q("posts__"), distinct=True)
         )
 
     @admin.display(description="نوشته‌های منتشرشده", ordering="public_count")
@@ -248,7 +238,7 @@ class StatusFilter(admin.SimpleListFilter):
         return [*Post.Status.choices[:2], ("scheduled", "زمان‌بندی‌شده"), *Post.Status.choices[2:]]
 
     def queryset(self, request, queryset):
-        now = timezone.now()
+        now = utc_now()
         value = self.value()
         if value == "scheduled":
             return queryset.filter(status=Post.Status.PUBLISHED, published_at__gt=now)
@@ -263,6 +253,11 @@ class StatusFilter(admin.SimpleListFilter):
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     change_form_template = "admin/blog/post/change_form.html"
+
+    def view_on_site(self, obj):
+        """«مشاهده در سایت»: the preview, which sends a public post on to its public page."""
+        return obj.preview_url
+
     list_display = ("title", "section", "category", "author", "status_badge", "published_column", "is_featured")
     list_filter = (
         StatusFilter,
@@ -535,4 +530,7 @@ class PostAwaitingReviewAdmin(admin.ModelAdmin):
     def links(self, obj):
         edit = reverse("admin:blog_post_change", args=[obj.pk])
         review = reverse("admin:blog_post_review", args=[obj.pk])
-        return format_html('<a href="{}">ویرایش</a> | <a href="{}">بررسی و انتشار</a>', edit, review)
+        return format_html(
+            '<a href="{}">پیش‌نمایش</a> | <a href="{}">ویرایش</a> | <a href="{}">بررسی و انتشار</a>',
+            obj.preview_url, edit, review,
+        )

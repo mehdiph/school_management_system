@@ -1,0 +1,8 @@
+{% comment %}
+An author's round photo on card, or their initial. Needs `author`. The
+photo is the author's own, else their public teacher card's; never the
+account avatar (ADR-025). Decorative: the name is always written beside it.
+{% endcomment %}
+<span class="bl-avatar{% if size %} bl-avatar--{{ size }}{% endif %}" aria-hidden="true">
+    {% if author.photo_url %}<img src="{{ author.photo_url }}" alt="" loading="lazy" decoding="async">{% else %}{{ author.initial }}{% endif %}
+</span>

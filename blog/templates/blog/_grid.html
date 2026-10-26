@@ -1,0 +1,6 @@
+{% comment %}A list of sheets: `posts` (iterable), `heading` for each sheet's title.{% endcomment %}
+<ul class="bl-grid" role="list">
+    {% for post in posts %}
+    <li class="bl-grid__item">{% include "blog/_sheet.html" with post=post heading=heading %}</li>
+    {% endfor %}
+</ul>

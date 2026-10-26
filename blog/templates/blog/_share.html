@@ -1,0 +1,17 @@
+{% comment %}
+Share links: plain URLs, no third-party scripts (plan §4.4). «کپی پیوند»
+needs JS and is shown by blog.js; without JS, the address is in a
+read-only field instead.
+{% endcomment %}
+<div class="bl-share">
+    <h2 class="bl-share__title">هم‌رسانی</h2>
+    <ul class="bl-share__list" role="list">
+        <li><a class="bl-sticker" href="https://t.me/share/url?url={{ meta.canonical|urlencode:'' }}&amp;text={{ post.title|urlencode:'' }}" target="_blank" rel="noopener noreferrer">تلگرام</a></li>
+        <li><a class="bl-sticker" href="https://wa.me/?text={{ post.title|urlencode:'' }}%20{{ meta.canonical|urlencode:'' }}" target="_blank" rel="noopener noreferrer">واتساپ</a></li>
+        <li><button class="bl-sticker bl-share__copy" type="button" data-bl-copy="{{ meta.canonical }}" data-bl-copied="پیوند کپی شد" hidden>کپی پیوند</button></li>
+    </ul>
+    <noscript>
+        <label class="bl-share__address">نشانی این نوشته <input type="text" value="{{ meta.canonical }}" readonly dir="ltr"></label>
+    </noscript>
+    <p class="visually-hidden" aria-live="polite" data-bl-copy-status></p>
+</div>
