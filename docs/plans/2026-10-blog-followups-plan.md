@@ -1,7 +1,7 @@
 # Plan: blog follow-ups (PostgreSQL verification and three small fixes)
 
-Status: **awaiting approval.** Work goes on `fix/blog-followups`, created from
-`main` (271e40b plus this plan) after approval. Nothing is committed on the
+Status: **approved 2026-10-26 as recommended** (D1–D3). Work goes on
+`fix/blog-followups`, created from `main` after this update. Nothing is committed on the
 branch until the user asks.
 
 ## What was found while reading
