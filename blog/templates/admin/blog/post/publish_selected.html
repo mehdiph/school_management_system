@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'blog/css/admin.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}{% include "admin/blog/post/_breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  {% if eligible %}
+    <p>این نوشته‌ها همین حالا منتشر می‌شوند:</p>
+    <ul>{% for post in eligible %}<li>{{ post.title }} — {{ post.author.name }} ({{ post.status_label }})</li>{% endfor %}</ul>
+  {% else %}
+    <p class="errornote">هیچ‌کدام از نوشته‌های انتخاب‌شده در انتظار بررسی یا بایگانی نیست.</p>
+  {% endif %}
+  {% if skipped %}
+    <p>این نوشته‌ها منتشر نمی‌شوند؛ فقط نوشته در انتظار بررسی یا بایگانی را می‌توان یک‌جا منتشر کرد. پیش‌نویس را از صفحه «بررسی و انتشار» خودش منتشر کنید:</p>
+    <ul>{% for post in skipped %}<li>{{ post.title }} ({{ post.status_label }})</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if eligible %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for post in queryset %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ post.pk }}">{% endfor %}
+    <input type="hidden" name="action" value="publish_selected">
+    <input type="hidden" name="apply" value="1">
+    <p class="help">فهرست زیر را برای <strong>همه</strong> نوشته‌های بالا بررسی کرده‌اید.</p>
+    {% include "admin/blog/post/_checklist.html" with checklist=form.checklist_fields %}
+    <div class="submit-row">
+      <input type="submit" class="default" value="انتشار {{ eligible|length }} نوشته">
+      <a href="{% url 'admin:blog_post_changelist' %}" class="button cancel-link">انصراف</a>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

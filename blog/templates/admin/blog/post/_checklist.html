@@ -1,0 +1,10 @@
+<fieldset class="module bl-checklist">
+  <h2>فهرست بررسی پیش از انتشار</h2>
+  <div class="description">هر مورد را در متن، عکس‌ها و زیرنویس‌ها بررسی کنید و تیک بزنید.</div>
+  {% for field in checklist %}
+  <div class="form-row{% if field.errors %} errors{% endif %}">
+    {{ field.errors }}
+    <div class="checkbox-row">{{ field }} <label for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+  </div>
+  {% endfor %}
+</fieldset>

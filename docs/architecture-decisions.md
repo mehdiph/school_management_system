@@ -605,6 +605,37 @@ Invented content presented as fact is not published either: the four made-up tea
 * The school must keep these figures up to date by hand; the admin help texts say so.
 * A new public page (blog, registration) follows the same rule: content models, admin-edited, no queries into school apps beyond an explicit, documented fallback like the ones above.
 * The About page's gallery and the other website images (slides, highlights) are not re-encoded yet; they are pictures of the school rather than portraits, and are a follow-up.
+* The blog (ADR-026) follows the same editorial rule: the only school data it reads is an author's first and last name (as a fallback for the byline) and a teacher card the admin linked on purpose. An author's photo is one uploaded for the blog or the linked teacher card's photo, never the account avatar.
+
+---
+
+# ADR-026: Blog Authorship Is Granted per Section by the Website Admin; Post HTML Is Sanitized With an Allow-List
+
+## Decision
+
+The school blog (`blog` app, `/blog/`) is written by people the website admin names, one by one: a `BlogAuthor` row per person and an `AuthorSection` row per section they may write in, recording who granted it and when. Being an author is a grant on top of a role, not a role. A person **can write** only while their `BlogAuthor` is active, their account is active, their role is in `BLOG_AUTHOR_ROLES` (teacher, counselor, supervisor, director, system admin; never students), their `Staff` record, if any, is active, and the section is granted and active. `blog.permissions` is the only code that decides this.
+
+Authors write in an authoring area, «نوشته‌های من» (`/blog/write/`), rendered in their own panel's shell; they are not made staff and never use the Django admin. The director writes there too, so the director panel itself stays read-only and GET-only (ADR-020). **Editors** («ویراستار وبلاگ») are staff with `blog.publish_post` and work in the admin for all sections; there are no per-section editors yet.
+
+A post moves through draft → submitted → published (now or at a future time) → archived, only through `blog.services`, each step under a row lock that checks the state it starts from. Submitting needs the author's privacy acknowledgement; publishing needs the editor to tick every line of the review checklist. "Public" is one queryset rule, `Post.objects.public()`: published, `published_at` reached, section active. There is no scheduler.
+
+Post bodies are written in Trix (vendored, ADR-021) and stored as HTML that `blog/content.py` reshapes and then sanitizes with an `nh3` allow-list, on every save and again when shown: a fixed set of tags; links only to http(s), mailto, relative paths and anchors, with `rel="noopener noreferrer"`; images only from `MEDIA_URL` + `blog/`, uploaded through the blog and re-encoded without metadata. No script, style, iframe, event handler, `style` or `class` attribute survives. The public blog pages also send a strict Content-Security-Policy. The editor's image upload is the blog's one JSON endpoint.
+
+## Rationale
+
+* Counselors, the main writers of «مشاوره», have no panel; making teachers and counselors staff would give them the admin, which was built for the system admin (ADR-020: roles and `is_staff` are independent).
+* A grant per section keeps least privilege: a teacher who writes for «پرورشی» can't publish in «مشاوره».
+* A rich-text body is the first public HTML not escaped by the template engine. An allow-list in `Post.save()` covers every path (authoring area, admin, shell, tests); sanitizing again on render covers rows written any other way; the CSP stops a script even if the sanitizer had a bug.
+* `bleach` is deprecated; `nh3` (the Rust `ammonia` sanitizer) is maintained, MIT and a pure wheel.
+* Without a scheduler, a status flip at a set time would need a job someone must run; comparing `published_at` with the clock in one queryset needs nothing.
+
+## Consequences
+
+* Authors, sections and the «ویراستار وبلاگ» group's permissions are set up by hand in the admin; no migration grants anything (as in ADR-024).
+* An author whose role or employment changes stops writing at once; their published posts stay public with their byline. `BlogAuthor.user` is `PROTECT`: a user with an author row can't be deleted.
+* Images uploaded into a draft are served from `/media/` like every upload: their names are random and unguessable, but not secret.
+* What an author can format is limited on purpose (paragraphs, two heading levels, lists, quotes, links, images); colours, fonts and embeds are not possible.
+* The body pipeline parses HTML with `tinyhtml5`, already pinned in `requirements.txt` for WeasyPrint.
 
 ---
 

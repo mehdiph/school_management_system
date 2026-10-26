@@ -1,0 +1,23 @@
+/* The blog's review pages in the admin: checklist lines use the full width. */
+
+.bl-checklist .checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-block: 0.25rem;
+}
+
+.bl-checklist .checkbox-row input {
+    margin-block-start: 0.35rem;
+    flex: none;
+}
+
+.bl-checklist .checkbox-row label {
+    width: auto;
+    min-width: 0;
+    float: none;
+    padding: 0;
+    line-height: 1.9;
+    font-weight: 500;
+    color: var(--body-fg);
+}

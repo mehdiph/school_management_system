@@ -24,6 +24,17 @@
 
 # [Unreleased]
 
+## Added (school blog, Phase 1 of 3: foundations; not public yet)
+
+- New `blog` app (ADR-026, `docs/apps/blog.md`): sections («پرورشی» and «مشاوره» seeded), categories, tags, authors with per-section grants, posts with inline images. Nothing is public yet; editors work in the admin.
+- Authors: a `BlogAuthor` per person, created by the website admin, with the sections they may write in («نویسندگان وبلاگ»). Only teachers, counselors, supervisors, the director and the system admin can be authors (`BLOG_AUTHOR_ROLES`); never students. An inactive account, author row or staff record, or a role leaving the list, stops writing at once.
+- Workflow in `blog.services`: draft → submitted (privacy acknowledgement) → published now or scheduled (every review checklist line ticked) → archived; return to the author with a note; no hard delete. Admin: «بررسی و انتشار» page per post, «در انتظار بررسی» queue, bulk publish with a confirmation page, unpublish, feature. Editors are staff with the new `blog.publish_post` permission.
+- Rich text: Trix 2.1.19 vendored in `static/vendor/trix/` (README with version, source and SHA-256), Persian toolbar, image upload into a saved post. Every body is reshaped and sanitized on save with an `nh3` allow-list (new dependency `nh3==0.3.7`): no scripts, styles, event handlers, iframes, hotlinked or `data:` images. Images are re-encoded without metadata.
+- Persian text: titles, names and tags normalised (ي/ك, spaces, ZWNJ); tags are one per spelling.
+- Settings: `BLOG_AUTHOR_ROLES`, `BLOG_WORDS_PER_MINUTE`, `BLOG_PAGE_SIZE`, `BLOG_MAX_TAGS_PER_POST`, `BLOG_FEED_ITEMS`, `BLOG_TOC_MIN_HEADINGS`.
+- Migrations: `blog.0001_initial` (tables, constraint, indexes, permission), `blog.0002_seed` (page row and two sections; create only; reversible).
+- Docs: `docs/apps/blog.md`, `docs/database.md`, `docs/database-mermaid.md`, ADR-026, ADR-025 (a consequence line).
+
 ## Added (public «معلمان» page)
 
 - New public page `/teachers/` (`website:teachers`, GET/HEAD): an intro, the published teachers grouped by department with filter chips (`?group=<id>`; works without JS, `teachers.js` swaps a `?partial=1` fragment), and a closing call to action to the contact page. Each teacher shows a portrait (or their initial), name, specialty and experience; their own sentence is written in red pen on a strip of notebook paper; «درباره …» opens the bio and education. A link `/teachers/#<slug>` opens that teacher.

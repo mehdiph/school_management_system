@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}
+{% load admin_urls %}
+
+{% block object-tools-items %}
+  {% if original.pk and can_review %}
+    <li><a href="{% url 'admin:blog_post_review' original.pk %}">بررسی و انتشار</a></li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

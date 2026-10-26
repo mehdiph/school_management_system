@@ -663,6 +663,65 @@ A teacher on the public site. Not a child of `LandingPage` any more (its
 
 ---
 
+# Blog
+
+The `blog` app (ADR-026, `docs/apps/blog.md`). `BlogPage` is a singleton with the
+blog's texts. Content is editorial (ADR-025); the only links into the school domain are
+`BlogAuthor.user` and the optional `BlogAuthor.teacher_card`.
+
+## BlogAuthor
+
+A person the website admin lets write in the blog, with their public byline.
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| user | One-to-one `accounts.User`, `PROTECT`. New authors only from `BLOG_AUTHOR_ROLES` |
+| display_name | Blank → the user's first and last name; never the username |
+| slug | Unique, generated on first save |
+| bio, photo | Public; the photo is re-encoded without metadata. Fallbacks: the linked teacher card's bio and photo; never the account avatar |
+| teacher_card | Optional `website.LandingTeacher` (`SET_NULL`) |
+| show_profile | Author page and byline link |
+| is_active | «اجازه نوشتن» |
+
+### Relationships
+
+* Sections through `AuthorSection` (`author`, `section`, `granted_by` → User `SET_NULL`, `granted_at`; unique per author and section).
+* Writes `Post` rows (`PROTECT`).
+
+## Section, Category, Tag
+
+* `Section`: title, unique Unicode slug, description, `paper` (a fixed colour choice), order, `is_active`. An inactive section hides its posts.
+* `Category`: belongs to a section (`CASCADE`); slug unique per section; `is_active`.
+* `Tag`: `name`, unique `key` (the name folded for spelling: ZWNJ, spaces, ي/ك…), unique slug, `is_active`.
+
+## Post
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| section, category | `PROTECT`; the category must be in the section |
+| author | `BlogAuthor`, `PROTECT` |
+| title, slug | The slug is unique and Unicode |
+| excerpt, body | `body` is sanitized HTML (allow-list, ADR-026) |
+| body_text, search_text, toc, reading_minutes | Derived on save |
+| cover, cover_alt | Re-encoded cover; alt required with a cover |
+| status | draft / submitted / published / archived |
+| published_at | Required when published (check constraint `blog_published_post_has_date`); a future value means scheduled |
+| submitted_at, privacy_ack_at, reviewed_by, reviewed_at, review_note | Workflow stamps |
+| is_featured, meta_title, meta_description, content_updated_at | |
+
+### Relationships
+
+* Many-to-many `Tag`.
+* `PostImage` rows (`CASCADE`): images inside the body, with `width`, `height` and `uploaded_by`.
+* Indexes `(status, published_at)`, `(section, status, published_at)`, `(author, status)`.
+* Public = published, `published_at <= now`, section active (`Post.objects.public()`).
+
+---
+
 # Design Decisions
 
 ## Why ClassSubject Exists
