@@ -5,6 +5,7 @@ The school-domain tables and their relations, as Mermaid. Prose descriptions of 
 * Dates (`jdate`) are `django_jalali` `jDateField`s: stored in Gregorian, shown in Jalali.
 * The website CMS tables (`website` app: site settings, landing page, menus, contact page, contact messages, about page and teachers page) and Django's own tables are left out. The contact, about and teachers tables are described in [database.md](database.md#public-website-contact-page); their links into the school domain are `ContactLocation.branch` → `Branch`, `AboutPerson.staff` → `Staff` and `LandingTeacher.teacher` → `TeacherProfile` (all optional, `SET_NULL`).
 * Every table also has an `id` primary key (not repeated below except where it helps).
+* The blog's tables (`blog` app) are drawn separately at the end: they link into the domain through `BlogAuthor.user` → `User` and the optional `BlogAuthor.teacher_card` → `LandingTeacher`.
 
 ```mermaid
 erDiagram
@@ -225,6 +226,77 @@ erDiagram
         int school_class_id FK "unique per supervisor"
     }
 ```
+
+## Blog
+
+```mermaid
+erDiagram
+    User ||--o| BlogAuthor : "may be"
+    LandingTeacher |o--o{ BlogAuthor : "optional public card"
+    BlogAuthor ||--o{ AuthorSection : "may write in"
+    Section ||--o{ AuthorSection : ""
+    User |o--o{ AuthorSection : "granted by"
+    Section ||--o{ Category : "has"
+    Section ||--o{ Post : ""
+    Category |o--o{ Post : ""
+    BlogAuthor ||--o{ Post : "writes"
+    Post }o--o{ Tag : "tagged"
+    Post ||--o{ PostImage : "inline images"
+    User |o--o{ Post : "reviewed by"
+
+    BlogAuthor {
+        int user_id FK "one-to-one, PROTECT"
+        string display_name
+        string slug "unique"
+        int teacher_card_id FK "nullable, SET_NULL"
+        bool show_profile
+        bool is_active
+    }
+    AuthorSection {
+        int author_id FK "unique with section"
+        int section_id FK
+        int granted_by_id FK "nullable"
+        datetime granted_at
+    }
+    Section {
+        string title
+        string slug "unique"
+        string paper
+        bool is_active
+    }
+    Category {
+        int section_id FK
+        string slug "unique per section"
+        bool is_active
+    }
+    Tag {
+        string name
+        string key "unique"
+        string slug "unique"
+        bool is_active
+    }
+    Post {
+        int section_id FK "PROTECT"
+        int category_id FK "nullable, PROTECT"
+        int author_id FK "PROTECT"
+        string slug "unique"
+        text body "sanitized HTML"
+        string status "draft / submitted / published / archived"
+        datetime published_at "required when published"
+        int reviewed_by_id FK "nullable"
+    }
+    PostImage {
+        int post_id FK "CASCADE"
+        string image
+        int uploaded_by_id FK "nullable"
+    }
+```
+
+| Table | Constraint | Meaning |
+| --- | --- | --- |
+| `Post` | `blog_published_post_has_date` | `status = 'published'` ⇒ `published_at IS NOT NULL` |
+| `Category` | `blog_unique_category_slug_per_section` | one slug per section |
+| `AuthorSection` | `blog_unique_author_section` | one grant per author and section |
 
 ## Academic calendar constraints at a glance
 

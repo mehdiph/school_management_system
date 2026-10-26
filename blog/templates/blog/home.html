@@ -1,0 +1,69 @@
+{% extends "blog/base_public.html" %}
+{% comment %}
+The blog home (plan §4.6–4.7): the masthead, the sections as folders of
+coloured card, the featured sheets, the latest sheets with their pages,
+and the tags. `home` is a blog.selectors.Home.
+{% endcomment %}
+{% load jalali_tags %}
+
+{% block main_class %} bl--home{% endblock %}
+
+{% block blog %}
+<header class="bl-masthead" data-bl-masthead>
+    {# Each word on its own cut-out of card; words, not letters: Persian letters join. #}
+    <h1 class="bl-masthead__title">{% for word in page.title.split %}<span class="bl-cut bl-paper--{% cycle 'tomato' 'sunflower' 'sky' 'grass' 'grape' 'bubblegum' %}">{{ word }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</h1>
+    {% if page.intro %}<p class="bl-masthead__intro">{{ page.intro }}</p>{% endif %}
+    {% include "blog/_search_form.html" %}
+</header>
+
+{% if home.sections %}
+<section class="bl-block" aria-labelledby="bl-sections-title">
+    <h2 class="visually-hidden" id="bl-sections-title">بخش‌های وبلاگ</h2>
+    <ul class="bl-folders" role="list">
+        {% for section in home.sections %}
+        <li class="bl-folder bl-paper--{{ section.paper }}">
+            <h3 class="bl-folder__title"><a class="bl-folder__link" href="{{ section.get_absolute_url }}">{{ section.title }}</a></h3>
+            {% if section.description %}<p class="bl-folder__text">{{ section.description }}</p>{% endif %}
+            <p class="bl-folder__count">{% if section.post_count %}{{ section.post_count|fa_digits }} نوشته{% else %}هنوز نوشته‌ای ندارد{% endif %}</p>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if home.featured %}
+<section class="bl-block" aria-labelledby="bl-featured-title">
+    <h2 class="bl-heading" id="bl-featured-title">نوشته‌های ویژه</h2>
+    <div class="bl-featured{% if home.featured|length == 1 %} bl-featured--single{% endif %}">
+        {% for post in home.featured %}
+        {% if forloop.first %}
+        {% include "blog/_sheet.html" with post=post size="lead" %}
+        {% else %}
+        {% include "blog/_sheet.html" with post=post %}
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="bl-block" aria-labelledby="bl-latest-title">
+    <h2 class="bl-heading" id="bl-latest-title">{% if posts.number == 1 %}تازه‌ترین نوشته‌ها{% else %}نوشته‌ها، صفحه {{ posts.number|fa_digits }}{% endif %}</h2>
+    {% if posts.object_list %}
+    {% include "blog/_grid.html" with posts=posts.object_list %}
+    {% include "blog/_pagination.html" %}
+    {% elif home.featured %}
+    <p class="bl-empty">نوشته دیگری هنوز منتشر نشده است.</p>
+    {% else %}
+    <div class="bl-empty">
+        <p>هنوز نوشته‌ای در وبلاگ منتشر نشده است. به‌زودی نخستین نوشته‌های معلمان و مشاور مدرسه این‌جا می‌آید.</p>
+    </div>
+    {% endif %}
+</section>
+
+{% if home.tags %}
+<section class="bl-block" aria-labelledby="bl-tags-title">
+    <h2 class="bl-heading" id="bl-tags-title">برچسب‌ها</h2>
+    {% include "blog/_stickers.html" with tags=home.tags %}
+</section>
+{% endif %}
+{% endblock blog %}

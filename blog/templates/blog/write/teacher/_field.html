@@ -1,0 +1,11 @@
+{# One form field in the teacher panel's ui-field style. #}
+<div class="ui-field{% if wide %} bw-wide{% endif %}">
+    <label class="ui-label" for="{{ field.id_for_label }}">
+        {{ field.label }}{% if not field.field.required and not field.field.needed_to_submit %} <span class="ui-label__optional">(اختیاری)</span>{% endif %}
+    </label>
+    {{ field }}
+    {% if field.help_text %}<p class="ui-help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+    {% if field.errors %}
+    <ul class="ui-error" id="{{ field.auto_id }}-error">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    {% endif %}
+</div>

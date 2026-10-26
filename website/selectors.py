@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 
 from django.db.models import Q
 
+from blog.selectors import author_pages_by_card
+
 from .models import LandingTeacher
 
 
@@ -63,8 +65,9 @@ def teachers_page_listing(page, group_param=None):
     ``group_param`` when it names a group in use. Anything else (unknown,
     inactive, empty or not a number) shows everyone.
 
-    One query: groups come with the teachers (``select_related``) and are
-    collected here, in Python.
+    Two queries: the teachers, whose groups come with them
+    (``select_related``) and are collected here in Python, and the blog
+    author pages linked to their cards.
     """
 
     teachers = list(
@@ -72,6 +75,10 @@ def teachers_page_listing(page, group_param=None):
         .filter(on_teachers_page=True)
         .filter(Q(group__isnull=True) | Q(group__is_active=True))
     )
+    # «نوشته‌های …»: the author page of a blog author linked to the card (one query).
+    blog_urls = author_pages_by_card([teacher.pk for teacher in teachers]) if teachers else {}
+    for teacher in teachers:
+        teacher.blog_url = blog_urls.get(teacher.pk, "")
 
     by_group, groups = {}, {}
     for teacher in teachers:

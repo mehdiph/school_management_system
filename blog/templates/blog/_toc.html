@@ -1,0 +1,16 @@
+{% comment %}
+The post's headings (post.toc), as a nav. `variant` is "fold" (a
+<details>, under the byline, below 1200px) or "note" (the yellow sticky
+note beside the sheet, from 1200px). CSS shows one of the two.
+{% endcomment %}
+{% if variant == "fold" %}
+<details class="bl-toc bl-toc--fold">
+    <summary class="bl-toc__title">فهرست این نوشته</summary>
+    <nav aria-label="فهرست این نوشته">{% include "blog/_toc_list.html" %}</nav>
+</details>
+{% else %}
+<nav class="bl-toc bl-toc--note" aria-labelledby="bl-toc-note-title">
+    <h2 class="bl-toc__title" id="bl-toc-note-title">فهرست این نوشته</h2>
+    {% include "blog/_toc_list.html" %}
+</nav>
+{% endif %}

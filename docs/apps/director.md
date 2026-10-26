@@ -44,7 +44,7 @@ A plain GET form (`director/forms.py`), so every view is a link and works withou
 * **Period** (`?period=`, the attendance page only): «امروز», «این هفته» (from Saturday), «این ماه» (the Jalali month, **the default**). Links that keep the branch.
 * Nothing else: no grade, no custom range, no «از ابتدای سال». An old link carrying `period=year` / `custom`, `date_from`, `grade`, `class` or `view` opens this month without an error.
 * **Daily attendance only.** A period is clamped to the days from `ATTENDANCE_DAILY_START_DATE` (1 Aban 1405), the academic year and today (`forms.daily_range`, built on `attendance.services.split_range`). When the cutoff cut days off the start, a note says so; a period entirely before it shows an empty state. Archived per-session attendance never appears on these pages.
-* The sidebar links keep the branch (`director_query`).
+* The sidebar links keep the branch (`director_query`). A director who is a blog author also sees «نوشته‌های من» (`/blog/write/`, outside this panel, which stays GET-only; ADR-026).
 
 ### 3.2 Home (`/director/`): today
 
@@ -145,8 +145,8 @@ Every page runs a **fixed number of queries**, whatever the number of classes, s
 
 | Page | Queries | Of which |
 | --- | --- | --- |
-| Home (school day) | 20 | 7 overhead (session, user and its three profile look-ups, the footer's two) + year, branches, classes + the calendar (1 + 3 prefetches) + this month's student tallies and the frequent absentees' days + today's timetable, sheets, supporters and absences |
-| Attendance | 19 | overhead, year, branches, classes + timetable, calendar (1 + 3), sheets, supporters, student tallies, the frequent absentees' days |
+| Home (school day) | 21 | 8 overhead (session, user and its three profile look-ups, the footer's two, the sidebar's «نوشته‌های من» check from the blog) + year, branches, classes + the calendar (1 + 3 prefetches) + this month's student tallies and the frequent absentees' days + today's timetable, sheets, supporters and absences |
+| Attendance | 20 | overhead, year, branches, classes + timetable, calendar (1 + 3), sheets, supporters, student tallies, the frequent absentees' days |
 
 On a day off the home page skips the supporters and today's absences and adds one timetable query for the next school day (Thursday and Friday need no timetable query for today). Queries that have nothing to read (no absences today, nobody frequently absent, no events) are skipped.
 

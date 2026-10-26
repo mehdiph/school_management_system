@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',
     'django_jalali',
     'school',
     'teaching',
@@ -74,6 +75,7 @@ INSTALLED_APPS = [
     'academic_calendar',
     'analytics',
     'director',
+    'blog',
 ]
 
 MIDDLEWARE = [
@@ -84,6 +86,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Sends a Content-Security-Policy only where a view sets one (the blog's
+    # public pages, blog.views.public_csp); SECURE_CSP is left empty.
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'core.middleware.branch.BranchMiddleware',
     'accounts.middleware.ForcePasswordChangeMiddleware',
 ]
@@ -105,6 +110,7 @@ TEMPLATES = [
                 'core.context_processors.teacher_info.teacher_info_context',
                 'core.context_processors.topbar.topbar_context',
                 'website.context_processors.site_settings',
+                'blog.context_processors.authoring',
             ],
         },
     },
@@ -224,6 +230,21 @@ CONTACT_MAX_FORM_AGE_SECONDS = 2 * 60 * 60
 # or AR-Real-IP (ArvanCloud); without a CDN, nginx's X-Real-IP is right.
 # A missing or malformed value falls back to REMOTE_ADDR.
 CLIENT_IP_HEADER = os.environ.get('CLIENT_IP_HEADER', 'X-Real-IP')
+
+
+# Blog (see blog/permissions.py and docs/apps/blog.md)
+#
+# School policy: the roles whose holders the website admin may make blog
+# authors. Being an author is a grant on top of the role (BlogAuthor); a
+# user whose role leaves this list can't write any more, and their posts
+# stay as they are. Students are never authors. Read only in
+# blog.permissions.
+BLOG_AUTHOR_ROLES = ['teacher', 'counselor', 'supervisor', 'director', 'admin']
+BLOG_WORDS_PER_MINUTE = 180            # Persian reading speed, for «۴ دقیقه مطالعه»
+BLOG_PAGE_SIZE = 9                     # posts per page: fills a 3-column grid
+BLOG_MAX_TAGS_PER_POST = 5
+BLOG_FEED_ITEMS = 20
+BLOG_TOC_MIN_HEADINGS = 3              # a post's table of contents from this many headings
 
 
 # Static files (CSS, JavaScript, Images)

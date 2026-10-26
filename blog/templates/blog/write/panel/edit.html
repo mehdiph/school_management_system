@@ -1,0 +1,146 @@
+{% extends "blog/write/panel/_layout.html" %}
+{% load static jalali_tags %}
+
+{% comment %}
+  Writing or reading one post, for the panels on base.html (write_new,
+  write_edit). With a form: the author's draft. Without one: the post
+  read-only, with the reason and the steps the author still has. The
+  teacher panel's copy is blog/write/teacher/edit.html.
+{% endcomment %}
+
+{% block heading_title %}{% if post %}{{ post.title|default:"نوشته" }}{% else %}نوشته تازه{% endif %}{% endblock %}
+
+{% block page_styles %}{% if form %}{{ form.media.css }}{% endif %}{% endblock %}
+
+{% block page %}
+{% if form %}
+<form method="post" enctype="multipart/form-data" class="bw-form" novalidate data-bw-form>
+  {% csrf_token %}
+  <header class="dashboard-header">
+    <div class="dashboard-header__text">
+      <h1>{% if post %}ویرایش نوشته{% else %}نوشته تازه{% endif %}</h1>
+      <p>{% if post %}در «{{ post.section.title }}» · {{ post.status_label }} · آخرین ذخیره: {{ post.updated_at|jalali_datetime }}{% else %}تا وقتی برای بررسی نفرستید، فقط خودتان آن را می‌بینید.{% endif %}</p>
+    </div>
+    <div class="bw-head-actions">
+      <a class="link-action" href="{% url 'blog:write' %}">فهرست نوشته‌ها</a>
+      {% if post %}<a class="btn btn--outline" href="{{ post.preview_url }}" target="_blank" rel="noopener">پیش‌نمایش آخرین ذخیره</a>{% endif %}
+      <button type="submit" name="action" value="save" class="btn btn--outline">ذخیره پیش‌نویس</button>
+    </div>
+  </header>
+
+  {% if post.review_note %}
+  <p class="bw-note bw-note--warning">ویراستار این نوشته را برای اصلاح برگرداند: «{{ post.review_note }}»</p>
+  {% endif %}
+
+  <p class="bw-note bw-reminder">{{ page.author_reminder|linebreaksbr }}</p>
+
+  {% if form.non_field_errors %}
+  <div class="bw-note bw-note--danger" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+  {% elif form.errors %}
+  <p class="bw-note bw-note--danger" role="alert">نوشته ذخیره نشد؛ موارد مشخص‌شده را درست کنید.</p>
+  {% endif %}
+
+  <div class="bw-grid">
+    <section class="sv-card bw-grid__main" aria-labelledby="bwTextTitle">
+      <div class="section-heading section-heading--tight"><h2 id="bwTextTitle">متن نوشته</h2></div>
+      <div class="bw-fields">
+        {% include "blog/write/panel/_field.html" with field=form.title %}
+        {% include "blog/write/panel/_field.html" with field=form.body %}
+        {% include "blog/write/panel/_field.html" with field=form.excerpt %}
+      </div>
+    </section>
+
+    <div class="bw-grid__side">
+      <section class="sv-card" aria-labelledby="bwPlaceTitle">
+        <div class="section-heading section-heading--tight"><h2 id="bwPlaceTitle">جای نوشته</h2></div>
+        <div class="bw-fields">
+          {% if form.section.is_hidden %}
+          {{ form.section }}
+          <p class="sv-footnote">بخش: «{{ form.sections.0.title }}»</p>
+          {% else %}
+          {% include "blog/write/panel/_field.html" with field=form.section %}
+          {% endif %}
+          {% include "blog/write/panel/_field.html" with field=form.category %}
+          {% include "blog/write/panel/_field.html" with field=form.tag_names %}
+        </div>
+      </section>
+
+      <section class="sv-card" aria-labelledby="bwCoverTitle">
+        <div class="section-heading section-heading--tight"><h2 id="bwCoverTitle">تصویر شاخص</h2></div>
+        <div class="bw-fields">
+          {% include "blog/write/panel/_field.html" with field=form.cover %}
+          {% include "blog/write/panel/_field.html" with field=form.cover_alt %}
+        </div>
+      </section>
+
+      <details class="sv-card bw-more"{% if form.meta_title.errors or form.meta_description.errors or form.slug.errors %} open{% endif %}>
+        <summary class="section-heading section-heading--tight"><h2>تنظیمات جستجو</h2></summary>
+        <div class="bw-fields">
+          {% include "blog/write/panel/_field.html" with field=form.meta_title %}
+          {% include "blog/write/panel/_field.html" with field=form.meta_description %}
+          {% if form.slug %}{% include "blog/write/panel/_field.html" with field=form.slug %}{% endif %}
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <section class="sv-card" aria-labelledby="bwSendTitle">
+    <div class="section-heading section-heading--tight">
+      <div>
+        <h2 id="bwSendTitle">ارسال برای بررسی</h2>
+        <p>پس از ارسال، تا وقتی ویراستار آن را بررسی نکرده یا آن را پس نگرفته‌اید، ویرایش نمی‌شود.</p>
+      </div>
+    </div>
+    <div class="sv-field{% if form.privacy_ack.errors %} has-error{% endif %}">
+      <label class="bw-check" for="{{ form.privacy_ack.id_for_label }}">
+        {{ form.privacy_ack }}
+        <span>{{ form.privacy_ack.label }}</span>
+      </label>
+      {{ form.privacy_ack.errors }}
+    </div>
+    <div class="bw-actions">
+      {% if post %}
+      <button type="submit" class="btn btn--outline bw-actions__aside" formaction="{% url 'blog:write_action' post.pk 'archive' %}" formnovalidate data-bw-confirm="این پیش‌نویس بایگانی شود؟ تغییرهای ذخیره‌نشده از بین می‌روند.">بایگانی</button>
+      {% endif %}
+      <button type="submit" name="action" value="save" class="btn btn--outline">ذخیره پیش‌نویس</button>
+      <button type="submit" name="action" value="submit" class="btn btn--primary">ارسال برای بررسی</button>
+    </div>
+  </section>
+</form>
+
+{% else %}
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>{{ post.title|default:"(بی‌عنوان)" }}</h1>
+    <p>در «{{ post.section.title }}» · {% include "blog/write/panel/_badge.html" %}</p>
+  </div>
+  <div class="bw-head-actions">
+    <a class="link-action" href="{% url 'blog:write' %}">فهرست نوشته‌ها</a>
+    {% if post.is_public %}
+    <a class="btn btn--outline" href="{{ post.get_absolute_url }}">صفحه نوشته در وبلاگ</a>
+    {% else %}
+    <a class="btn btn--outline" href="{{ post.preview_url }}" target="_blank" rel="noopener">پیش‌نمایش</a>
+    {% endif %}
+    {% if post.status == 'submitted' or post.status == 'archived' %}
+    <form method="post" action="{% if post.status == 'submitted' %}{% url 'blog:write_action' post.pk 'withdraw' %}{% else %}{% url 'blog:write_action' post.pk 'reopen' %}{% endif %}" class="bw-inline-form">
+      {% csrf_token %}
+      <button type="submit" class="btn btn--primary">{% if post.status == 'submitted' %}پس گرفتن برای ویرایش{% else %}برگرداندن به پیش‌نویس{% endif %}</button>
+    </form>
+    {% endif %}
+  </div>
+</header>
+
+<p class="bw-note">{{ reason }}</p>
+
+<section class="sv-card" aria-label="متن نوشته">
+  {% include "blog/write/_read.html" %}
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if form %}
+{{ form.media.js }}
+<script src="{% static 'blog/js/write.js' %}"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% comment %}The trail above a list or a post: `crumbs` (blog.seo.Crumb), the last one is this page.{% endcomment %}
+{% if crumbs %}
+<nav class="bl-crumbs" aria-label="مسیر صفحه">
+    <ol class="bl-crumbs__list">
+        {% for crumb in crumbs %}
+        <li>{% if crumb.url and not forloop.last %}<a href="{{ crumb.url }}">{{ crumb.title }}</a>{% else %}<span aria-current="page">{{ crumb.title }}</span>{% endif %}</li>
+        {% endfor %}
+    </ol>
+</nav>
+{% endif %}

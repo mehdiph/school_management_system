@@ -1,0 +1,12 @@
+{% comment %}Who wrote the post and when. Needs `post`. The name links to the author page only while it is switched on (D18).{% endcomment %}
+{% load jalali_tags blog_tags %}
+<div class="bl-byline">
+    {% include "blog/_avatar.html" with author=post.author %}
+    <p class="bl-byline__who">
+        {% if post.author.show_profile and not post_page.preview %}<a class="bl-byline__name" href="{{ post.author.get_absolute_url }}">{{ post.author.name }}</a>{% else %}<span class="bl-byline__name">{{ post.author.name }}</span>{% endif %}
+    </p>
+    <p class="bl-byline__when">
+        {% if post.published_at %}<span>منتشرشده: <time datetime="{{ post.published_dt|iso }}">{{ post.published_at|jalali_date }}</time></span>{% endif %}
+        {% if post.shows_updated %}<span>به‌روزرسانی: <time datetime="{{ post.modified_dt|iso }}">{{ post.content_updated_at|jalali_date }}</time></span>{% endif %}
+    </p>
+</div>

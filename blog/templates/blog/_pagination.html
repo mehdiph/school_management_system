@@ -1,0 +1,26 @@
+{% comment %}Page links of a list: `posts` is a Paginator page. Plain links, no JS.{% endcomment %}
+{% load blog_tags jalali_tags %}
+{% if posts.has_other_pages %}
+<nav class="bl-pages" aria-label="صفحه‌ها">
+    {% if posts.has_previous %}
+    <a class="bl-pages__step" href="{% page_url posts.previous_page_number %}" rel="prev">صفحه قبلی</a>
+    {% endif %}
+    <p class="bl-pages__where">صفحه {{ posts.number|fa_digits }} از {{ posts.paginator.num_pages|fa_digits }}</p>
+    <ol class="bl-pages__list">
+        {% for number in posts|page_numbers %}
+        <li>
+            {% if number == posts.paginator.ELLIPSIS %}
+            <span class="bl-pages__gap" aria-hidden="true">{{ number }}</span>
+            {% elif number == posts.number %}
+            <a class="bl-pages__number" href="{% page_url number %}" aria-current="page">{{ number|fa_digits }}</a>
+            {% else %}
+            <a class="bl-pages__number" href="{% page_url number %}" aria-label="صفحه {{ number|fa_digits }}">{{ number|fa_digits }}</a>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% if posts.has_next %}
+    <a class="bl-pages__step" href="{% page_url posts.next_page_number %}" rel="next">صفحه بعدی</a>
+    {% endif %}
+</nav>
+{% endif %}

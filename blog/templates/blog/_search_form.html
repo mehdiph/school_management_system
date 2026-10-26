@@ -1,0 +1,7 @@
+{% comment %}Search, a plain GET form (works without JS). `query` is the current search, if any.{% endcomment %}
+<form class="bl-search" action="{% url 'blog:search' %}" method="get" role="search">
+    <label class="visually-hidden" for="bl-search-q">جستجو در نوشته‌ها</label>
+    <input class="bl-search__input" id="bl-search-q" type="search" name="q" value="{{ query|default:'' }}"
+           placeholder="جستجو در نوشته‌ها…" maxlength="100" autocomplete="off" enterkeyhint="search">
+    <button class="bl-search__button" type="submit">جستجو</button>
+</form>

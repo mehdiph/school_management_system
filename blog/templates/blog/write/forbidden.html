@@ -1,0 +1,44 @@
+{% extends panel_base|default:"base.html" %}
+{% load static %}
+
+{% comment %}
+  403 of «نوشته‌های من» (blog.permissions.author_required), in the
+  person's own shell: they can't write in the blog right now.
+{% endcomment %}
+
+{% block title %}نوشته‌های من{% endblock %}
+{% block page_title %}نوشته‌های من{% endblock %}
+
+{% block styles %}
+{% if panel_base != "teacher/base.html" %}
+<link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/attendance.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/panel.css' %}">
+{% endif %}
+<link rel="stylesheet" href="{% static 'blog/css/write.css' %}">
+{% endblock %}
+
+{% block sidebar %}{% include "partials/sidebar.html" %}{% endblock %}
+
+{% block content %}
+{% if panel_base == "teacher/base.html" %}
+<div class="bw">
+    <section class="ui-card">
+        <div class="ui-empty">
+            <span class="ui-empty__icon"><svg class="ui-icon" aria-hidden="true"><use href="#i-lock"></use></svg></span>
+            <h1 class="ui-empty__title">اجازه نوشتن در وبلاگ ندارید</h1>
+            <p class="ui-empty__text">{% if reason %}{{ reason }} {% endif %}برای نوشتن در وبلاگ مدرسه با مدیر سایت هماهنگ کنید.</p>
+        </div>
+    </section>
+</div>
+{% else %}
+<div class="dashboard-content">
+    <header class="dashboard-header">
+        <div class="dashboard-header__text">
+            <h1>اجازه نوشتن در وبلاگ ندارید</h1>
+            <p>{% if reason %}{{ reason }} {% endif %}برای نوشتن در وبلاگ مدرسه با مدیر سایت هماهنگ کنید.</p>
+        </div>
+    </header>
+</div>
+{% endif %}
+{% endblock %}

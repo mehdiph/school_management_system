@@ -1,0 +1,40 @@
+<div class="bl-editor" data-bl-editor{% if widget.upload_url %} data-upload-url="{{ widget.upload_url }}"{% endif %}>
+  <template data-bl-editor-toolbar>
+    <div class="trix-button-row">
+      <span class="trix-button-group" data-trix-button-group="text-tools">
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-bold" data-trix-attribute="bold" data-trix-key="b" title="پررنگ">پررنگ</button>
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-italic" data-trix-attribute="italic" data-trix-key="i" title="کج">کج</button>
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-link" data-trix-attribute="href" data-trix-action="link" data-trix-key="k" title="پیوند">پیوند</button>
+      </span>
+      <span class="trix-button-group" data-trix-button-group="block-tools">
+        <button type="button" class="trix-button bl-editor__text-button" data-trix-attribute="heading1" title="عنوان">عنوان</button>
+        <button type="button" class="trix-button bl-editor__text-button" data-trix-attribute="heading2" title="زیرعنوان">زیرعنوان</button>
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-quote" data-trix-attribute="quote" title="نقل‌قول">نقل‌قول</button>
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-bullet-list" data-trix-attribute="bullet" title="فهرست نقطه‌ای">فهرست نقطه‌ای</button>
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-number-list" data-trix-attribute="number" title="فهرست شماره‌دار">فهرست شماره‌دار</button>
+      </span>
+      <span class="trix-button-group" data-trix-button-group="file-tools">
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-attach" data-trix-action="attachFiles" title="افزودن تصویر">افزودن تصویر</button>
+      </span>
+      <span class="trix-button-group-spacer"></span>
+      <span class="trix-button-group" data-trix-button-group="history-tools">
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-undo" data-trix-action="undo" data-trix-key="z" title="برگرداندن">برگرداندن</button>
+        <button type="button" class="trix-button trix-button--icon trix-button--icon-redo" data-trix-action="redo" data-trix-key="shift+z" title="انجام دوباره">انجام دوباره</button>
+      </span>
+    </div>
+    <div class="trix-dialogs" data-trix-dialogs>
+      <div class="trix-dialog trix-dialog--link" data-trix-dialog="href" data-trix-dialog-attribute="href">
+        <div class="trix-dialog__link-fields">
+          <input type="url" name="href" class="trix-input trix-input--dialog" placeholder="نشانی پیوند را بنویسید…" aria-label="نشانی پیوند" data-trix-validate-href required data-trix-input>
+          <div class="trix-button-group">
+            <input type="button" class="trix-button trix-button--dialog" value="پیوند" data-trix-method="setAttribute">
+            <input type="button" class="trix-button trix-button--dialog" value="برداشتن پیوند" data-trix-method="removeAttribute">
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+  {% include "django/forms/widgets/textarea.html" %}
+  <p class="bl-editor__status" data-bl-editor-status role="status" aria-live="polite" hidden></p>
+  <noscript><p class="bl-editor__hint">بدون جاوااسکریپت: متن را بنویسید و بندها را با یک خط خالی از هم جدا کنید. افزودن تصویر داخل متن به جاوااسکریپت نیاز دارد.</p></noscript>
+</div>

@@ -1,0 +1,7 @@
+{# One form field in the supervisor panel's sv-field style. #}
+<div class="sv-field{% if field.errors %} has-error{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}{% if not field.field.required and not field.field.needed_to_submit %} <span class="sv-muted">(اختیاری)</span>{% endif %}</label>
+  {{ field }}
+  {% if field.help_text %}<p class="sv-footnote" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+  {{ field.errors }}
+</div>

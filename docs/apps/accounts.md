@@ -31,25 +31,30 @@ It extends Django's authentication system and serves as the central identity ent
 
 ### Main Fields
 
-| Field        | Description                 |
-| ------------ | --------------------------- |
-| username     | Unique login identifier     |
-| role         | User role within the system |
-| phone_number | User contact number         |
-| avatar       | User profile image          |
+| Field                | Description                 |
+| -------------------- | --------------------------- |
+| username             | Unique login identifier     |
+| role                 | User role within the system (`User.Roles`) |
+| phone_number         | User contact number         |
+| national_code        | National code, unique; the single copy (Staff no longer has one). Null only for legacy and superuser accounts |
+| must_change_password | Set for accounts created with a known password (the Excel import); `ForcePasswordChangeMiddleware` sends the user to change it first |
+| avatar               | User profile image (never shown on the public site, ADR-025) |
 
 ### Relationships
 
 ```text
 User
-├── ClassSubject
-├── Staff
-└── StudentProfile
+├── Staff ── TeacherProfile ── TeacherAssignment ── ClassSubject
+├── StudentProfile
+├── SupervisorProfile
+└── BlogAuthor (blog app)
 ```
 
-#### User → ClassSubject
+#### User → ClassSubject (indirect)
 
-A teacher can be assigned to multiple ClassSubjects.
+A user never links to a ClassSubject directly: a teacher's `Staff` row has a
+`TeacherProfile`, whose `TeacherAssignment`s (one per branch and year) carry the
+ClassSubjects they teach.
 
 #### User → Staff
 
@@ -144,15 +149,25 @@ StudentProfile
 
 ### School
 
-Uses the ClassSubject model to associate teachers with educational assignments.
+ClassSubject associates teachers with what they teach, through their staff record.
 
 Relationship:
 
 ```text
 User
 ↓
+Staff → TeacherProfile → TeacherAssignment
+↓
 ClassSubject
 ```
+
+---
+
+### Blog
+
+A `BlogAuthor` row (one per user, created by the website admin) lets a person write in
+the school blog (ADR-026, `docs/apps/blog.md`). Being an author is a grant on top of a
+role, not a role.
 
 ---
 
@@ -175,7 +190,7 @@ Current roles (`User.Roles`):
 * Student (`student`)
 * School director (`director`, «مدیر مدرسه»): one person who oversees both branches through the read-only director panel (`docs/apps/director.md`). No profile row: the role alone gives access.
 * System admin (`admin`, «مدیر سامانه»): enters and edits the data in the Django admin. Relabelled from «مدیر» in October 2026 so it cannot be confused with the director.
-* Accountant, counselor, IT and services staff: roles exist, no panel of their own yet.
+* Accountant, counselor, IT and services staff: roles exist, no panel of their own yet. A counselor who is a blog author writes in «نوشته‌های من» (`/blog/write/`), in the `base.html` shell with only that sidebar item.
 
 To make someone the director: in the Django admin, open the user (or add one) and set «نقش» to «مدیر مدرسه». No staff flag, group or permission is needed; do not make them staff unless they also administer data.
 
@@ -228,6 +243,10 @@ Student
 ↓
 Student Dashboard
 ```
+
+Roles without a dashboard (`accounts.utils.role_dashboard`): staff users go to the
+Django admin; otherwise a user who can write in the blog goes to «نوشته‌های من»
+(`blog:write`, blog plan D7); everyone else to the public home page.
 
 ---
 

@@ -1,0 +1,29 @@
+{% comment %}
+One post as a sheet pinned on the wall. Needs `post` (from
+blog.selectors.public_posts); `heading` (h2/h3, default h3) and `size`
+("lead" for the large featured sheet) are optional. One link per sheet,
+on the title, stretched over the whole sheet by CSS.
+{% endcomment %}
+{% load jalali_tags blog_tags %}
+<article class="bl-sheet bl-paper--{{ post.section.paper }}{% if size %} bl-sheet--{{ size }}{% endif %}{% if not post.cover %} bl-sheet--text{% endif %}" aria-labelledby="bl-sheet-{{ post.pk }}">
+    <div class="bl-sheet__paper">
+        {% if post.cover %}
+        <div class="bl-photo bl-sheet__photo">
+            <img src="{{ post.cover_url }}" alt="" loading="lazy" decoding="async">
+        </div>
+        {% endif %}
+        <div class="bl-sheet__body">
+            <p class="bl-labels">
+                <span class="bl-chip">{{ post.section.title }}</span>
+                <span class="bl-minutes">{{ post.reading_minutes|fa_digits }} دقیقه</span>
+            </p>
+            <{{ heading|default:"h3" }} class="bl-sheet__title" id="bl-sheet-{{ post.pk }}"><a class="bl-sheet__link" href="{{ post.get_absolute_url }}">{{ post.title }}</a></{{ heading|default:"h3" }}>
+            {% if post.summary %}<p class="bl-sheet__excerpt">{{ post.summary }}</p>{% endif %}
+            <p class="bl-sheet__by">
+                {% include "blog/_avatar.html" with author=post.author size="small" %}
+                <span class="bl-sheet__author">{{ post.author.name }}</span>
+                <time class="bl-sheet__date" datetime="{{ post.published_dt|iso }}">{{ post.published_at|jalali_date }}</time>
+            </p>
+        </div>
+    </div>
+</article>

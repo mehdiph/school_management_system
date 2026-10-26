@@ -1,0 +1,1 @@
+{% load blog_tags %}{% with state=post|post_state %}<span class="ui-badge {% if state == 'published' %}ui-badge--success{% elif state == 'submitted' %}ui-badge--warning{% elif state == 'scheduled' %}ui-badge--accent{% else %}ui-badge--neutral{% endif %}">{{ post.status_label }}</span>{% endwith %}

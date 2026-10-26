@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% load static jalali_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'blog/css/admin.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}{% include "admin/blog/post/_breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <fieldset class="module aligned">
+    <h2>نوشته</h2>
+    <div class="form-row"><div class="flex-container"><label>عنوان:</label><div class="readonly">{{ post.title }}</div></div></div>
+    <div class="form-row"><div class="flex-container"><label>بخش:</label><div class="readonly">{{ post.section }}{% if post.category %} › {{ post.category }}{% endif %}</div></div></div>
+    <div class="form-row"><div class="flex-container"><label>نویسنده:</label><div class="readonly">{{ post.author.name }}</div></div></div>
+    <div class="form-row"><div class="flex-container"><label>وضعیت:</label><div class="readonly">{{ post.status_label }}{% if post.published_at %} — زمان انتشار: {{ post.published_at|jalali_datetime }}{% endif %}</div></div></div>
+    {% if post.submitted_at %}<div class="form-row"><div class="flex-container"><label>ارسال برای بررسی:</label><div class="readonly">{{ post.submitted_at|jalali_datetime }}{% if post.privacy_ack_at %} (نویسنده جمله حریم خصوصی را تأیید کرده است){% endif %}</div></div></div>{% endif %}
+    <div class="form-row"><a href="{{ post.preview_url }}" target="_blank" rel="noopener">پیش‌نمایش نوشته در سایت</a> | <a href="{% url 'admin:blog_post_change' post.pk %}">ویرایش متن نوشته</a></div>
+  </fieldset>
+
+  {% if can_publish %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="publish">
+    {% if is_draft %}
+      <p class="errornote">این نوشته پیش‌نویس است و نویسنده آن را برای بررسی نفرستاده است. فقط وقتی منتشر کنید که خودتان آن را نوشته‌اید یا نویسنده آماده بودنش را گفته است.</p>
+    {% endif %}
+    {% if publish_form.non_field_errors %}<p class="errornote">{{ publish_form.non_field_errors|join:" " }}</p>{% endif %}
+    {% include "admin/blog/post/_checklist.html" with checklist=publish_form.checklist_fields %}
+    <fieldset class="module aligned">
+      <h2>{% if post.status == "archived" %}انتشار دوباره{% else %}انتشار{% endif %}</h2>
+      <div class="form-row{% if publish_form.when.errors %} errors{% endif %}">
+        {{ publish_form.when.errors }}
+        <div class="flex-container">{{ publish_form.when.label_tag }} {{ publish_form.when }}</div>
+      </div>
+      <div class="form-row{% if publish_form.publish_at.errors %} errors{% endif %}">
+        {{ publish_form.publish_at.errors }}
+        <div class="flex-container">{{ publish_form.publish_at.label_tag }} {{ publish_form.publish_at }}</div>
+        <div class="help">{{ publish_form.publish_at.help_text }}</div>
+      </div>
+    </fieldset>
+    <div class="submit-row"><input type="submit" class="default" value="انتشار"></div>
+  </form>
+  {% endif %}
+
+  {% if can_return %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="return">
+    <fieldset class="module aligned">
+      <h2>بازگرداندن به نویسنده</h2>
+      <div class="description">نوشته پیش‌نویس می‌شود{% if post.status == "published" %} و تا انتشار دوباره از سایت برداشته می‌شود{% endif %}. نویسنده یادداشت شما را می‌بیند.</div>
+      <div class="form-row{% if return_form.note.errors %} errors{% endif %}">
+        {{ return_form.note.errors }}
+        <div class="flex-container">{{ return_form.note.label_tag }} {{ return_form.note }}</div>
+        <div class="help">{{ return_form.note.help_text }}</div>
+      </div>
+    </fieldset>
+    <div class="submit-row"><input type="submit" value="بازگرداندن به نویسنده"></div>
+  </form>
+  {% endif %}
+
+  {% if can_unpublish %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="unpublish">
+    <fieldset class="module aligned">
+      <h2>خارج کردن از انتشار</h2>
+      <div class="description">نوشته بایگانی می‌شود و از سایت برداشته می‌شود؛ پاک نمی‌شود و می‌توان دوباره منتشرش کرد.</div>
+    </fieldset>
+    <div class="submit-row"><input type="submit" value="خارج کردن از انتشار"></div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

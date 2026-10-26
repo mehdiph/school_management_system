@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% comment %}
+The public blog's frame: the site's navbar and footer around a <main> on
+the painted wall (blog/css/blog.css). Pages fill `blog`; `meta` (a
+blog.seo.PageMeta) fills the head. No inline styles or scripts: the
+blog's pages run under a strict CSP (blog.views.public.PUBLIC_CSP).
+{% endcomment %}
+{% load static %}
+
+{% block title %}{{ meta.title }} | {{ site_settings.site_name }}{% endblock title %}
+
+{% block meta %}{% include "blog/_meta.html" %}{% endblock meta %}
+
+{% block body_class %}public-page landing blog-page{% endblock %}
+
+{% block navlinks %}
+{% include "website/partials/public_navbar.html" %}
+{% endblock navlinks %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'website/css/nav.css' %}">
+<link rel="stylesheet" href="{% static 'website/css/index.css' %}">
+<link rel="stylesheet" href="{% static 'blog/css/blog.css' %}">
+{% endblock styles %}
+
+{% block content %}
+<main class="bl{% block main_class %}{% endblock %}">
+    {% block blog %}{% endblock blog %}
+</main>
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'website/js/nav.js' %}"></script>
+<script src="{% static 'blog/js/blog.js' %}"></script>
+{% endblock scripts %}

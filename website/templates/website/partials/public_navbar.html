@@ -2,17 +2,20 @@
 Public navbar (landing + login pages). Needs website/css/nav.css and
 website/js/nav.js; below 992px the menu becomes a drawer driven by nav.js.
 {% endcomment %}
+{% load website_tags %}
 {% url "accounts:login" as default_login_url %}
 {% with login_url=site_settings.login_url|default:default_login_url view_name=request.resolver_match.view_name %}
 <div class="public-nav">
     <nav class="public-nav__panel" id="public-nav-panel" aria-label="منوی اصلی">
         <ul class="public-nav__list">
             {% for item in nav_items %}
+            {% with state=item.url|nav_state:request.path %}
             <li>
-                <a href="{{ item.url }}" class="public-nav__link{% if item.url == request.path %} is-active{% endif %}"
-                   {% if item.url == request.path %}aria-current="page"{% endif %}
+                <a href="{{ item.url }}" class="public-nav__link{% if state %} is-active{% endif %}"
+                   {% if state == "page" %}aria-current="page"{% endif %}
                    {% if item.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.title }}</a>
             </li>
+            {% endwith %}
             {% endfor %}
         </ul>
         {% if view_name != "accounts:login" %}

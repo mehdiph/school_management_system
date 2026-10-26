@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">خانه</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:blog_tag_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <p>این برچسب‌ها ادغام و سپس غیرفعال می‌شوند (پاک نمی‌شوند):</p>
+  <ul>{% for tag in tags %}<li>{{ tag }}</li>{% endfor %}</ul>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for tag in tags %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ tag.pk }}">{% endfor %}
+    <input type="hidden" name="action" value="merge_tags">
+    <input type="hidden" name="apply" value="1">
+    <fieldset class="module aligned">
+      <div class="form-row{% if form.target.errors %} errors{% endif %}">
+        {{ form.target.errors }}
+        <div class="flex-container">{{ form.target.label_tag }} {{ form.target }}</div>
+        <div class="help">{{ form.target.help_text }}</div>
+      </div>
+    </fieldset>
+    <div class="submit-row">
+      <input type="submit" class="default" value="ادغام">
+      <a href="{% url 'admin:blog_tag_changelist' %}" class="button cancel-link">انصراف</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "blog/base_public.html" %}
+{% comment %}
+A post (plan §4.8–4.9): one wide, straight sheet built for reading, its
+table of contents beside it from 1200px, then the neighbours and the
+related posts. `post_page` is a blog.selectors.PostPage; in a preview
+only the post itself is shown, with a banner, and the page is noindex.
+{% endcomment %}
+{% load jalali_tags blog_tags %}
+
+{% block main_class %} bl--post{% endblock %}
+
+{% block blog %}
+{% if post_page.preview %}
+<p class="bl-preview-note" role="status">
+    <strong>پیش‌نمایش؛ هنوز منتشر نشده.</strong>
+    وضعیت: {{ post.status_label }}{% if post.is_scheduled %}، انتشار در {{ post.published_at|jalali_datetime }}{% endif %}.
+    فقط نویسنده و ویراستاران این صفحه را می‌بینند.
+</p>
+{% endif %}
+
+{% include "blog/_breadcrumbs.html" with crumbs=meta.crumbs %}
+
+<div class="bl-reading{% if post_page.show_toc %} bl-reading--toc{% endif %}">
+    <article class="bl-post bl-paper--{{ post.section.paper }}" aria-labelledby="bl-post-title">
+        <div class="bl-post__paper">
+        <header class="bl-post__head">
+            <p class="bl-labels">
+                <a class="bl-chip" href="{{ post.section.get_absolute_url }}">{{ post.section.title }}</a>
+                {% if post.category and post.category.is_active %}<a class="bl-chip bl-chip--quiet" href="{{ post.category.get_absolute_url }}">{{ post.category.title }}</a>{% endif %}
+                <span class="bl-minutes">{{ post.reading_minutes|fa_digits }} دقیقه مطالعه</span>
+            </p>
+            <h1 class="bl-post__title" id="bl-post-title" data-print-url="{{ meta.canonical }}">{{ post.title }}</h1>
+            {% if post.excerpt %}<p class="bl-post__lead">{{ post.excerpt }}</p>{% endif %}
+            {% include "blog/_byline.html" %}
+        </header>
+
+        {% if post_page.show_toc %}{% include "blog/_toc.html" with variant="fold" %}{% endif %}
+
+        {% if post.cover %}
+        <figure class="bl-photo bl-post__cover">
+            <img src="{{ post.cover_url }}" alt="{{ post.cover_alt }}" decoding="async">
+        </figure>
+        {% endif %}
+
+        <div class="bl-prose">
+            {{ post.body|body }}
+        </div>
+
+        {% if post.public_tags %}
+        <div class="bl-post__tags">
+            <h2 class="visually-hidden">برچسب‌ها</h2>
+            {% include "blog/_stickers.html" with tags=post.public_tags %}
+        </div>
+        {% endif %}
+
+        {% if not post_page.preview %}{% include "blog/_share.html" %}{% endif %}
+
+        {% include "blog/_author_box.html" %}
+
+        <p class="bl-post__ask">پرسشی دارید؟ <a href="{% url 'website:contact' %}">با دفتر مدرسه در تماس باشید</a>.</p>
+        </div>
+    </article>
+
+    {% if post_page.show_toc %}
+    <div class="bl-reading__side">{% include "blog/_toc.html" with variant="note" %}</div>
+    {% endif %}
+</div>
+
+{% if post_page.newer or post_page.older %}
+<nav class="bl-neighbours" aria-label="نوشته‌های دیگر {{ post.section.title }}">
+    {% if post_page.newer %}
+    <a class="bl-neighbour bl-neighbour--newer" href="{{ post_page.newer.get_absolute_url }}" rel="next">
+        <span class="bl-neighbour__label">نوشته بعدی</span>
+        <span class="bl-neighbour__title">{{ post_page.newer.title }}</span>
+    </a>
+    {% endif %}
+    {% if post_page.older %}
+    <a class="bl-neighbour bl-neighbour--older" href="{{ post_page.older.get_absolute_url }}" rel="prev">
+        <span class="bl-neighbour__label">نوشته قبلی</span>
+        <span class="bl-neighbour__title">{{ post_page.older.title }}</span>
+    </a>
+    {% endif %}
+</nav>
+{% endif %}
+
+{% if post_page.related %}
+<section class="bl-block bl-related" aria-labelledby="bl-related-title">
+    <h2 class="bl-heading" id="bl-related-title">نوشته‌های مرتبط</h2>
+    {% include "blog/_grid.html" with posts=post_page.related %}
+</section>
+{% endif %}
+{% endblock blog %}

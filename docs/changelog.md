@@ -24,6 +24,35 @@
 
 # [Unreleased]
 
+## Added (school blog, Phase 3 of 3: «نوشته‌های من», the authoring area)
+
+- Authors write in their own panel (`/blog/write/`, `docs/apps/blog.md` §7): teachers in the teacher panel, supervisors, the counselor, the director and the system admin in the `base.html` panel. A list of their posts by status (a returned draft shows the editor's note), the editor (Trix, cover, category, tags, SEO, slug until first published), «ذخیره پیش‌نویس», «ارسال برای بررسی» with the privacy acknowledgement, «پس گرفتن», «بایگانی», «برگرداندن به پیش‌نویس», preview, image upload into their draft, and «معرفی من» (bio and photo). A post that isn't a draft is read-only with the reason; a published post is changed by an editor (D9). Publishing stays with the editors in the admin.
+- Access: logged out → login; anyone who can't write (students, non-authors, inactive authors, accounts or staff records, roles no longer eligible) → a 403 page that says to ask the website admin; another author's post → 404.
+- Sidebar item «نوشته‌های من» for authors in the teacher panel and the other panels (not students). The check is lazy: one query on panel pages, none on public pages. Locked query counts of panel pages go up by one (see the report).
+- Login: a counselor (or any user without a panel or staff flag) who can write lands in «نوشته‌های من».
+- Docs: `docs/apps/accounts.md` corrected (a user reaches ClassSubject through Staff, TeacherProfile and TeacherAssignment; `national_code`, `must_change_password`, the director and blog author relationships).
+
+## Added (school blog, Phase 2 of 3: the public blog)
+
+- The blog is public at `/blog/` (`docs/apps/blog.md` §6): the blog home (featured posts, latest posts, sections, tags), section, category, tag and author pages, search (`?q=`, at least two letters), and the post page with a table of contents, reading time, share and copy-link, the author box, related posts and the previous/next post in the same section. Everything works without JS; `blog.js` only adds the copy button and a calmer masthead on later pages.
+- Design «روزنامه دیواری»: a school wall newspaper (paper sheets, pins and stickers) in `blog/static/blog/css/blog.css`, inside the public site's navbar and footer; print styles for the post page.
+- One public rule (`blog.models.post.public_q`): published, its publish time passed, its section active. Drafts, scheduled and archived posts are a 404 everywhere; editors and the author see them through «پیش‌نمایش» (`/blog/preview/<id>/`, linked from the admin and the review page).
+- Search engines and readers: canonical, Open Graph and Twitter tags, `BlogPosting` and `BreadcrumbList` JSON-LD, Atom feeds for the blog and each section (summary only), `/sitemap.xml` (public pages and blog) and `/robots.txt` (panels, admin and preview disallowed; search results are `noindex`).
+- Security: blog pages send a strict Content-Security-Policy (no inline scripts or styles; the JSON-LD block is data); bodies are sanitized again on output.
+- Public site: the navbar's «وبلاگ» row now links to `/blog/` and the unused «مقاله» row is hidden, never deleted (`website.0014_blog_menu`, data only, reversible, skips rows an admin changed); the navbar marks the current section. A teacher card on «معلمان» links to its author's blog page while that page exists (one extra query on that page).
+- Fixed: on SQLite a re-saved post could drop out of the blog for 3.5 hours (django_jalali stores datetimes with their own offset there); post moments are now stored in UTC. PostgreSQL was not affected.
+
+## Added (school blog, Phase 1 of 3: foundations; not public yet)
+
+- New `blog` app (ADR-026, `docs/apps/blog.md`): sections («پرورشی» and «مشاوره» seeded), categories, tags, authors with per-section grants, posts with inline images. Nothing is public yet; editors work in the admin.
+- Authors: a `BlogAuthor` per person, created by the website admin, with the sections they may write in («نویسندگان وبلاگ»). Only teachers, counselors, supervisors, the director and the system admin can be authors (`BLOG_AUTHOR_ROLES`); never students. An inactive account, author row or staff record, or a role leaving the list, stops writing at once.
+- Workflow in `blog.services`: draft → submitted (privacy acknowledgement) → published now or scheduled (every review checklist line ticked) → archived; return to the author with a note; no hard delete. Admin: «بررسی و انتشار» page per post, «در انتظار بررسی» queue, bulk publish with a confirmation page, unpublish, feature. Editors are staff with the new `blog.publish_post` permission.
+- Rich text: Trix 2.1.19 vendored in `static/vendor/trix/` (README with version, source and SHA-256), Persian toolbar, image upload into a saved post. Every body is reshaped and sanitized on save with an `nh3` allow-list (new dependency `nh3==0.3.7`): no scripts, styles, event handlers, iframes, hotlinked or `data:` images. Images are re-encoded without metadata.
+- Persian text: titles, names and tags normalised (ي/ك, spaces, ZWNJ); tags are one per spelling.
+- Settings: `BLOG_AUTHOR_ROLES`, `BLOG_WORDS_PER_MINUTE`, `BLOG_PAGE_SIZE`, `BLOG_MAX_TAGS_PER_POST`, `BLOG_FEED_ITEMS`, `BLOG_TOC_MIN_HEADINGS`.
+- Migrations: `blog.0001_initial` (tables, constraint, indexes, permission), `blog.0002_seed` (page row and two sections; create only; reversible).
+- Docs: `docs/apps/blog.md`, `docs/database.md`, `docs/database-mermaid.md`, ADR-026, ADR-025 (a consequence line).
+
 ## Added (public «معلمان» page)
 
 - New public page `/teachers/` (`website:teachers`, GET/HEAD): an intro, the published teachers grouped by department with filter chips (`?group=<id>`; works without JS, `teachers.js` swaps a `?partial=1` fragment), and a closing call to action to the contact page. Each teacher shows a portrait (or their initial), name, specialty and experience; their own sentence is written in red pen on a strip of notebook paper; «درباره …» opens the bio and education. A link `/teachers/#<slug>` opens that teacher.

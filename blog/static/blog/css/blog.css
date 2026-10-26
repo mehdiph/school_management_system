@@ -1,0 +1,1429 @@
+/* ==========================================================================
+   The public blog («روزنامه دیواری», plan §4) — mobile-first.
+   Loaded after website/css/nav.css and index.css (the navbar and the
+   footer). Breakpoints: 576 / 768 / 992 / 1200px.
+
+   The school's wall newspaper: a painted wall, white sheets edged with
+   pinking shears, strips of tape in the section's colour, and one loud
+   thing per page (the masthead, a section's card, a post's cover).
+   Long text is always navy on white. Logical properties only (RTL). No
+   images: the pinking edge is a CSS mask, tape and photo corners are
+   pseudo-elements.
+   ========================================================================== */
+
+@font-face {
+    font-family: "Vazirmatn VF";
+    /* The self-hosted variable font (100–900) of the teacher panel. */
+    src: url("../../fonts/Vazirmatn-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    /* The wall, the sheets and the ink. Contrast (WCAG 2.x): ink on the
+       sheet 14.1:1, on the wall 12.3:1; soft ink 7.4:1 / 6.4:1. */
+    --bl-wall: #e7f0fb;
+    --bl-sheet: #ffffff;
+    --bl-ink: #1e2a4a;
+    --bl-ink-soft: #4a5573;
+
+    /* Coloured card. Navy on every card passes (5.2–9.8:1); each -ink
+       step passes on white (5.9–7.1:1) and under white text. */
+    --bl-tomato: #ff7a59;
+    --bl-tomato-ink: #b33a1c;
+    --bl-sunflower: #ffd23f;
+    --bl-sunflower-ink: #7a5600;
+    --bl-grass: #5cc98f;
+    --bl-grass-ink: #1a7148;
+    --bl-sky: #5db2ff;
+    --bl-sky-ink: #1a5ea8;
+    --bl-grape: #a58bff;
+    --bl-grape-ink: #5a3ccc;
+    --bl-bubblegum: #ff94c6;
+    --bl-bubblegum-ink: #a8306b;
+
+    /* A sheet's shadow: short and hard, paper on a wall. */
+    --bl-pinned: drop-shadow(0 2px 0 rgba(30, 42, 74, 0.16)) drop-shadow(0 6px 10px rgba(30, 42, 74, 0.08));
+    --bl-tooth: 12px; /* one tooth of the pinking shears */
+    --bl-measure: 66ch;
+    --bl-gap: clamp(20px, 3vw, 32px);
+    --bl-touch: 44px;
+}
+
+/* A section's paper: its card and the ink of its coloured text. */
+.bl-paper--tomato { --paper: var(--bl-tomato); --paper-ink: var(--bl-tomato-ink); }
+.bl-paper--sunflower { --paper: var(--bl-sunflower); --paper-ink: var(--bl-sunflower-ink); }
+.bl-paper--grass { --paper: var(--bl-grass); --paper-ink: var(--bl-grass-ink); }
+.bl-paper--sky { --paper: var(--bl-sky); --paper-ink: var(--bl-sky-ink); }
+.bl-paper--grape { --paper: var(--bl-grape); --paper-ink: var(--bl-grape-ink); }
+.bl-paper--bubblegum { --paper: var(--bl-bubblegum); --paper-ink: var(--bl-bubblegum-ink); }
+
+/* ===== The wall ===== */
+body.blog-page {
+    background-color: var(--bl-wall);
+    background-image: none;
+}
+
+.bl {
+    --paper: var(--bl-sky);
+    --paper-ink: var(--bl-sky-ink);
+    /* Tilted sheets and cut-outs may reach past the edge by a pixel or two:
+       clip them, never scroll the page (clip keeps position: sticky). */
+    overflow-x: clip;
+    padding-block: 8px 24px;
+    color: var(--bl-ink);
+    font-size: 1rem;
+    line-height: 1.9;
+}
+
+/* base.css gives every element the static font: the blog uses the
+   variable one, for its real 800 and 900. Icons are <i>. */
+.bl,
+.bl *:not(i) {
+    font-family: "Vazirmatn VF", "Vazirmatn", Tahoma, sans-serif;
+}
+
+.bl .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.bl a {
+    color: inherit;
+}
+
+/* base.css resets ul but not ol: the blog's own lists of links have no
+   markers (the table of contents keeps its Persian numbers). */
+.bl-crumbs__list,
+.bl-pages__list {
+    list-style: none;
+}
+
+/* Focus: 3px navy with a sunflower gap, visible on white, the wall and
+   every card. */
+.bl a:focus-visible,
+.bl button:focus-visible,
+.bl input:focus-visible,
+.bl summary:focus-visible {
+    outline: 3px solid var(--bl-ink);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--bl-sunflower);
+}
+
+.bl-block {
+    margin-block: clamp(28px, 5vw, 48px) 0;
+}
+
+.bl .bl-heading {
+    margin-block-end: 18px;
+    font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.6rem);
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+/* Pinking shears: a CSS mask of small teeth on the bottom edge of a sheet
+   (and both edges of a cut-out). A mask also cuts off shadows and tape,
+   so those go on the parent. */
+
+/* ===== Masthead: the one loud thing of the home page ===== */
+.bl-masthead {
+    padding-block: clamp(20px, 5vw, 56px) 8px;
+}
+
+.bl .bl-masthead__title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28em 0.32em;
+    margin-block-end: 0.5em;
+    font-size: clamp(2.4rem, 1.4rem + 4.6vw, 4.6rem);
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+/* A word cut from card with pinking shears top and bottom, held by tape. */
+.bl-cut {
+    --tilt: -2deg;
+    position: relative;
+    display: inline-block;
+    isolation: isolate;
+    padding: 0.12em 0.42em 0.22em;
+    color: var(--bl-ink);
+    transform: rotate(var(--tilt));
+    filter: var(--bl-pinned);
+}
+
+.bl-cut::before {
+    /* the card itself, pinked on both edges */
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--paper);
+    mask:
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--bl-tooth) 51% repeat-x,
+        conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--bl-tooth) 51% repeat-x;
+}
+
+.bl-cut::after {
+    /* tape */
+    content: "";
+    position: absolute;
+    inset-block-start: -0.2em;
+    inset-inline-start: 50%;
+    width: 1.3em;
+    height: 0.36em;
+    background-color: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 1px 0 rgba(30, 42, 74, 0.12);
+    transform: translateX(50%) rotate(-4deg);
+}
+
+.bl-masthead .bl-cut:nth-child(6n + 1) { --tilt: -2.5deg; }
+.bl-masthead .bl-cut:nth-child(6n + 2) { --tilt: 1.8deg; }
+.bl-masthead .bl-cut:nth-child(6n + 3) { --tilt: -1.2deg; }
+.bl-masthead .bl-cut:nth-child(6n + 4) { --tilt: 2.4deg; }
+.bl-masthead .bl-cut:nth-child(6n + 5) { --tilt: -1.8deg; }
+.bl-masthead .bl-cut:nth-child(6n + 6) { --tilt: 1.2deg; }
+
+.bl-masthead__intro {
+    max-width: 40rem;
+    margin-block-end: 18px;
+    color: var(--bl-ink-soft);
+    font-size: clamp(1.05rem, 1rem + 0.3vw, 1.2rem);
+    font-weight: 500;
+}
+
+/* The one orchestrated motion: the cut-outs drop onto the board one after
+   another and stick. Once per visit (blog.js), never with reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+    .bl-masthead--settle .bl-cut {
+        animation: bl-stick 600ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+    }
+
+    .bl-masthead--settle .bl-cut:nth-child(2) { animation-delay: 110ms; }
+    .bl-masthead--settle .bl-cut:nth-child(3) { animation-delay: 220ms; }
+    .bl-masthead--settle .bl-cut:nth-child(n + 4) { animation-delay: 330ms; }
+}
+
+@keyframes bl-stick {
+    from {
+        opacity: 0;
+        transform: translateY(-0.6em) rotate(calc(var(--tilt) * -3));
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(0.06em) rotate(calc(var(--tilt) * 1.3));
+    }
+    to {
+        transform: rotate(var(--tilt));
+    }
+}
+
+/* ===== Search ===== */
+.bl-search {
+    display: flex;
+    gap: 8px;
+    max-width: 36rem;
+}
+
+.bl-search__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 48px;
+    padding-inline: 14px;
+    border: 2px solid var(--bl-ink);
+    border-radius: 6px;
+    background-color: var(--bl-sheet);
+    color: var(--bl-ink);
+    font-size: 1rem;
+}
+
+.bl-search__input::placeholder {
+    color: var(--bl-ink-soft);
+    opacity: 1;
+}
+
+.bl-search__button {
+    flex: 0 0 auto;
+    min-height: 48px;
+    padding-inline: 18px;
+    border: 2px solid var(--bl-ink);
+    border-radius: 6px;
+    background-color: var(--bl-ink);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.bl-search__button:hover {
+    background-color: #2e3d66;
+}
+
+/* ===== Section folders (home) ===== */
+.bl-folders {
+    display: grid;
+    gap: 18px;
+}
+
+.bl-folder {
+    position: relative;
+    padding: 16px 20px 18px;
+    border-radius: 0 10px 10px 10px;
+    background-color: var(--paper);
+    color: var(--bl-ink);
+    filter: var(--bl-pinned);
+}
+
+/* the folder's tab */
+.bl-folder::before {
+    content: "";
+    position: absolute;
+    inset-block-end: 100%;
+    inset-inline-start: 0;
+    width: 38%;
+    height: 12px;
+    border-radius: 10px 10px 0 0;
+    background-color: var(--paper);
+}
+
+.bl .bl-folder__title {
+    font-size: clamp(1.4rem, 1.2rem + 0.8vw, 1.8rem);
+    font-weight: 900;
+    line-height: 1.5;
+}
+
+.bl-folder__link {
+    text-decoration: none;
+}
+
+.bl-folder__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.bl-folder:hover .bl-folder__link {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 6px;
+}
+
+.bl-folder__text {
+    max-width: 32rem;
+    margin-block: 2px 6px;
+    font-weight: 500;
+}
+
+.bl-folder__count {
+    font-weight: 800;
+}
+
+/* ===== Labels: the section chip and the reading-time tag ===== */
+.bl-labels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-block-end: 8px;
+}
+
+.bl-chip {
+    display: inline-block;
+    padding: 0 0.6em;
+    border-radius: 3px;
+    background-color: var(--paper);
+    color: var(--bl-ink);
+    font-size: 0.875rem;
+    font-weight: 800;
+    line-height: 1.9;
+    text-decoration: none;
+}
+
+.bl-chip--quiet {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px var(--paper);
+}
+
+a.bl-chip {
+    min-height: 2em;
+}
+
+a.bl-chip:hover {
+    text-decoration: underline;
+}
+
+/* a small paper tag: dashed edge, hole punched at the start */
+.bl-minutes {
+    position: relative;
+    display: inline-block;
+    padding-inline: 1.4em 0.6em;
+    border: 1px dashed var(--bl-ink-soft);
+    border-radius: 3px;
+    color: var(--bl-ink-soft);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.8;
+}
+
+.bl-minutes::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.5em;
+    inset-block-start: 50%;
+    width: 0.4em;
+    height: 0.4em;
+    border: 1px solid var(--bl-ink-soft);
+    border-radius: 50%;
+    transform: translateY(-50%);
+}
+
+/* ===== Sheets (post cards) ===== */
+.bl-grid {
+    display: grid;
+    gap: calc(var(--bl-gap) + 8px) var(--bl-gap);
+    padding-block-start: 10px;
+}
+
+.bl-sheet {
+    position: relative;
+    height: 100%;
+    filter: var(--bl-pinned);
+}
+
+/* tape in the section's colour, written section name beside it (the chip) */
+.bl-sheet::before {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    inset-block-start: -10px;
+    inset-inline-start: 22px;
+    width: 76px;
+    height: 22px;
+    background-color: var(--paper);
+    opacity: 0.88;
+    transform: rotate(-3deg);
+}
+
+.bl-sheet__paper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-block-end: calc(var(--bl-tooth) / 2);
+    background-color: var(--bl-sheet);
+    mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--bl-tooth) 100%;
+}
+
+.bl-sheet__photo {
+    margin: 14px 14px 0;
+}
+
+.bl-sheet__photo img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+.bl-sheet__body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 16px 20px 20px;
+}
+
+.bl .bl-sheet__title {
+    margin-block-end: 6px;
+    font-size: clamp(1.1rem, 1rem + 0.5vw, 1.3rem);
+    font-weight: 800;
+    line-height: 1.6;
+}
+
+.bl .bl-sheet--text .bl-sheet__title {
+    font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
+}
+
+.bl-sheet__link {
+    text-decoration: none;
+}
+
+/* the whole sheet is the title's link: one link per post for screen readers */
+.bl-sheet__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.bl-sheet__link:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+.bl-sheet:has(.bl-sheet__link:focus-visible) {
+    outline: 3px solid var(--bl-ink);
+    outline-offset: 4px;
+}
+
+.bl-sheet:hover .bl-sheet__link {
+    text-decoration: underline;
+    text-decoration-color: var(--paper);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 6px;
+}
+
+.bl-sheet__excerpt {
+    margin-block-end: 14px;
+    color: var(--bl-ink-soft);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+}
+
+.bl-sheet__by {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin-block-start: auto;
+    color: var(--bl-ink-soft);
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.bl-sheet__author {
+    color: var(--bl-ink);
+    font-weight: 700;
+}
+
+.bl-sheet__date {
+    margin-inline-start: auto;
+}
+
+/* ===== Featured ===== */
+.bl-featured {
+    display: grid;
+    gap: calc(var(--bl-gap) + 8px) var(--bl-gap);
+    padding-block-start: 10px;
+}
+
+.bl .bl-sheet--lead .bl-sheet__title {
+    font-size: clamp(1.35rem, 1.1rem + 1.1vw, 1.9rem);
+    line-height: 1.5;
+}
+
+/* photo corners holding a photo on the sheet */
+.bl-photo {
+    position: relative;
+}
+
+.bl-photo::after {
+    --corner: rgba(30, 42, 74, 0.85);
+    --corner-size: 20px;
+    content: "";
+    position: absolute;
+    inset: -4px;
+    pointer-events: none;
+    background:
+        linear-gradient(135deg, var(--corner) 50%, transparent 50%) top left / var(--corner-size) var(--corner-size) no-repeat,
+        linear-gradient(225deg, var(--corner) 50%, transparent 50%) top right / var(--corner-size) var(--corner-size) no-repeat,
+        linear-gradient(45deg, var(--corner) 50%, transparent 50%) bottom left / var(--corner-size) var(--corner-size) no-repeat,
+        linear-gradient(315deg, var(--corner) 50%, transparent 50%) bottom right / var(--corner-size) var(--corner-size) no-repeat;
+}
+
+/* ===== Stickers (tags) ===== */
+.bl-stickers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.bl-sticker {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bl-touch);
+    padding-inline: 16px;
+    border: 0;
+    border-radius: 999px;
+    background-color: var(--paper);
+    box-shadow: 0 2px 0 rgba(30, 42, 74, 0.18);
+    color: var(--bl-ink);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.bl-stickers li:nth-child(6n + 1) .bl-sticker { --paper: var(--bl-sunflower); }
+.bl-stickers li:nth-child(6n + 2) .bl-sticker { --paper: var(--bl-sky); }
+.bl-stickers li:nth-child(6n + 3) .bl-sticker { --paper: var(--bl-bubblegum); }
+.bl-stickers li:nth-child(6n + 4) .bl-sticker { --paper: var(--bl-grass); }
+.bl-stickers li:nth-child(6n + 5) .bl-sticker { --paper: var(--bl-tomato); }
+.bl-stickers li:nth-child(6n + 6) .bl-sticker { --paper: var(--bl-grape); }
+
+a.bl-sticker:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.bl-sticker--large {
+    --paper: var(--bl-sunflower);
+    min-height: 0;
+    padding: 0.1em 0.7em 0.2em;
+    font-size: inherit;
+    font-weight: 900;
+    cursor: default;
+}
+
+/* ===== Pages ===== */
+.bl-pages {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-block-start: 36px;
+}
+
+.bl-pages__where {
+    font-weight: 700;
+}
+
+.bl-pages__list {
+    display: none;
+    gap: 6px;
+}
+
+.bl-pages__step,
+.bl-pages__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--bl-touch);
+    min-height: var(--bl-touch);
+    padding-inline: 12px;
+    border-radius: 6px;
+    background-color: var(--bl-sheet);
+    box-shadow: 0 2px 0 rgba(30, 42, 74, 0.16);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.bl-pages__step:hover,
+.bl-pages__number:hover {
+    text-decoration: underline;
+}
+
+.bl-pages__number[aria-current="page"] {
+    background-color: var(--bl-ink);
+    color: #fff;
+}
+
+.bl-pages__gap {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bl-touch);
+    color: var(--bl-ink-soft);
+}
+
+/* ===== Empty states and counts ===== */
+.bl-empty {
+    max-width: 40rem;
+    padding: 20px 22px;
+    border-radius: 6px;
+    background-color: var(--bl-sheet);
+    box-shadow: 0 2px 0 rgba(30, 42, 74, 0.12);
+    font-weight: 500;
+}
+
+.bl-empty a,
+.bl-result-count a {
+    color: var(--bl-sky-ink);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.bl-result-count {
+    margin-block-end: 16px;
+    color: var(--bl-ink-soft);
+    font-weight: 600;
+}
+
+/* ===== Breadcrumbs ===== */
+.bl-crumbs {
+    margin-block: 8px 4px;
+    font-size: 0.9375rem;
+}
+
+.bl-crumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.bl-crumbs__list li + li::before {
+    content: "›";
+    padding-inline: 0.5em;
+    color: var(--bl-ink-soft);
+}
+
+.bl-crumbs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bl-touch);
+    color: var(--bl-sky-ink);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.bl-crumbs [aria-current="page"] {
+    color: var(--bl-ink-soft);
+}
+
+/* ===== List pages: the section's single card word ===== */
+.bl-listing-head {
+    padding-block: clamp(12px, 3vw, 28px) 4px;
+}
+
+.bl .bl-listing-head__title {
+    margin-block-end: 0.35em;
+    font-size: clamp(2rem, 1.3rem + 3.2vw, 3.6rem);
+    font-weight: 900;
+    line-height: 1.3;
+}
+
+.bl-listing-head .bl-cut {
+    --tilt: -1.5deg;
+}
+
+.bl .bl-listing-head__title--plain {
+    font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.4rem);
+    font-weight: 850;
+}
+
+.bl-listing-head__kicker {
+    margin-block-end: 10px;
+}
+
+.bl-listing-head__text {
+    max-width: 40rem;
+    color: var(--bl-ink-soft);
+    font-size: 1.0625rem;
+    font-weight: 500;
+}
+
+.bl-listing-head__more a,
+.bl-author__links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bl-touch);
+    color: var(--bl-sky-ink);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.bl-listing-head .bl-search {
+    margin-block-start: 6px;
+}
+
+.bl-author-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 20px;
+}
+
+/* Category chips of a section */
+.bl-shelves {
+    margin-block-start: 18px;
+}
+
+.bl-shelves__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.bl-shelf {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--bl-touch);
+    padding-inline: 14px;
+    border-radius: 6px;
+    background-color: var(--bl-sheet);
+    box-shadow: inset 0 0 0 2px var(--paper);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.bl-shelf:hover {
+    text-decoration: underline;
+}
+
+.bl-shelf[aria-current="page"] {
+    background-color: var(--paper);
+}
+
+/* ===== Avatars ===== */
+.bl-avatar {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    overflow: hidden;
+    border: 3px solid var(--bl-sheet);
+    border-radius: 50%;
+    background-color: var(--paper);
+    box-shadow: 0 0 0 2px var(--paper);
+    color: var(--bl-ink);
+    font-size: 1.2rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.bl-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bl-avatar--small {
+    width: 32px;
+    height: 32px;
+    border-width: 2px;
+    font-size: 0.9rem;
+}
+
+.bl-avatar--large {
+    width: 88px;
+    height: 88px;
+    border-width: 4px;
+    font-size: 2rem;
+}
+
+/* ===== The post: one wide, straight sheet built for reading ===== */
+.bl-preview-note {
+    margin-block: 12px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    background-color: var(--bl-sunflower);
+    color: var(--bl-ink);
+}
+
+.bl-reading {
+    display: grid;
+    gap: var(--bl-gap);
+    margin-block-start: 14px;
+}
+
+.bl-post {
+    position: relative;
+    min-width: 0;
+    filter: var(--bl-pinned);
+}
+
+.bl-post::before {
+    /* tape, wider than on the cards */
+    content: "";
+    position: absolute;
+    z-index: 2;
+    inset-block-start: -11px;
+    inset-inline-start: 50%;
+    width: 120px;
+    height: 24px;
+    background-color: var(--paper);
+    opacity: 0.88;
+    transform: translateX(50%) rotate(-2deg);
+}
+
+.bl-post__paper {
+    padding: clamp(24px, 5vw, 56px) clamp(16px, 5vw, 56px) calc(clamp(24px, 4vw, 44px) + var(--bl-tooth));
+    background-color: var(--bl-sheet);
+    mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--bl-tooth) 100%;
+}
+
+.bl .bl-post__title {
+    margin-block: 4px 12px;
+    font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.9rem);
+    font-weight: 850;
+    line-height: 1.45;
+}
+
+.bl-post__lead {
+    max-width: var(--bl-measure);
+    margin-block-end: 18px;
+    color: var(--bl-ink-soft);
+    font-size: 1.2rem;
+    font-weight: 500;
+    line-height: 1.95;
+}
+
+.bl-byline {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 12px;
+    padding-block: 12px;
+    border-block: 1px dashed rgba(30, 42, 74, 0.22);
+}
+
+.bl-byline .bl-avatar {
+    grid-row: span 2;
+}
+
+.bl-byline__name {
+    font-weight: 800;
+}
+
+a.bl-byline__name {
+    color: var(--bl-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--paper);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+}
+
+.bl-byline__when {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+    color: var(--bl-ink-soft);
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.bl-post__cover {
+    margin-block: 26px 4px;
+}
+
+.bl-post__cover img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 3px;
+}
+
+/* ----- Table of contents: a <details> under the byline, a sticky note beside the sheet from 1200px ----- */
+.bl-toc--fold {
+    margin-block-start: 16px;
+    padding-inline: 14px;
+    border-radius: 6px;
+    background-color: #fff6cf;
+}
+
+.bl-toc--fold .bl-toc__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--bl-touch);
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+}
+
+.bl-toc--fold .bl-toc__title::-webkit-details-marker {
+    display: none;
+}
+
+/* the fold's marker points along the reading direction, and down when open */
+.bl-toc--fold .bl-toc__title::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-block: 5px solid transparent;
+    border-inline-start: 7px solid currentColor;
+}
+
+.bl-toc--fold[open] .bl-toc__title::before {
+    border-block-end: 0;
+    border-block-start: 7px solid currentColor;
+    border-inline: 5px solid transparent;
+}
+
+.bl-toc__list {
+    padding-block-end: 12px;
+    padding-inline-start: 1.4em;
+    list-style: persian;
+}
+
+.bl-toc__item {
+    padding-block: 2px;
+}
+
+.bl-toc__item--sub {
+    margin-inline-start: 1em;
+    list-style-type: "– ";
+    font-size: 0.9375rem;
+}
+
+.bl-toc__list a {
+    text-decoration: underline;
+    text-decoration-color: rgba(30, 42, 74, 0.35);
+    text-underline-offset: 4px;
+}
+
+.bl-toc__list a:hover {
+    text-decoration-color: currentColor;
+}
+
+.bl-toc--note {
+    display: none;
+}
+
+/* ----- The body ----- */
+.bl-prose {
+    max-width: var(--bl-measure);
+    margin-block-start: 26px;
+    font-size: 1.125rem;
+    line-height: 2.05;
+    overflow-wrap: break-word;
+}
+
+.bl-prose > * + * {
+    margin-block-start: 1em;
+}
+
+.bl .bl-prose h2,
+.bl .bl-prose h3 {
+    font-weight: 800;
+    line-height: 1.6;
+    scroll-margin-block-start: 16px;
+}
+
+.bl .bl-prose h2 {
+    margin-block-start: 1.8em;
+    font-size: 1.5rem;
+}
+
+.bl-prose h2::after {
+    content: "";
+    display: block;
+    width: 3.2rem;
+    height: 6px;
+    margin-block-start: 0.2em;
+    border-radius: 3px;
+    background-color: var(--paper);
+}
+
+.bl .bl-prose h3 {
+    margin-block-start: 1.5em;
+    font-size: 1.25rem;
+}
+
+.bl-prose h2 + *,
+.bl-prose h3 + * {
+    margin-block-start: 0.5em;
+}
+
+.bl-prose a {
+    color: var(--paper-ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.bl-prose ul,
+.bl-prose ol {
+    padding-inline-start: 1.6em;
+}
+
+.bl-prose ul {
+    list-style: disc;
+}
+
+.bl-prose ol {
+    list-style: persian;
+}
+
+.bl-prose li + li {
+    margin-block-start: 0.35em;
+}
+
+.bl-prose blockquote {
+    padding: 0.6em 1em;
+    border-inline-start: 6px solid var(--paper);
+    border-radius: 3px;
+    background-color: color-mix(in srgb, var(--paper) 16%, var(--bl-sheet));
+}
+
+.bl-prose figure {
+    margin-block: 1.6em;
+}
+
+.bl-prose img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 3px;
+}
+
+.bl-prose figcaption {
+    margin-block-start: 0.5em;
+    color: var(--bl-ink-soft);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+}
+
+.bl-prose hr {
+    height: 0;
+    margin-block: 2em;
+    border: 0;
+    border-block-start: 2px dashed rgba(30, 42, 74, 0.25);
+}
+
+.bl-prose pre {
+    padding: 0.8em 1em;
+    overflow-x: auto;
+    border-radius: 4px;
+    background-color: #f3f6fb;
+    direction: ltr;
+    text-align: left;
+    font-size: 0.9375rem;
+    white-space: pre;
+}
+
+.bl-prose strong {
+    font-weight: 750;
+}
+
+.bl-post__tags {
+    margin-block-start: 30px;
+}
+
+/* ----- Share, author, question ----- */
+.bl-share {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin-block-start: 26px;
+}
+
+.bl .bl-share__title {
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.bl-share__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.bl-share .bl-sticker {
+    --paper: var(--bl-wall);
+}
+
+.bl-share__copy.is-done {
+    --paper: var(--bl-grass);
+}
+
+.bl-share__address {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    font-size: 0.9375rem;
+}
+
+.bl-share__address input {
+    flex: 1 1 14rem;
+    min-width: 0;
+    min-height: var(--bl-touch);
+    padding-inline: 10px;
+    border: 1px solid var(--bl-ink-soft);
+    border-radius: 6px;
+}
+
+.bl-author {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+    margin-block-start: 30px;
+    padding: 18px;
+    border-radius: 6px;
+    background-color: color-mix(in srgb, var(--paper) 14%, var(--bl-sheet));
+}
+
+.bl-author__text {
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+
+.bl .bl-author__name {
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.bl-author__bio {
+    color: var(--bl-ink-soft);
+}
+
+.bl-author__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 18px;
+}
+
+.bl-post__ask {
+    margin-block-start: 22px;
+    font-weight: 600;
+}
+
+.bl-post__ask a {
+    color: var(--paper-ink);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* ===== Next / previous: two paper tabs ===== */
+.bl-neighbours {
+    display: grid;
+    gap: 14px;
+    margin-block-start: 30px;
+}
+
+.bl-neighbour {
+    display: grid;
+    gap: 2px;
+    min-height: var(--bl-touch);
+    padding: 12px 16px;
+    border-radius: 6px;
+    background-color: var(--bl-sheet);
+    box-shadow: 0 2px 0 rgba(30, 42, 74, 0.14);
+    text-decoration: none;
+}
+
+.bl-neighbour--older {
+    text-align: end;
+}
+
+.bl-neighbour__label {
+    color: var(--bl-ink-soft);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.bl-neighbour__label::before {
+    content: "‹ ";
+}
+
+.bl-neighbour--older .bl-neighbour__label::before {
+    content: "";
+}
+
+.bl-neighbour--older .bl-neighbour__label::after {
+    content: " ›";
+}
+
+.bl-neighbour__title {
+    font-weight: 800;
+}
+
+.bl-neighbour:hover .bl-neighbour__title {
+    text-decoration: underline;
+}
+
+/* ===== Phones: the masthead's cut-outs tilt less ===== */
+@media (max-width: 575.98px) {
+    .bl-masthead .bl-cut {
+        --tilt: -1deg;
+    }
+
+    .bl-masthead .bl-cut:nth-child(even) {
+        --tilt: 1deg;
+    }
+
+    .bl-search__button {
+        padding-inline: 14px;
+    }
+}
+
+@media (min-width: 576px) {
+    .bl-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bl-folders {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bl-featured {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bl-featured .bl-sheet--lead {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 768px) {
+    .bl-pages__where {
+        display: none;
+    }
+
+    .bl-pages__list {
+        display: flex;
+    }
+
+    .bl-prose {
+        font-size: 1.1875rem;
+    }
+
+    .bl-neighbours {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bl-neighbour--older {
+        grid-column: 2;
+    }
+
+    .bl-related .bl-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .bl-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .bl-featured {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .bl-featured .bl-sheet--lead {
+        grid-column: auto;
+        grid-row: span 2;
+    }
+
+    .bl-featured--single {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* On a desktop grid the sheets lean, in a fixed pattern, as if pinned
+       by hand; hover and focus straighten them. On phones and the post
+       page they sit straight. */
+    .bl-grid__item:nth-child(4n + 1) .bl-sheet { transform: rotate(-0.9deg); }
+    .bl-grid__item:nth-child(4n + 2) .bl-sheet { transform: rotate(0.6deg); }
+    .bl-grid__item:nth-child(4n + 3) .bl-sheet { transform: rotate(-0.4deg); }
+    .bl-grid__item:nth-child(4n + 4) .bl-sheet { transform: rotate(1.1deg); }
+
+    .bl-grid .bl-sheet:hover,
+    .bl-grid .bl-sheet:has(.bl-sheet__link:focus-visible) {
+        transform: translateY(-2px);
+    }
+
+    .bl-post {
+        max-width: 760px;
+    }
+
+    .bl-reading {
+        justify-content: center;
+        grid-template-columns: minmax(0, 760px);
+    }
+}
+
+@media (min-width: 992px) and (prefers-reduced-motion: no-preference) {
+    .bl-grid .bl-sheet {
+        transition: transform 0.18s ease;
+    }
+}
+
+@media (min-width: 1200px) {
+    .bl-reading--toc {
+        grid-template-columns: minmax(0, 760px) 260px;
+        align-items: start;
+    }
+
+    .bl-toc--fold {
+        display: none;
+    }
+
+    .bl-reading__side {
+        position: sticky;
+        inset-block-start: 20px;
+    }
+
+    /* a yellow sticky note */
+    .bl-toc--note {
+        display: block;
+        padding: 18px 18px 8px;
+        background-color: var(--bl-sunflower);
+        box-shadow: 0 2px 0 rgba(30, 42, 74, 0.16), 0 10px 14px -8px rgba(30, 42, 74, 0.3);
+        transform: rotate(1deg);
+    }
+
+    .bl .bl-toc--note .bl-toc__title {
+        margin-block-end: 6px;
+        font-size: 1.05rem;
+        font-weight: 800;
+    }
+}
+
+/* ===== Print: the sheet only, with its address under the title ===== */
+@media print {
+    body.blog-page {
+        background: #fff;
+    }
+
+    .main-header,
+    .site-footer,
+    .bl-crumbs,
+    .bl-share,
+    .bl-neighbours,
+    .bl-related,
+    .bl-reading__side,
+    .bl-toc,
+    .bl-post__ask,
+    .bl-preview-note {
+        display: none;
+    }
+
+    .bl-post {
+        max-width: none;
+        filter: none;
+    }
+
+    .bl-post__paper {
+        padding: 0;
+        mask: none;
+    }
+
+    .bl-post::before {
+        display: none;
+    }
+
+    .bl-post__title::after {
+        content: attr(data-print-url);
+        display: block;
+        margin-block-start: 0.4em;
+        color: var(--bl-ink-soft);
+        font-size: 0.8rem;
+        font-weight: 400;
+        direction: ltr;
+        text-align: end;
+    }
+
+    .bl-prose {
+        max-width: none;
+        font-size: 12pt;
+    }
+
+    .bl-prose a::after {
+        content: " (" attr(href) ")";
+        font-size: 0.85em;
+        font-weight: 400;
+    }
+}

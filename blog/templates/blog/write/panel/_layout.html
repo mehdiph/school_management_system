@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+{% comment %}
+  Shell of «نوشته‌های من» for everyone but teachers (supervisors,
+  counselors, the director, the system admin): base.html with the sidebar
+  and the supervisor panel's components, as the director panel does.
+{% endcomment %}
+
+{% block title %}{% block heading_title %}{% endblock %} | نوشته‌های من{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'supervisor/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/attendance.css' %}">
+<link rel="stylesheet" href="{% static 'supervisor/css/panel.css' %}">
+{% block page_styles %}{% endblock %}
+<link rel="stylesheet" href="{% static 'blog/css/write.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+  {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content bw bw--panel">
+{% block page %}{% endblock %}
+</div>
+{% endblock %}

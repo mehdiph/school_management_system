@@ -1,0 +1,16 @@
+{% comment %}The author under the post: photo, name, bio, and links to their page and their teacher card (D5).{% endcomment %}
+{% with author=post.author %}
+<aside class="bl-author" aria-labelledby="bl-author-name">
+    {% include "blog/_avatar.html" with author=author size="large" %}
+    <div class="bl-author__text">
+        <h2 class="bl-author__name" id="bl-author-name">{{ author.name }}</h2>
+        {% if author.public_bio %}<p class="bl-author__bio">{{ author.public_bio|linebreaksbr }}</p>{% endif %}
+        {% if author.show_profile and not post_page.preview or author.teacher_page_url %}
+        <p class="bl-author__links">
+            {% if author.show_profile and not post_page.preview %}<a href="{{ author.get_absolute_url }}">همه نوشته‌های {{ author.name }}</a>{% endif %}
+            {% if author.teacher_page_url %}<a href="{{ author.teacher_page_url }}">صفحه معلم</a>{% endif %}
+        </p>
+        {% endif %}
+    </div>
+</aside>
+{% endwith %}

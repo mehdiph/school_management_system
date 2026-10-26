@@ -237,7 +237,7 @@ Both are optional and read with `getattr(settings, ...)`.
 
 * No N+1 queries: related objects are joined with `select_related`, statistics are annotations, chips and timetable slots are one query per page.
 * `SchoolSession` has an index on `(class_subject, date)` (`teaching` migration `0003`) for the per-class-subject date-range reads.
-* Query counts are locked in `supervisor/test_training_sessions.py` (`QueryCountTests`). Every request costs 9 queries of shared overhead (session, user, profiles, branch middleware, sidebar context). On top of that: sessions page 8, teachers page 5, timeline and detail fragments 2 each.
+* Query counts are locked in `supervisor/test_training_sessions.py` (`QueryCountTests`). Every request costs 9 queries of shared overhead (session, user, profiles, branch middleware, sidebar context); a full page adds 2 for the footer and 1 for the sidebar's «نوشته‌های من» check (blog, lazy: the fragments don't run it). On top of that: sessions page 8, teachers page 5, timeline and detail fragments 2 each. A supervisor who is a blog author sees «نوشته‌های من» in the sidebar.
 
 ---
 

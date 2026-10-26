@@ -1,0 +1,6 @@
+{% comment %}Tags as round stickers: `tags` (Tag rows, active ones only).{% endcomment %}
+<ul class="bl-stickers" role="list">
+    {% for tag in tags %}
+    <li><a class="bl-sticker" href="{{ tag.get_absolute_url }}">{{ tag.name }}</a></li>
+    {% endfor %}
+</ul>

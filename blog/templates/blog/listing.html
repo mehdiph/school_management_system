@@ -1,0 +1,74 @@
+{% extends "blog/base_public.html" %}
+{% comment %}
+Section, category, tag, author and search pages share this list; only
+the header differs (plan §4.4). `listing` is a blog.selectors.Listing.
+{% endcomment %}
+{% load jalali_tags %}
+
+{% block main_class %} bl--listing bl--{{ listing.kind }}{% endblock %}
+
+{% block blog %}
+{% include "blog/_breadcrumbs.html" with crumbs=meta.crumbs %}
+
+<header class="bl-listing-head{% if listing.section %} bl-paper--{{ listing.section.paper }}{% endif %}">
+    {% if listing.kind == "section" %}
+    <h1 class="bl-listing-head__title"><span class="bl-cut">{{ listing.section.title }}</span></h1>
+    {% if listing.section.description %}<p class="bl-listing-head__text">{{ listing.section.description }}</p>{% endif %}
+
+    {% elif listing.kind == "category" %}
+    <p class="bl-listing-head__kicker"><a class="bl-chip" href="{{ listing.section.get_absolute_url }}">{{ listing.section.title }}</a></p>
+    <h1 class="bl-listing-head__title"><span class="bl-cut">{{ listing.category.title }}</span></h1>
+
+    {% elif listing.kind == "tag" %}
+    <h1 class="bl-listing-head__title"><span class="bl-sticker bl-sticker--large"><span class="visually-hidden">برچسب: </span>{{ listing.tag.name }}</span></h1>
+    <p class="bl-listing-head__text">{{ posts.paginator.count|fa_digits }} نوشته با این برچسب</p>
+
+    {% elif listing.kind == "author" %}
+    <div class="bl-author-head">
+        {% include "blog/_avatar.html" with author=listing.author size="large" %}
+        <div>
+            <h1 class="bl-listing-head__title bl-listing-head__title--plain">{{ listing.author.name }}</h1>
+            {% if listing.author.public_bio %}<p class="bl-listing-head__text">{{ listing.author.public_bio|linebreaksbr }}</p>{% endif %}
+            {% if listing.author.teacher_page_url %}<p class="bl-listing-head__more"><a href="{{ listing.author.teacher_page_url }}">صفحه معلم</a></p>{% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <h1 class="bl-listing-head__title bl-listing-head__title--plain">{% if listing.query %}جستجوی «{{ listing.query }}»{% else %}جستجو در نوشته‌ها{% endif %}</h1>
+    {% include "blog/_search_form.html" with query=listing.query %}
+    {% endif %}
+</header>
+
+{% if listing.categories %}
+<nav class="bl-shelves" aria-label="دسته‌های {{ listing.section.title }}">
+    <ul class="bl-shelves__list" role="list">
+        <li><a class="bl-shelf" href="{{ listing.section.get_absolute_url }}"{% if listing.kind == "section" %} aria-current="page"{% endif %}>همه</a></li>
+        {% for category in listing.categories %}
+        <li><a class="bl-shelf" href="{{ category.get_absolute_url }}"{% if category.pk == listing.category.pk %} aria-current="page"{% endif %}>{{ category.title }}</a></li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+
+<section class="bl-block" aria-labelledby="bl-list-title">
+    {% if listing.kind == "search" %}
+    <h2 class="visually-hidden" id="bl-list-title">نتیجه‌ها</h2>
+    {% if posts is None %}
+    <p class="bl-empty">دست‌کم دو حرف بنویسید تا در عنوان و متن نوشته‌ها جستجو شود.</p>
+    {% elif posts.paginator.count %}
+    <p class="bl-result-count" role="status">{{ posts.paginator.count|fa_digits }} نوشته پیدا شد.</p>
+    {% else %}
+    <p class="bl-empty" role="status">نوشته‌ای با «{{ listing.query }}» پیدا نشد. واژه دیگری را امتحان کنید یا <a href="{% url 'blog:home' %}">همه نوشته‌ها</a> را ببینید.</p>
+    {% endif %}
+    {% else %}
+    <h2 class="visually-hidden" id="bl-list-title">نوشته‌ها{% if posts.number > 1 %}، صفحه {{ posts.number|fa_digits }}{% endif %}</h2>
+    {% endif %}
+
+    {% if posts.object_list %}
+    {% include "blog/_grid.html" with posts=posts.object_list heading="h3" %}
+    {% include "blog/_pagination.html" %}
+    {% elif listing.kind != "search" %}
+    <p class="bl-empty">هنوز نوشته‌ای در این‌جا منتشر نشده است. <a href="{% url 'blog:home' %}">نوشته‌های دیگر وبلاگ</a> را ببینید.</p>
+    {% endif %}
+</section>
+{% endblock blog %}

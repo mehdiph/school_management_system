@@ -1,0 +1,24 @@
+{% load blog_tags %}
+{% if meta.description %}<meta name="description" content="{{ meta.description }}">{% endif %}
+{% if meta.noindex %}<meta name="robots" content="noindex">{% endif %}
+{% if meta.canonical %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
+<meta property="og:site_name" content="{{ site_settings.site_name }}">
+<meta property="og:locale" content="fa_IR">
+<meta property="og:type" content="{{ meta.og_type }}">
+<meta property="og:title" content="{{ meta.title }}">
+{% if meta.description %}<meta property="og:description" content="{{ meta.description }}">{% endif %}
+{% if meta.canonical %}<meta property="og:url" content="{{ meta.canonical }}">{% endif %}
+{% if meta.image %}
+<meta property="og:image" content="{{ meta.image }}">
+{% if meta.image_alt %}<meta property="og:image:alt" content="{{ meta.image_alt }}">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+{% else %}
+<meta name="twitter:card" content="summary">
+{% endif %}
+{% if meta.published %}
+<meta property="article:published_time" content="{{ meta.published|iso }}">
+<meta property="article:modified_time" content="{{ meta.modified|iso }}">
+{% endif %}
+{% if meta.feed_url %}<link rel="alternate" type="application/atom+xml" title="{{ meta.feed_title }}" href="{{ meta.feed_url }}">{% endif %}
+{% for block in meta.json_ld %}{{ block|ld_json }}
+{% endfor %}

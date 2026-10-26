@@ -1,0 +1,203 @@
+{% extends "teacher/base.html" %}
+{% load static jalali_tags %}
+
+{% comment %}
+  Writing or reading one post in the teacher panel (write_new, write_edit).
+  With a form: the author's draft. Without one: the post read-only, with
+  the reason and the steps the author still has (withdraw, reopen). The
+  other panels' copy is blog/write/panel/edit.html.
+{% endcomment %}
+
+{% block title %}{% if post %}{{ post.title|default:"نوشته" }}{% else %}نوشته تازه{% endif %} | نوشته‌های من{% endblock %}
+{% block page_title %}نوشته‌های من{% endblock %}
+
+{% block styles %}
+{% if form %}{{ form.media.css }}{% endif %}
+<link rel="stylesheet" href="{% static 'blog/css/write.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="bw">
+{% if form %}
+<form method="post" enctype="multipart/form-data" class="bw-form" novalidate data-bw-form>
+    {% csrf_token %}
+    <header class="ui-page-head">
+        <div>
+            <h1 class="ui-page-head__title">{% if post %}ویرایش نوشته{% else %}نوشته تازه{% endif %}</h1>
+            <p class="ui-page-head__subtitle">
+                {% if post %}در «{{ post.section.title }}» · {{ post.status_label }} · آخرین ذخیره: {{ post.updated_at|jalali_datetime }}{% else %}تا وقتی برای بررسی نفرستید، فقط خودتان آن را می‌بینید.{% endif %}
+            </p>
+        </div>
+        <div class="ui-page-head__actions">
+            <a class="ui-btn ui-btn--ghost" href="{% url 'blog:write' %}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-arrow-forward"></use></svg>
+                فهرست نوشته‌ها
+            </a>
+            {% if post %}
+            <a class="ui-btn ui-btn--secondary" href="{{ post.preview_url }}" target="_blank" rel="noopener">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-eye"></use></svg>
+                پیش‌نمایش آخرین ذخیره
+            </a>
+            {% endif %}
+            <button type="submit" name="action" value="save" class="ui-btn ui-btn--secondary">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-check"></use></svg>
+                ذخیره پیش‌نویس
+            </button>
+        </div>
+    </header>
+
+    {% if post.review_note %}
+    <p class="ui-alert ui-alert--warning">
+        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <span>ویراستار این نوشته را برای اصلاح برگرداند: «{{ post.review_note }}»</span>
+    </p>
+    {% endif %}
+
+    <p class="ui-alert ui-alert--info bw-reminder">
+        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-shield"></use></svg>
+        <span>{{ page.author_reminder|linebreaksbr }}</span>
+    </p>
+
+    {% if form.non_field_errors %}
+    <div class="ui-alert ui-alert--danger" role="alert">
+        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+    </div>
+    {% elif form.errors %}
+    <p class="ui-alert ui-alert--danger" role="alert">
+        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <span>نوشته ذخیره نشد؛ موارد مشخص‌شده را درست کنید.</span>
+    </p>
+    {% endif %}
+
+    <div class="bw-grid">
+        <section class="ui-card bw-grid__main" aria-labelledby="bwTextTitle">
+            <header class="ui-card__header"><h2 class="ui-card__title" id="bwTextTitle">متن نوشته</h2></header>
+            <div class="ui-card__body ui-form">
+                {% include "blog/write/teacher/_field.html" with field=form.title %}
+                {% include "blog/write/teacher/_field.html" with field=form.body %}
+                {% include "blog/write/teacher/_field.html" with field=form.excerpt %}
+            </div>
+        </section>
+
+        <div class="bw-grid__side">
+            <section class="ui-card" aria-labelledby="bwPlaceTitle">
+                <header class="ui-card__header"><h2 class="ui-card__title" id="bwPlaceTitle">جای نوشته</h2></header>
+                <div class="ui-card__body ui-form">
+                    {% if form.section.is_hidden %}
+                    {{ form.section }}
+                    <p class="ui-help">بخش: «{{ form.sections.0.title }}»</p>
+                    {% else %}
+                    {% include "blog/write/teacher/_field.html" with field=form.section %}
+                    {% endif %}
+                    {% include "blog/write/teacher/_field.html" with field=form.category %}
+                    {% include "blog/write/teacher/_field.html" with field=form.tag_names %}
+                </div>
+            </section>
+
+            <section class="ui-card" aria-labelledby="bwCoverTitle">
+                <header class="ui-card__header"><h2 class="ui-card__title" id="bwCoverTitle">تصویر شاخص</h2></header>
+                <div class="ui-card__body ui-form">
+                    {% include "blog/write/teacher/_field.html" with field=form.cover %}
+                    {% include "blog/write/teacher/_field.html" with field=form.cover_alt %}
+                </div>
+            </section>
+
+            <details class="ui-card bw-more"{% if form.meta_title.errors or form.meta_description.errors or form.slug.errors %} open{% endif %}>
+                <summary class="ui-card__header"><span class="ui-card__title">تنظیمات جستجو</span></summary>
+                <div class="ui-card__body ui-form">
+                    {% include "blog/write/teacher/_field.html" with field=form.meta_title %}
+                    {% include "blog/write/teacher/_field.html" with field=form.meta_description %}
+                    {% if form.slug %}{% include "blog/write/teacher/_field.html" with field=form.slug %}{% endif %}
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <section class="ui-card" aria-labelledby="bwSendTitle">
+        <header class="ui-card__header"><h2 class="ui-card__title" id="bwSendTitle">ارسال برای بررسی</h2></header>
+        <div class="ui-card__body ui-form">
+            <div class="ui-field">
+                <label class="bw-check" for="{{ form.privacy_ack.id_for_label }}">
+                    {{ form.privacy_ack }}
+                    <span>{{ form.privacy_ack.label }}</span>
+                </label>
+                {% if form.privacy_ack.errors %}
+                <ul class="ui-error" id="{{ form.privacy_ack.auto_id }}-error">{% for error in form.privacy_ack.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                {% endif %}
+                <p class="ui-help">پس از ارسال، تا وقتی ویراستار آن را بررسی نکرده یا آن را پس نگرفته‌اید، ویرایش نمی‌شود.</p>
+            </div>
+            <div class="ui-form__actions bw-actions">
+                {% if post %}
+                <button type="submit" class="ui-btn ui-btn--ghost bw-actions__aside" formaction="{% url 'blog:write_action' post.pk 'archive' %}" formnovalidate data-bw-confirm="این پیش‌نویس بایگانی شود؟ تغییرهای ذخیره‌نشده از بین می‌روند.">
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-trash"></use></svg>
+                    بایگانی
+                </button>
+                {% endif %}
+                <button type="submit" name="action" value="save" class="ui-btn ui-btn--secondary">
+                    <span class="ui-btn__spinner" aria-hidden="true"></span>
+                    ذخیره پیش‌نویس
+                </button>
+                <button type="submit" name="action" value="submit" class="ui-btn ui-btn--primary">
+                    <span class="ui-btn__spinner" aria-hidden="true"></span>
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-check"></use></svg>
+                    ارسال برای بررسی
+                </button>
+            </div>
+        </div>
+    </section>
+</form>
+
+{% else %}
+    <header class="ui-page-head">
+        <div>
+            <h1 class="ui-page-head__title">{{ post.title|default:"(بی‌عنوان)" }}</h1>
+            <p class="ui-page-head__subtitle">در «{{ post.section.title }}» · {% include "blog/write/teacher/_badge.html" %}</p>
+        </div>
+        <div class="ui-page-head__actions">
+            <a class="ui-btn ui-btn--ghost" href="{% url 'blog:write' %}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-arrow-forward"></use></svg>
+                فهرست نوشته‌ها
+            </a>
+            {% if post.is_public %}
+            <a class="ui-btn ui-btn--secondary" href="{{ post.get_absolute_url }}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-eye"></use></svg>
+                صفحه نوشته در وبلاگ
+            </a>
+            {% else %}
+            <a class="ui-btn ui-btn--secondary" href="{{ post.preview_url }}" target="_blank" rel="noopener">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-eye"></use></svg>
+                پیش‌نمایش
+            </a>
+            {% endif %}
+            {% if post.status == 'submitted' or post.status == 'archived' %}
+            <form method="post" action="{% if post.status == 'submitted' %}{% url 'blog:write_action' post.pk 'withdraw' %}{% else %}{% url 'blog:write_action' post.pk 'reopen' %}{% endif %}" class="bw-inline-form">
+                {% csrf_token %}
+                <button type="submit" class="ui-btn ui-btn--primary">
+                    {% if post.status == 'submitted' %}پس گرفتن برای ویرایش{% else %}برگرداندن به پیش‌نویس{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </header>
+
+    <p class="ui-alert ui-alert--info">
+        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-lock"></use></svg>
+        <span>{{ reason }}</span>
+    </p>
+
+    <section class="ui-card" aria-label="متن نوشته">
+        <div class="ui-card__body">
+            {% include "blog/write/_read.html" %}
+        </div>
+    </section>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if form %}
+{{ form.media.js }}
+<script src="{% static 'blog/js/write.js' %}"></script>
+{% endif %}
+{% endblock %}

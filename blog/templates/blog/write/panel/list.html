@@ -1,0 +1,87 @@
+{% extends "blog/write/panel/_layout.html" %}
+{% load jalali_tags report_tags %}
+
+{% comment %}
+  «نوشته‌های من» for the panels on base.html (blog.views.studio.write_list).
+  The teacher panel's copy is blog/write/teacher/list.html; both read
+  blog.selectors.author_dashboard.
+{% endcomment %}
+
+{% block heading_title %}نوشته‌های من{% endblock %}
+
+{% block page %}
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>نوشته‌های من</h1>
+    <p>نوشته‌های شما برای وبلاگ مدرسه. ویراستار وبلاگ آن‌ها را می‌خواند و منتشر می‌کند.</p>
+  </div>
+  <div class="bw-head-actions">
+    <a class="btn btn--outline" href="{% url 'blog:write_profile' %}">معرفی من</a>
+    <a class="btn btn--primary" href="{% url 'blog:write_new' %}">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      <span>نوشته تازه</span>
+    </a>
+  </div>
+</header>
+
+<section class="sv-card" aria-labelledby="bwListTitle">
+  <div class="section-heading">
+    <h2 id="bwListTitle">نوشته‌ها</h2>
+    <nav class="status-pills" aria-label="وضعیت نوشته‌ها">
+      {% for tab in dashboard.tabs %}
+      <a class="status-pill{% if tab.is_current %} is-active{% endif %}" href="?tab={{ tab.key }}"{% if tab.is_current %} aria-current="page"{% endif %}>{{ tab.label }} ({{ tab.count|to_persian }})</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  {% with posts=dashboard.page.object_list %}
+  {% if posts %}
+  <ul class="bw-list">
+    {% for post in posts %}
+    <li class="bw-item">
+      {% if post.status == 'draft' and post.review_note %}
+      <p class="bw-note bw-note--warning bw-item__note">ویراستار برگرداند: «{{ post.review_note }}»</p>
+      {% endif %}
+      <div class="bw-item__main">
+        <a class="bw-item__title" href="{% url 'blog:write_edit' post.pk %}">{{ post.title|default:"(بی‌عنوان)" }}</a>
+        <span class="bw-item__badges">
+          <span class="badge badge--gray">{{ post.section.title }}</span>
+          {% include "blog/write/panel/_badge.html" %}
+        </span>
+      </div>
+      <p class="bw-item__meta">
+        {% if post.published_at and post.status == 'published' %}{% if post.is_scheduled %}انتشار در {{ post.published_at|jalali_datetime }}{% else %}منتشرشده در {{ post.published_at|jalali_date }}{% endif %}
+        {% else %}آخرین ویرایش: {{ post.updated_at|jalali_datetime }}{% endif %}
+      </p>
+      <p class="bw-item__actions">
+        <a class="link-action" href="{% url 'blog:write_edit' post.pk %}">{% if post.status == 'draft' %}ویرایش{% else %}دیدن{% endif %}</a>
+        {% if post.is_public %}
+        <a class="link-action" href="{{ post.get_absolute_url }}">صفحه نوشته در وبلاگ</a>
+        {% else %}
+        <a class="link-action" href="{{ post.preview_url }}">پیش‌نمایش</a>
+        {% endif %}
+      </p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty-state">
+    {% if dashboard.tab == 'all' %}
+    <p>هنوز نوشته‌ای ندارید.</p>
+    <p class="sv-muted">با «نوشته تازه» شروع کنید؛ تا وقتی برای بررسی نفرستید، فقط خودتان آن را می‌بینید.</p>
+    {% else %}
+    <p>نوشته‌ای با این وضعیت ندارید.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% if dashboard.page.has_other_pages %}
+  <nav class="sv-pagination" aria-label="صفحه‌های فهرست">
+    {% if dashboard.page.has_previous %}<a class="btn btn--outline btn--small" href="{% querystring page=dashboard.page.previous_page_number %}">صفحه قبل</a>{% endif %}
+    <span class="sv-pagination__status">صفحه {{ dashboard.page.number|to_persian }} از {{ dashboard.page.paginator.num_pages|to_persian }}</span>
+    {% if dashboard.page.has_next %}<a class="btn btn--outline btn--small" href="{% querystring page=dashboard.page.next_page_number %}">صفحه بعد</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}
