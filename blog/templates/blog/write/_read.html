@@ -1,0 +1,14 @@
+{% load blog_tags %}
+{% comment %}
+  A post as text, read-only, in either panel: «نوشته‌های من» shows it when
+  the author can't edit it. Layout comes from the card around it; the
+  body is sanitized again like on the public pages.
+{% endcomment %}
+<article class="bw-read">
+    {% if post.cover %}<img class="bw-read__cover" src="{{ post.cover_url }}" alt="{{ post.cover_alt }}" loading="lazy">{% endif %}
+    {% if post.excerpt %}<p class="bw-read__excerpt">{{ post.excerpt }}</p>{% endif %}
+    <div class="bw-read__body trix-content">{{ post.body|body }}</div>
+    {% with tags=post.tags.all %}{% if tags %}
+    <p class="bw-read__tags">برچسب‌ها: {% for tag in tags %}{{ tag.name }}{% if not forloop.last %}، {% endif %}{% endfor %}</p>
+    {% endif %}{% endwith %}
+</article>

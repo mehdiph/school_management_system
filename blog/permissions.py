@@ -13,8 +13,12 @@ Nothing else in the project decides these rules: the admin, the services
 and the authoring views all ask here.
 """
 
+from functools import wraps
+
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import render
 
 from .models import BlogAuthor, Post, Section
 
@@ -116,3 +120,43 @@ def can_preview(user, post):
         return True
     author = author_for(user)
     return author is not None and post.author_id == author.pk and can_write(user)
+
+
+def author_required(view_func):
+    """
+    For the authoring area («نوشته‌های من»): logged-out users go to the
+    login page; anyone who can't write right now gets a 403 page that says
+    to ask the website admin (like ``require_supervisor``, a link someone
+    was sent never bounces silently to a dashboard).
+    """
+
+    @login_required
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not can_write(request.user):
+            author = author_for(request.user)
+            return render(request, "blog/write/forbidden.html", {
+                "reason": write_block_reason(author) if author else "",
+            }, status=403)
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
+def author_edit_block_reason(user, post):
+    """
+    Why the author can't edit their own ``post`` now, in Persian, or "" when
+    they can: the read-only notice of «نوشته‌های من» (D8, D9).
+    """
+
+    if post.status == Post.Status.SUBMITTED:
+        return "این نوشته در انتظار بررسی است. برای ویرایش، اول آن را پس بگیرید."
+    if post.status == Post.Status.PUBLISHED:
+        if post.is_scheduled:
+            return "این نوشته برای انتشار زمان‌بندی شده است. برای تغییر آن با ویراستار وبلاگ هماهنگ کنید."
+        return "این نوشته منتشر شده است. برای اصلاح آن با ویراستار وبلاگ هماهنگ کنید."
+    if post.status == Post.Status.ARCHIVED:
+        return "این نوشته بایگانی شده است. برای ویرایش، آن را به پیش‌نویس برگردانید."
+    if not can_write_in(user, post.section):
+        return f"شما دیگر اجازه نوشتن در بخش «{post.section.title}» را ندارید."
+    return ""

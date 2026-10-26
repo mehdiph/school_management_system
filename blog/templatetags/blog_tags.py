@@ -1,11 +1,12 @@
 """
-Template helpers of the public blog.
+Template helpers of the blog (public pages and «نوشته‌های من»).
 
     {% load blog_tags %}
     {{ post.published_dt|iso }}        ->  2026-11-03T09:30:00+03:30
     {{ post.body|body }}               ->  the body, sanitized again (ADR-026)
     {{ block|ld_json }}                ->  <script type="application/ld+json">…</script>
     {% page_url posts 2 %}             ->  ?page=2 (keeps ?q= on the search page)
+    {{ post|post_state }}              ->  draft / submitted / scheduled / published / archived
 """
 
 import json
@@ -69,3 +70,10 @@ def page_url(context, number):
         params["page"] = number
     path = context["request"].path
     return f"{path}?{urlencode(params)}" if params else path
+
+
+@register.filter
+def post_state(post):
+    """The state a badge shows: the status, or "scheduled" for a published post whose time hasn't come."""
+
+    return "scheduled" if post.is_scheduled else post.status

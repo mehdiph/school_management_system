@@ -1,0 +1,64 @@
+{% extends "teacher/base.html" %}
+{% load static %}
+
+{% comment %}
+  «معرفی من» in the teacher panel (write_profile): the author's bio and
+  photo under their posts. The name and the author page switch are the
+  website admin's. The other panels' copy is blog/write/panel/profile.html.
+{% endcomment %}
+
+{% block title %}معرفی من | نوشته‌های من{% endblock %}
+{% block page_title %}نوشته‌های من{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'blog/css/write.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="bw">
+    <header class="ui-page-head">
+        <div>
+            <h1 class="ui-page-head__title">معرفی من</h1>
+            <p class="ui-page-head__subtitle">زیر نوشته‌هایتان و در صفحه نویسنده در وبلاگ نمایش داده می‌شود.</p>
+        </div>
+        <div class="ui-page-head__actions">
+            <a class="ui-btn ui-btn--ghost" href="{% url 'blog:write' %}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-arrow-forward"></use></svg>
+                فهرست نوشته‌ها
+            </a>
+            {% if author_page %}
+            <a class="ui-btn ui-btn--secondary" href="{{ author_page }}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-eye"></use></svg>
+                صفحه من در وبلاگ
+            </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <form method="post" enctype="multipart/form-data" class="bw-form" novalidate data-bw-form>
+        {% csrf_token %}
+        <section class="ui-card bw-narrow" aria-labelledby="bwProfileTitle">
+            <header class="ui-card__header"><h2 class="ui-card__title" id="bwProfileTitle">{{ author.name }}</h2></header>
+            <div class="ui-card__body ui-form">
+                <p class="ui-alert">
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-info"></use></svg>
+                    <span>نامی که روی نوشته‌ها می‌آید را مدیر سایت تعیین می‌کند؛ برای تغییرش با او هماهنگ کنید.</span>
+                </p>
+                {% include "blog/write/teacher/_field.html" with field=form.bio %}
+                {% include "blog/write/teacher/_field.html" with field=form.photo %}
+                <div class="ui-form__actions">
+                    <button type="submit" class="ui-btn ui-btn--primary">
+                        <span class="ui-btn__spinner" aria-hidden="true"></span>
+                        <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-check"></use></svg>
+                        ذخیره
+                    </button>
+                </div>
+            </div>
+        </section>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'blog/js/write.js' %}"></script>
+{% endblock %}

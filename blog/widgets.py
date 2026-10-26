@@ -32,3 +32,13 @@ class EditorWidget(forms.Textarea):
     @property
     def media(self):
         return forms.Media(js=EDITOR_JS, css={"all": EDITOR_CSS})
+
+
+class ImageInput(forms.ClearableFileInput):
+    """A file input that shows the current image itself (not its file path) and a «حذف تصویر» tick."""
+
+    template_name = "blog/widgets/image_input.html"
+    clear_checkbox_label = "حذف تصویر"
+
+    def __init__(self, attrs=None):
+        super().__init__({"accept": "image/jpeg,image/png,image/webp", **(attrs or {})})

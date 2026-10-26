@@ -3,7 +3,8 @@ Read side of the public blog: what each page shows, in a fixed number of
 queries however many posts, tags and sections there are (plan finding 7).
 Every post comes from ``Post.objects.public()`` (or ``public_q`` inside
 a count), so a draft, a submitted, scheduled or archived post, or a post
-of an inactive section, appears nowhere.
+of an inactive section, appears nowhere. The authoring area's list
+(``author_dashboard``) starts from ``permissions.author_posts`` instead.
 """
 
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Prefet
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
+from . import permissions
 from .models import BlogAuthor, BlogPage, Category, Post, Section, Tag
 from .models.post import public_q
 from .text import normalize, search_key
@@ -271,3 +273,65 @@ def author_pages_by_card(card_ids):
         .values_list("teacher_card_id", "slug")
     )
     return {card_id: BlogAuthor(slug=slug).get_absolute_url() for card_id, slug in rows}
+
+
+# ---------------------------------------------------------- authoring area
+
+WRITE_PAGE_SIZE = 20
+WRITE_TABS = (
+    ("all", "همه"),
+    (Post.Status.DRAFT, "پیش‌نویس"),
+    (Post.Status.SUBMITTED, "در انتظار بررسی"),
+    (Post.Status.PUBLISHED, "منتشرشده"),
+    (Post.Status.ARCHIVED, "بایگانی"),
+)
+
+
+@dataclass
+class WriteTab:
+    key: str
+    label: str
+    count: int
+    is_current: bool
+
+
+@dataclass
+class AuthorDashboard:
+    tab: str
+    tabs: list
+    page: object
+
+
+def author_dashboard(user, tab, number):
+    """
+    «نوشته‌های من»: the author's own posts on one tab (scheduled posts are
+    under «منتشرشده»), newest edit first, with every tab's count in one
+    aggregate query.
+    """
+
+    posts = permissions.author_posts(user)
+    keys = [key for key, _ in WRITE_TABS]
+    tab = tab if tab in keys else "all"
+    counts = posts.aggregate(
+        all=Count("pk"),
+        **{key: Count("pk", filter=Q(status=key)) for key in keys[1:]},
+    )
+    shown = posts if tab == "all" else posts.filter(status=tab)
+    paginator = Paginator(shown.select_related("section", "category").order_by("-updated_at", "-pk"), WRITE_PAGE_SIZE)
+    try:
+        page = paginator.page(number or 1)
+    except InvalidPage:
+        raise Http404("صفحه‌ای با این شماره نیست.")
+    return AuthorDashboard(
+        tab=tab,
+        tabs=[WriteTab(key, label, counts[key], key == tab) for key, label in WRITE_TABS],
+        page=page,
+    )
+
+
+def author_page_url(author):
+    """The author's public page while it exists (``author_listing``'s rule), else ""."""
+
+    if author.show_profile and Post.objects.public().filter(author=author).exists():
+        return author.get_absolute_url()
+    return ""

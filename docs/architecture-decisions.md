@@ -637,6 +637,8 @@ Post bodies are written in Trix (vendored, ADR-021) and stored as HTML that `blo
 * What an author can format is limited on purpose (paragraphs, two heading levels, lists, quotes, links, images); colours, fonts and embeds are not possible.
 * The body pipeline parses HTML with `tinyhtml5`, already pinned in `requirements.txt` for WeasyPrint.
 * The CSP is set per view (`blog.views.public.public_csp`; `SECURE_CSP` stays empty for the rest of the site): everything from the site itself, no inline script or style. Blog templates therefore carry no `style` attribute and no inline script; the one `<script>` is the JSON-LD block (`type="application/ld+json"`, data the browser never runs), built with `blog_tags.ld_json`, which escapes `<`, `>` and `&`. A test keeps every public blog page that way.
+* The panels' sidebars show «نوشته‌های من» through a lazy value (`blog.context_processors.authoring`, a `SimpleLazyObject` over `permissions.can_write`): one query on each panel page that renders the sidebar for an eligible role, none on public pages or students' pages. No custom authentication backend was added; `AUTHENTICATION_BACKENDS` is unchanged.
+* A user with no panel and no staff flag who can write (a counselor) lands in «نوشته‌های من» after login (`accounts.utils.role_dashboard`).
 * Post moments (`published_at`, `submitted_at`, …; `MOMENT_FIELDS` in `blog/models/post.py`) are stored in UTC and compared with `utc_now()`. On SQLite, `django_jalali` stores a datetime as text with its own offset, so a Tehran-time value compares wrong against a UTC one; PostgreSQL compares real timestamps and was never affected.
 
 ---

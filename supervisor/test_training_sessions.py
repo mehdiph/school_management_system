@@ -672,7 +672,9 @@ class QueryCountTests(SupervisorPagesTestCase):
     exact numbers are locked. Every request starts with 9 queries that
     are not these pages' own (session, user, staff/supervisor profile,
     branch middleware + access check, sidebar/topbar context); a full
-    page adds 2 more for the footer's site settings. Page-specific:
+    page adds 2 more for the footer's site settings and 1 for the
+    sidebar's «نوشته‌های من» check (blog.context_processors, lazy: the
+    partials don't render a sidebar and don't run it). Page-specific:
 
     * sessions: years, teacher / subject / class options, page count,
       KPIs, rows, which rows have a timetable                      -> 8
@@ -684,6 +686,7 @@ class QueryCountTests(SupervisorPagesTestCase):
 
     OVERHEAD = 9
     FOOTER = 2
+    SIDEBAR = 1
 
     def add_rows(self, count):
         for _ in range(count):
@@ -709,7 +712,7 @@ class QueryCountTests(SupervisorPagesTestCase):
         # 8 for the page + 3 for coverage and compensatory sessions (the
         # engine reads slots, events and sessions for every page of rows,
         # timetable or not)
-        expected = self.OVERHEAD + self.FOOTER + 11
+        expected = self.OVERHEAD + self.FOOTER + self.SIDEBAR + 11
         self.get(url)  # warm up per-process caches (content types, ...)
 
         with self.assertNumQueries(expected):
@@ -730,7 +733,7 @@ class QueryCountTests(SupervisorPagesTestCase):
 
     def test_teachers_page(self):
         url = reverse("supervisor:teachers")
-        expected = self.OVERHEAD + self.FOOTER + 5
+        expected = self.OVERHEAD + self.FOOTER + self.SIDEBAR + 5
         self.get(url)
 
         with self.assertNumQueries(expected):

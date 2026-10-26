@@ -82,6 +82,25 @@ def ensure_author_can_edit(user, post):
 
 
 @transaction.atomic
+def save_draft(post, user, fields, tag_names):
+    """
+    Save an author's edit of their draft: ``post`` carries the new values
+    (a bound ``ModelForm``'s instance), ``fields`` names the ones the form
+    may change. The stored row is locked and checked first, so an edit
+    sent from a second tab after the post was submitted or returned is
+    refused instead of overwriting the workflow fields.
+    """
+
+    stored = _locked(post)
+    ensure_author_can_edit(user, stored)
+    ensure_author_can_edit(user, post)  # the section the form moves it to
+    _require("slug" not in fields or not stored.was_published, "نامک نوشته‌ای که یک بار منتشر شده عوض نمی‌شود.")
+    post.save(update_fields=[*fields, "updated_at"])
+    sync_tags(post, tag_names)
+    return post
+
+
+@transaction.atomic
 def submit(post, user, privacy_ack):
     """DRAFT → SUBMITTED, by its author, who must tick the privacy acknowledgement (D16)."""
 

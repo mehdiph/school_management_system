@@ -1,0 +1,45 @@
+{% extends "blog/write/panel/_layout.html" %}
+{% load static %}
+
+{% comment %}
+  «معرفی من» for the panels on base.html (write_profile): the author's bio
+  and photo. The teacher panel's copy is blog/write/teacher/profile.html.
+{% endcomment %}
+
+{% block heading_title %}معرفی من{% endblock %}
+
+{% block page %}
+<header class="dashboard-header">
+  <div class="dashboard-header__text">
+    <h1>معرفی من</h1>
+    <p>زیر نوشته‌هایتان و در صفحه نویسنده در وبلاگ نمایش داده می‌شود.</p>
+  </div>
+  <div class="bw-head-actions">
+    <a class="link-action" href="{% url 'blog:write' %}">فهرست نوشته‌ها</a>
+    {% if author_page %}<a class="btn btn--outline" href="{{ author_page }}">صفحه من در وبلاگ</a>{% endif %}
+  </div>
+</header>
+
+<form method="post" enctype="multipart/form-data" class="bw-form" novalidate data-bw-form>
+  {% csrf_token %}
+  <section class="sv-card sv-card--narrow" aria-labelledby="bwProfileTitle">
+    <div class="section-heading section-heading--tight">
+      <div>
+        <h2 id="bwProfileTitle">{{ author.name }}</h2>
+        <p>نامی که روی نوشته‌ها می‌آید را مدیر سایت تعیین می‌کند؛ برای تغییرش با او هماهنگ کنید.</p>
+      </div>
+    </div>
+    <div class="bw-fields">
+      {% include "blog/write/panel/_field.html" with field=form.bio %}
+      {% include "blog/write/panel/_field.html" with field=form.photo %}
+    </div>
+    <div class="bw-actions">
+      <button type="submit" class="btn btn--primary">ذخیره</button>
+    </div>
+  </section>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'blog/js/write.js' %}"></script>
+{% endblock %}

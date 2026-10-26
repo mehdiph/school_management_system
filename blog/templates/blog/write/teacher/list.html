@@ -1,0 +1,100 @@
+{% extends "teacher/base.html" %}
+{% load static jalali_tags %}
+
+{% comment %}
+  «نوشته‌های من» in the teacher panel (blog.views.studio.write_list): the
+  author's own posts by status. The other panels' copy is
+  blog/write/panel/list.html; both read blog.selectors.author_dashboard.
+{% endcomment %}
+
+{% block title %}نوشته‌های من | پنل معلم{% endblock %}
+{% block page_title %}نوشته‌های من{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'blog/css/write.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="bw">
+    <header class="ui-page-head">
+        <div>
+            <h1 class="ui-page-head__title">نوشته‌های من</h1>
+            <p class="ui-page-head__subtitle">نوشته‌های شما برای وبلاگ مدرسه. ویراستار وبلاگ آن‌ها را می‌خواند و منتشر می‌کند.</p>
+        </div>
+        <div class="ui-page-head__actions">
+            <a class="ui-btn ui-btn--secondary" href="{% url 'blog:write_profile' %}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-user"></use></svg>
+                معرفی من
+            </a>
+            <a class="ui-btn ui-btn--primary" href="{% url 'blog:write_new' %}">
+                <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-plus"></use></svg>
+                نوشته تازه
+            </a>
+        </div>
+    </header>
+
+    <nav class="ui-tabs" aria-label="وضعیت نوشته‌ها">
+        {% for tab in dashboard.tabs %}
+        <a class="ui-tab" href="?tab={{ tab.key }}"{% if tab.is_current %} aria-current="page"{% endif %}>
+            {{ tab.label }} <span class="ui-badge ui-badge--neutral">{{ tab.count|fa_digits }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+
+    <section class="ui-card" aria-label="فهرست نوشته‌ها">
+        {% with posts=dashboard.page.object_list %}
+        {% if posts %}
+        <ul class="bw-list">
+            {% for post in posts %}
+            <li class="bw-item">
+                {% if post.status == 'draft' and post.review_note %}
+                <p class="ui-alert ui-alert--warning bw-item__note">
+                    <svg class="ui-icon ui-icon--sm" aria-hidden="true"><use href="#i-alert"></use></svg>
+                    <span>ویراستار برگرداند: «{{ post.review_note }}»</span>
+                </p>
+                {% endif %}
+                <div class="bw-item__main">
+                    <a class="bw-item__title" href="{% url 'blog:write_edit' post.pk %}">{{ post.title|default:"(بی‌عنوان)" }}</a>
+                    <span class="bw-item__badges">
+                        <span class="ui-badge ui-badge--soft">{{ post.section.title }}</span>
+                        {% include "blog/write/teacher/_badge.html" %}
+                    </span>
+                </div>
+                <p class="bw-item__meta">
+                    {% if post.published_at and post.status == 'published' %}{% if post.is_scheduled %}انتشار در {{ post.published_at|jalali_datetime }}{% else %}منتشرشده در {{ post.published_at|jalali_date }}{% endif %}
+                    {% else %}آخرین ویرایش: {{ post.updated_at|jalali_datetime }}{% endif %}
+                </p>
+                <p class="bw-item__actions">
+                    <a class="ui-link" href="{% url 'blog:write_edit' post.pk %}">{% if post.status == 'draft' %}ویرایش{% else %}دیدن{% endif %}</a>
+                    {% if post.is_public %}
+                    <a class="ui-link" href="{{ post.get_absolute_url }}">صفحه نوشته در وبلاگ</a>
+                    {% else %}
+                    <a class="ui-link" href="{{ post.preview_url }}">پیش‌نمایش</a>
+                    {% endif %}
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="ui-empty">
+            <span class="ui-empty__icon"><svg class="ui-icon" aria-hidden="true"><use href="#i-pen"></use></svg></span>
+            {% if dashboard.tab == 'all' %}
+            <p class="ui-empty__title">هنوز نوشته‌ای ندارید</p>
+            <p class="ui-empty__text">با «نوشته تازه» شروع کنید؛ تا وقتی برای بررسی نفرستید، فقط خودتان آن را می‌بینید.</p>
+            {% else %}
+            <p class="ui-empty__title">نوشته‌ای با این وضعیت ندارید</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endwith %}
+    </section>
+
+    {% if dashboard.page.has_other_pages %}
+    <nav class="bw-pages" aria-label="صفحه‌های فهرست">
+        {% if dashboard.page.has_previous %}<a class="ui-btn ui-btn--secondary ui-btn--sm" href="{% querystring page=dashboard.page.previous_page_number %}">صفحه قبل</a>{% endif %}
+        <span class="ui-help">صفحه {{ dashboard.page.number|fa_digits }} از {{ dashboard.page.paginator.num_pages|fa_digits }}</span>
+        {% if dashboard.page.has_next %}<a class="ui-btn ui-btn--secondary ui-btn--sm" href="{% querystring page=dashboard.page.next_page_number %}">صفحه بعد</a>{% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

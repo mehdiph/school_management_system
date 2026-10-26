@@ -1,0 +1,380 @@
+/* «نوشته‌های من»: the blog's authoring area, inside each panel's own
+   design (blog/templates/blog/write/). The teacher panel's components
+   (ui-*) and the supervisor panel's (sv-*, btn, badge) do the look; this
+   file only lays the pages out and adds what neither has: the post list,
+   the two-column editor, the read-only text and the panel's notes.
+   Spacing reads the teacher tokens first, then the panel's. */
+
+.bw {
+    --bw-gap: var(--ui-space-5, var(--space-5, 20px));
+    --bw-gap-sm: var(--ui-space-3, var(--space-3, 12px));
+    --bw-border: var(--ui-border, var(--border, #e7e5e4));
+    --bw-muted: var(--ui-text-muted, var(--muted, #78716c));
+    --bw-radius: var(--ui-radius-md, var(--radius-md, 10px));
+    min-width: 0;
+}
+
+.bw:not(.bw--panel),
+.bw-form {
+    display: grid;
+    gap: var(--bw-gap);
+    min-width: 0;
+}
+
+.bw-head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--bw-gap-sm);
+}
+
+.bw-inline-form {
+    display: contents;
+}
+
+/* ------------------------------------------------------------- tabs (teacher) */
+
+/* The status tabs are links to filtered lists, so they carry aria-current
+   instead of the tab role; they look exactly like the panel's ui-tab. */
+.ui-tab[aria-current="page"] {
+    color: var(--ui-accent-text);
+    font-weight: var(--ui-weight-semibold);
+}
+
+.ui-tab[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--ui-space-2);
+    inset-block-end: -1px;
+    block-size: 2px;
+    border-radius: 2px;
+    background: var(--ui-orange-500);
+}
+
+.ui-tab .ui-badge {
+    font-size: var(--ui-text-xs);
+}
+
+/* --------------------------------------------------------------- post list */
+
+.bw-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.bw-item {
+    display: grid;
+    gap: var(--ui-space-2, var(--space-2, 8px));
+    padding: var(--ui-space-4, var(--space-4, 16px)) var(--ui-space-5, var(--space-4, 16px));
+    border-block-end: 1px solid var(--bw-border);
+}
+
+.bw--panel .bw-item {
+    padding-inline: 0;
+}
+
+.bw-item:last-child {
+    border-block-end: 0;
+}
+
+.bw-item__main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--bw-gap-sm);
+}
+
+.bw-item__title {
+    font-weight: 600;
+    color: inherit;
+    overflow-wrap: anywhere;
+}
+
+.bw-item__title:hover {
+    text-decoration: underline;
+}
+
+.bw-item__badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-2, var(--space-2, 8px));
+}
+
+.bw-item__meta {
+    margin: 0;
+    font-size: 13px;
+    color: var(--bw-muted);
+}
+
+.bw-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-4, var(--space-3, 12px));
+    margin: 0;
+    font-size: 14px;
+}
+
+.bw-pages {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--bw-gap-sm);
+}
+
+/* ------------------------------------------------------------------ editor */
+
+.bw-grid {
+    display: grid;
+    gap: var(--bw-gap);
+    align-items: start;
+    min-width: 0;
+}
+
+.bw-grid__main,
+.bw-grid__side {
+    display: grid;
+    gap: var(--bw-gap);
+    min-width: 0;
+}
+
+@media (min-width: 1100px) {
+    .bw-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+}
+
+.bw-fields {
+    display: grid;
+    gap: var(--space-4, 16px);
+}
+
+/* The panel's sv-field styles inputs and selects; text areas and file
+   inputs get the same look here. */
+.bw--panel .sv-field textarea {
+    font-family: inherit;
+    font-size: 13.5px;
+    line-height: 1.9;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    width: 100%;
+    resize: vertical;
+}
+
+.bw--panel .sv-field textarea:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+    border-color: var(--primary);
+}
+
+.bw--panel .sv-field.has-error textarea {
+    border-color: var(--danger);
+}
+
+.bw--panel .sv-field input[type="file"] {
+    min-height: 0;
+    padding: var(--space-2);
+}
+
+.bw--panel .sv-field input[type="checkbox"] {
+    width: auto;
+    min-height: 0;
+}
+
+.bw-check {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ui-space-2, var(--space-2, 8px));
+    font-weight: 500;
+    line-height: 1.8;
+    cursor: pointer;
+}
+
+.bw-check input {
+    flex: none;
+    inline-size: 18px;
+    block-size: 18px;
+    margin-block-start: 0.35em;
+    accent-color: var(--ui-accent, var(--primary));
+}
+
+.bw-reminder {
+    line-height: 1.9;
+}
+
+.bw-counter {
+    font-size: 12px;
+    color: var(--bw-muted);
+}
+
+.bw-more > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.bw-more > summary::-webkit-details-marker {
+    display: none;
+}
+
+.bw-more > summary::before {
+    content: "▸";
+    margin-inline-end: var(--ui-space-2, var(--space-2, 8px));
+    color: var(--bw-muted);
+}
+
+.bw-more[open] > summary::before {
+    content: "▾";
+}
+
+.bw-more > summary h2,
+.bw-more > summary .ui-card__title {
+    display: inline;
+}
+
+.bw--panel .bw-more:not([open]) > summary {
+    margin-bottom: 0;
+}
+
+.bw-image {
+    display: grid;
+    gap: var(--ui-space-2, var(--space-2, 8px));
+    justify-items: start;
+}
+
+.bw-image__current {
+    display: block;
+    max-inline-size: 100%;
+    max-block-size: 180px;
+    border-radius: var(--bw-radius);
+    border: 1px solid var(--bw-border);
+}
+
+.bw-image input[type="file"] {
+    max-inline-size: 100%;
+}
+
+.bw-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--bw-gap-sm);
+}
+
+.bw--panel .bw-actions {
+    margin-top: var(--space-4);
+}
+
+.bw-actions__aside {
+    margin-inline-end: auto;
+}
+
+@media (max-width: 575px) {
+    .bw-actions > *,
+    .bw-head-actions > .btn,
+    .bw-head-actions > .ui-btn {
+        flex: 1 1 100%;
+    }
+
+    .bw-actions__aside {
+        order: 1;
+    }
+}
+
+.bw-narrow {
+    max-inline-size: 760px;
+}
+
+/* ----------------------------------------------------------- notes (panel) */
+
+.bw-note {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--surface-muted, #f5f5f4);
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.bw-note--warning {
+    background: var(--warning-bg);
+    color: var(--warning-text, var(--warning));
+}
+
+.bw-note--danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* ------------------------------------------------------------ read-only text */
+
+.bw-read {
+    display: grid;
+    gap: var(--ui-space-4, var(--space-4, 16px));
+    max-inline-size: 72ch;
+    line-height: 2;
+    overflow-wrap: anywhere;
+}
+
+.bw-read__cover {
+    display: block;
+    max-inline-size: 100%;
+    height: auto;
+    border-radius: var(--bw-radius);
+}
+
+.bw-read__excerpt {
+    margin: 0;
+    font-weight: 600;
+    color: var(--ui-text-soft, var(--text-secondary));
+}
+
+.bw-read__body h2 {
+    font-size: 1.25rem;
+    margin: 1.2em 0 0.4em;
+}
+
+.bw-read__body h3 {
+    font-size: 1.1rem;
+    margin: 1em 0 0.3em;
+}
+
+.bw-read__body p,
+.bw-read__body ul,
+.bw-read__body ol,
+.bw-read__body blockquote,
+.bw-read__body figure {
+    margin: 0 0 0.9em;
+}
+
+.bw-read__body ul,
+.bw-read__body ol {
+    padding-inline-start: 1.5em;
+}
+
+.bw-read__body blockquote {
+    padding-inline-start: 1em;
+    border-inline-start: 3px solid var(--bw-border);
+    color: var(--bw-muted);
+}
+
+.bw-read__body img {
+    max-inline-size: 100%;
+    height: auto;
+    border-radius: var(--bw-radius);
+}
+
+.bw-read__body figcaption {
+    font-size: 13px;
+    color: var(--bw-muted);
+}
+
+.bw-read__tags {
+    margin: 0;
+    font-size: 13px;
+    color: var(--bw-muted);
+}

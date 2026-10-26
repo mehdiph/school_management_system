@@ -1,0 +1,12 @@
+<div class="bw-image">
+  {% if widget.is_initial %}
+  <img class="bw-image__current" src="{{ widget.value.url }}" alt="تصویر فعلی" loading="lazy">
+  {% if not widget.required %}
+  <label class="bw-check bw-image__clear">
+    <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.attrs.disabled %} disabled{% endif %}{% if widget.attrs.checked %} checked{% endif %}>
+    {{ widget.clear_checkbox_label }}
+  </label>
+  {% endif %}
+  {% endif %}
+  <input type="{{ widget.type }}" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
+</div>

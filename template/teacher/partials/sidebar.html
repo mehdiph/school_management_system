@@ -66,6 +66,19 @@
                     <span class="ui-nav__label">گزارش‌ها</span>
                 </a>
             </li>
+            {# Blog authors only; blog_can_write is lazy (blog.context_processors). #}
+            {% if blog_can_write %}
+            <li>
+                {% if rm.app_name == 'blog' %}
+                <a class="ui-nav__item is-active"{% if rm.url_name == 'write' %} aria-current="page"{% endif %} href="{% url 'blog:write' %}" title="نوشته‌های من">
+                {% else %}
+                <a class="ui-nav__item" href="{% url 'blog:write' %}" title="نوشته‌های من">
+                {% endif %}
+                    <svg class="ui-icon" aria-hidden="true"><use href="#i-pen"></use></svg>
+                    <span class="ui-nav__label">نوشته‌های من</span>
+                </a>
+            </li>
+            {% endif %}
         </ul>
     </nav>
 

@@ -511,13 +511,14 @@ class QueryCountTests(DirectorPageTestCase):
             counts[(name, bool(params))] = len(context.captured_queries)
         return counts
 
-    #: 7 overhead (session, user and its 3 profiles, the footer's 2) + year,
-    #: branches and classes, then -- dashboard (20): the calendar (1 + 3
-    #: prefetches), this month's student tallies and the frequent
-    #: absentees' days, today's timetable, sheets, supporters and absences;
-    #: attendance (19): the timetable, the calendar (1 + 3), the sheets,
-    #: the supporters, the student tallies and the frequent absentees' days.
-    locked = {("dashboard", False): 20, ("attendance", False): 19, ("attendance", True): 19}
+    #: 8 overhead (session, user and its 3 profiles, the footer's 2, the
+    #: sidebar's «نوشته‌های من» check) + year, branches and classes, then --
+    #: dashboard (21): the calendar (1 + 3 prefetches), this month's student
+    #: tallies and the frequent absentees' days, today's timetable, sheets,
+    #: supporters and absences; attendance (20): the timetable, the calendar
+    #: (1 + 3), the sheets, the supporters, the student tallies and the
+    #: frequent absentees' days.
+    locked = {("dashboard", False): 21, ("attendance", False): 20, ("attendance", True): 20}
 
     def test_query_counts_do_not_grow_with_data(self):
         # Events on Mondays (no lessons) in each page's range, so the calendar's prefetches run.

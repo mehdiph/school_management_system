@@ -110,6 +110,7 @@ TEMPLATES = [
                 'core.context_processors.teacher_info.teacher_info_context',
                 'core.context_processors.topbar.topbar_context',
                 'website.context_processors.site_settings',
+                'blog.context_processors.authoring',
             ],
         },
     },

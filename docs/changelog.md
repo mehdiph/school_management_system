@@ -24,6 +24,14 @@
 
 # [Unreleased]
 
+## Added (school blog, Phase 3 of 3: «نوشته‌های من», the authoring area)
+
+- Authors write in their own panel (`/blog/write/`, `docs/apps/blog.md` §7): teachers in the teacher panel, supervisors, the counselor, the director and the system admin in the `base.html` panel. A list of their posts by status (a returned draft shows the editor's note), the editor (Trix, cover, category, tags, SEO, slug until first published), «ذخیره پیش‌نویس», «ارسال برای بررسی» with the privacy acknowledgement, «پس گرفتن», «بایگانی», «برگرداندن به پیش‌نویس», preview, image upload into their draft, and «معرفی من» (bio and photo). A post that isn't a draft is read-only with the reason; a published post is changed by an editor (D9). Publishing stays with the editors in the admin.
+- Access: logged out → login; anyone who can't write (students, non-authors, inactive authors, accounts or staff records, roles no longer eligible) → a 403 page that says to ask the website admin; another author's post → 404.
+- Sidebar item «نوشته‌های من» for authors in the teacher panel and the other panels (not students). The check is lazy: one query on panel pages, none on public pages. Locked query counts of panel pages go up by one (see the report).
+- Login: a counselor (or any user without a panel or staff flag) who can write lands in «نوشته‌های من».
+- Docs: `docs/apps/accounts.md` corrected (a user reaches ClassSubject through Staff, TeacherProfile and TeacherAssignment; `national_code`, `must_change_password`, the director and blog author relationships).
+
 ## Added (school blog, Phase 2 of 3: the public blog)
 
 - The blog is public at `/blog/` (`docs/apps/blog.md` §6): the blog home (featured posts, latest posts, sections, tags), section, category, tag and author pages, search (`?q=`, at least two letters), and the post page with a table of contents, reading time, share and copy-link, the author box, related posts and the previous/next post in the same section. Everything works without JS; `blog.js` only adds the copy button and a calmer masthead on later pages.

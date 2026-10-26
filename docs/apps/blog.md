@@ -5,15 +5,15 @@ and other staff, in sections such as «پرورشی» and «مشاوره». Who 
 person and per section by the website admin; editors review and publish in the admin.
 The rules are in ADR-026; the plan is `docs/plans/2026-10-blog-plan.md`.
 
-**State (October 2026):** being built on `feature/blog` in three phases.
+**State (October 2026):** built on `feature/blog` in three phases, merged once after Phase 3.
 
 | Phase | Contents | State |
 |---|---|---|
 | 1. Foundations | models, migrations, seed; body pipeline and sanitizer; permissions; workflow services; admin (editor, review, bulk actions); Trix vendored | done |
 | 2. Public blog | public pages, preview, SEO, feeds, sitemap, robots, CSP, menu, teachers page link | done |
-| 3. Authoring area | «نوشته‌های من» in the panels, sidebar item, login landing | not yet |
+| 3. Authoring area | «نوشته‌های من» in the panels, sidebar item, login landing | done |
 
-Until Phase 3, editors write posts in the admin themselves.
+Authors write in «نوشته‌های من» (§7); editors review and publish in the admin (§5).
 
 ---
 
@@ -118,8 +118,10 @@ digits to ASCII, lower case, and **no ZWNJ and no spaces**, so «کتاب‌خو
 | `can_write(user)` | Active author, active account, eligible role, active staff record (if any) |
 | `writable_sections(user)` | Active sections granted to them; none when they can't write |
 | `can_write_in(user, section)` | |
-| `author_posts(user)` | Their own posts: where every authoring view starts (Phase 3) |
+| `author_posts(user)` | Their own posts: where every authoring view starts |
 | `can_edit_as_author(user, post)` | Own draft in a section still granted |
+| `author_edit_block_reason(user, post)` | Why the author can't edit their post now (submitted, published, scheduled, archived, section taken away), or "" |
+| `author_required` | Decorator of the authoring views: logged out → login; can't write → a 403 page that says to ask the website admin |
 | `is_editor(user)` / `can_publish(user)` | Active staff with `blog.publish_post` |
 | `can_preview(user, post)` | The post's author (while they can write) and editors |
 
@@ -135,6 +137,7 @@ who asks, and raises `TransitionError` (Persian message) or `PermissionDenied`.
 | Service | From → to | Who | Needs |
 |---|---|---|---|
 | `create_draft` | → draft | author, in a granted section | |
+| `save_draft` | draft → draft | the author | the stored row locked and still a draft, the new section granted, the slug unchanged once published (a save from a stale tab is refused) |
 | `submit` | draft → submitted | the author | privacy acknowledgement, title and text, valid category |
 | `withdraw` | submitted → draft | the author | |
 | `archive` | draft → archived | the author | (the soft delete; nothing is removed) |
@@ -148,8 +151,8 @@ who asks, and raises `TransitionError` (Persian message) or `PermissionDenied`.
 | `add_image` | | the author of a draft, or staff with `change_post` | jpg/png/webp, 2 MB; re-encoded |
 
 Publishing a **draft** is possible only from the post's own review page, which warns that
-the author never sent it: editors write in the admin until the authoring area exists. The
-bulk action publishes only submitted and archived posts.
+the author never sent it (an editor's own post written in the admin). The bulk action
+publishes only submitted and archived posts.
 
 ## 5. Admin (`blog/admin.py`)
 
@@ -265,7 +268,58 @@ inside `main.bl` only.
 - Admin: «مشاهده در سایت» on a post opens its preview; the review page and the
   «در انتظار بررسی» queue link to it too.
 
-## 7. Settings (`teachlog/config/settings/base.py`)
+## 7. The authoring area: «نوشته‌های من»
+
+Where authors write (D6), in their own panel's shell: teachers in the teacher panel
+(`blog/templates/blog/write/teacher/`, `ui-*` components), everyone else in `base.html` with
+the sidebar and the supervisor panel's components (`blog/write/panel/`), like the director
+panel. Authors are never made staff and never use the admin.
+
+| URL | Name | Page |
+|---|---|---|
+| `/blog/write/` | `write` | Their posts with tabs «همه»، «پیش‌نویس»، «در انتظار بررسی»، «منتشرشده» (scheduled too)، «بایگانی» and counts; a returned draft shows the editor's note |
+| `/blog/write/new/` | `write_new` | A new draft; with no section granted, back to the list with a message |
+| `/blog/write/<id>/` | `write_edit` | Their draft in the editor; any other state read-only, with the reason (`author_edit_block_reason`) and the step left: «پس گرفتن برای ویرایش» (submitted), «برگرداندن به پیش‌نویس» (archived) |
+| `/blog/write/<id>/<action>/` | `write_action` | POST: `withdraw`, `archive`, `reopen` |
+| `/blog/write/<id>/image/` | `write_image` | POST: an image into their draft, JSON like the admin's endpoint |
+| `/blog/write/profile/` | `write_profile` | «معرفی من»: their bio and photo (the name and the page switch stay with the admin) |
+
+- **Access** (`author_required`, plan §6): logged out → login; anyone who can't write
+  (student, a non-author of any role, staff and editors without an author row, an
+  inactive author, account or staff record, a role no longer eligible) → 403. Another
+  author's post, or an id that isn't theirs → 404. Transitions and uploads are POST only.
+- **The editor form** (`AuthorPostForm`): section (only granted ones; hidden with one),
+  title, body (Trix, `blog/js/editor.js`), excerpt, category, tags as text («کتاب‌خوانی،
+  اردو»), cover with alt text, SEO fields, and the slug while the post was never
+  published. The workflow fields are never in the form. «ذخیره پیش‌نویس» saves
+  (`services.save_draft`); «ارسال برای بررسی» needs the acknowledgement of «صفحه وبلاگ»,
+  saves, then submits; a draft that can't be sent (no text) is saved with a message.
+  «بایگانی» posts the same form to `write_action` (no nested forms). Images can be added
+  after the first save, as in the admin.
+- **Preview**: «پیش‌نمایش آخرین ذخیره» opens `/blog/preview/<id>/` (§6).
+- **`blog/js/write.js`**: character counters, a confirmation before archiving, a warning
+  before leaving unsaved changes. Every page works without it.
+- **Login** (D7): `accounts.utils.role_dashboard` sends a user with no panel and no staff
+  flag who can write (a counselor) to `/blog/write/`. Roles with a panel keep it.
+- **Sidebar**: «نوشته‌های من» in the teacher sidebar (`i-pen` icon) and in
+  `partials/sidebar.html` for every role but students. It shows while the user can write,
+  through `blog_can_write` from `blog.context_processors.authoring`: a `SimpleLazyObject`,
+  so its one query runs only on pages that render a panel sidebar, never on public pages
+  (approval change 1). A counselor's sidebar has only this item.
+
+### Query counts
+
+- The list (`blog.tests.test_write.ListTests`): 13 with 1 and with 13 posts: the 9 every
+  panel request makes (session, user, staff, branch access and assignments, supervisor
+  and student profiles, site settings, footer links) plus the author, the tab counts,
+  the page count and the posts.
+- Every panel page that renders a sidebar, for any user but a student: **+1** (the
+  authorship check; `author_for` caches it, so the blog's own views reuse it). Fragments
+  (`?partial=1`) render no sidebar and don't run it. Locked counts updated: the director's
+  home 20 → 21 and attendance 19 → 20 (`director/tests.py`), the supervisor's sessions
+  22 → 23 and teachers 16 → 17 (`supervisor/test_training_sessions.py`).
+
+## 8. Settings (`teachlog/config/settings/base.py`)
 
 | Setting | Value | Read in |
 |---|---|---|
@@ -278,7 +332,7 @@ inside `main.bl` only.
 
 `INSTALLED_APPS` also gains `django.contrib.sitemaps` (no tables).
 
-## 8. Migrations
+## 9. Migrations
 
 | Migration | Contents | Reverse |
 |---|---|---|
@@ -286,13 +340,16 @@ inside `main.bl` only.
 | `blog.0002_seed` | The «صفحه وبلاگ» row; sections «پرورشی» (tomato) and «مشاوره» (sky). Create only | removes the seeded sections no post uses |
 | `website.0014_blog_menu` | «وبلاگ» at `#` → `/blog/`; active «مقاله» at `#` → hidden | resets «وبلاگ» still at `/blog/`; re-activates an inactive «مقاله» still at `#` |
 
-## 9. Tests (`blog/tests/`)
+## 10. Tests (`blog/tests/`)
 
 `test_content` (sanitizer, Trix reshaping, round trip, Persian text), `test_models`,
 `test_permissions` (every role), `test_workflow`, `test_admin`, `test_migrations`,
 `test_assets` (no external script or stylesheet in any blog template or stylesheet;
 vendored Trix matches its README), `test_public` (visibility on every page, feed and the
 sitemap; preview; each page; search spellings; query counts; CSP and the inline check;
-private data), `test_seo` (meta, JSON-LD, feeds, sitemap, robots). `website/test_blog.py`:
+private data), `test_seo` (meta, JSON-LD, feeds, sitemap, robots), `test_write` (the
+authoring area for every role of plan §6, the editor form, submit and the other steps,
+uploads, «معرفی من», the sidebar item, the lazy check never running on public pages, the
+login landing, the list's query count). `website/test_blog.py`:
 the menu migration, the navbar rule, the teachers page link. Factories in
 `blog/testing.py`.
