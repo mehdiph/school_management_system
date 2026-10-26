@@ -1,8 +1,44 @@
 # Plan: the school blog («وبلاگ»)
 
-Status: **waiting for approval.** Nothing is implemented. Implementation will go on
-`feature/blog`, created from `main` after approval. Apart from this file, nothing will be
-committed, pushed, merged or migrated unless you ask.
+Status: **approved 2026-10-26** with the changes below. Implementation goes on
+`feature/blog`, created from `main` after this update. Each phase is committed on the
+branch after your review; the branch is merged into `main` once, after Phase 3.
+
+## Approval (2026-10-26)
+
+Approved as recommended:
+- D1, D2, D4, D5, D6, D7, D11 (Trix, with the spike first), D12, D13, D15, D19, D20, D21,
+  D22, D24, D25;
+- **[policy]** D3: as in the table (teacher, counselor, supervisor, director, system
+  admin; never students);
+- **[policy]** D8, D9, D14, D16, D17, D18 as recommended;
+- **[policy]** D10: no per-section editors in this task. The model stays ready for
+  Phase 4.
+
+Changes to the plan (they supersede the text below where they differ):
+
+1. **D23 is dropped.** No custom authentication backend, and `AUTHENTICATION_BACKENDS`
+   isn't touched.
+   - The sidebar's «نوشته‌های من» link checks authorship through a **lazy value**: a
+     context processor returns a `SimpleLazyObject`. Its single query runs only on pages
+     that actually render a panel sidebar, never on public pages.
+   - The +1 constant query on panel pages is accepted. Every locked query count it
+     affects is updated, and the report explains each change.
+   - A test asserts that the public pages and the blog's public views don't run the
+     authorship query.
+2. **Phases and merging.**
+   - The work stops for your review at the end of each phase, as planned.
+   - Each phase is committed on `feature/blog` when you approve it.
+   - Nothing is merged into `main` until Phase 3 is done and approved: one merge, one
+     final report.
+3. **Vendoring Trix.**
+   - `static/vendor/trix/README` records the exact version, the source URL and the
+     SHA-256 of each file.
+   - A test asserts that no template under `blog/` (public or authoring) references an
+     external `http(s)` script or stylesheet.
+4. **CSP safety test.** A test asserts that the blog's public pages render with no inline
+   `style` attributes and no inline scripts, other than the JSON-LD data block, so the
+   CSP never silently breaks a page.
 
 Skills: both were loaded with the Skill tool before planning.
 - **`teachlog-workflow`**: this plan follows its read → plan → approve order. Only this
@@ -501,7 +537,8 @@ Comments can come later on ADR-024's rules.
 
 ### Technical
 
-**D23. The author check costs zero queries** (finding 6). Recommended:
+**D23. ~~The author check costs zero queries~~** (finding 6). **Withdrawn at approval;
+see change 1.** The original proposal was:
 - a small authentication backend, `accounts.backends.ModelBackend`, which subclasses
   Django's and overrides only `get_user()` to `select_related("blog_author")`;
 - the sidebar asks `user.blog_author` without a query;
@@ -539,7 +576,7 @@ You decide whether a phase is committed on `feature/blog` before the next one st
 |---|---|---|
 | **1. Foundations** | Trix spike; `blog` app, models, migrations, seed; content pipeline (sanitizer, slugs, reading time, TOC, plain text); `permissions.py`; workflow `services.py`; admin (sections + categories, tags, authors, posts, «در انتظار بررسی», publish form with checklist, bulk actions with confirmation); settings; ADR-026 | admin only; nothing public |
 | **2. Public blog** | design system; home, section, category, tag, author, post, search, pagination; preview; SEO, feeds, sitemap, robots; CSP; menu migration; navbar prefix highlight; teachers page link (D21); query-count locks; screenshots | the blog goes live after `migrate` |
-| **3. Authoring area** | «نوشته‌های من» in both shells: list, editor, image upload, preview, submit and withdraw, own author profile; sidebar items; auth backend (D23); login landing (D7); full role matrix tests; screenshots | authors write in their panel |
+| **3. Authoring area** | «نوشته‌های من» in both shells: list, editor, image upload, preview, submit and withdraw, own author profile; sidebar items with the lazy authorship check (change 1); login landing (D7); full role matrix tests; screenshots | authors write in their panel |
 | *4. Section editors (optional)* | only if D10 is changed to yes | |
 
 Until Phase 3, editors can write posts in the admin themselves, so Phase 2 can be
@@ -1170,7 +1207,7 @@ Verification:
   - `teachlog/urls.py`: `path("blog/", include("blog.urls"))`, `sitemap.xml`,
     `robots.txt`;
   - `INSTALLED_APPS`: `django.contrib.sitemaps`, `blog`;
-  - `AUTHENTICATION_BACKENDS`: D23.
+  - ~~`AUTHENTICATION_BACKENDS`: D23~~ (withdrawn; see change 1).
 - **The navbar** (`public_navbar.html` + a `website_tags` filter): an item is active when
   the path equals its URL, or starts with it for URLs other than `/`. `aria-current="page"`
   is kept only for the exact match.
@@ -1197,7 +1234,7 @@ Verification:
     (`_editor.html`), the tag input, the reminder text, the read-only notice.
 - **Sidebars:**
   - `template/teacher/partials/sidebar.html` gets «نوشته‌های من» (pen icon added to
-    `icons.html`), shown when `user.blog_author` is active;
+    `icons.html`), shown through the lazy authorship value (change 1);
   - `template/partials/sidebar.html` gets the same item outside the role branches, so
     counselors and directors see it too.
 - **Teachers page:** `website/teachers/_teacher.html` fills the commented slot (D21).
@@ -1306,7 +1343,8 @@ factories in `blog/testing.py` (`make_author`, `make_post`, …).
 - **Menu migration** forward and reverse, including edited rows.
 - **Query counts** locked for home, section, category, tag, author, search, the post and
   the teachers page (6), each checked with 1 and with many posts and tags; the authoring
-  list; and existing panel pages unchanged with the D23 backend.
+  list; and existing panel pages at +1 query each for the lazy authorship check
+  (change 1).
 - **Privacy markers:** fill a linked user's and staff member's private fields with marker
   values and assert none reaches any blog page (the teachers page test, reused).
 
@@ -1317,7 +1355,7 @@ SQLite.
 
 - `docs/apps/blog.md` (new);
 - updates to `docs/apps/website.md` (menu, navbar, robots, sitemap, teachers link),
-  `docs/apps/accounts.md` (auth backend, login landing, finding 18), `docs/database.md`,
+  `docs/apps/accounts.md` (login landing, finding 18), `docs/database.md`,
   `docs/database-mermaid.md`;
 - ADR-026, ADR-025 consequence;
 - `docs/changelog.md`;
