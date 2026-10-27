@@ -21,6 +21,8 @@ python-bidi==0.6.7
 python-dotenv==1.2.1
 sqlparse==0.5.5
 tinycss2==1.5.1
+# Also imported directly by blog/content.py (the post sanitiser): keep it pinned
+# even if weasyprint stops depending on it or needs another version.
 tinyhtml5==2.0.0
 weasyprint==67.0
 webencodings==0.5.1

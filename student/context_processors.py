@@ -2,6 +2,10 @@
 def student_info(request):
     if request.user.is_authenticated:
         if request.user.role == 'student':
+            # A student account with no StudentProfile row yet: render the
+            # page without the student's details instead of failing.
+            if not hasattr(request.user, 'student_profile'):
+                return {}
             student = request.user
             # The current year's active enrollment (a student keeps old
             # years' rows); None rather than an IndexError when there is none.

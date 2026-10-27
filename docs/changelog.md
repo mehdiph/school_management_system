@@ -24,6 +24,12 @@
 
 # [Unreleased]
 
+## Fixed (blog follow-ups)
+
+- The login page no longer throws a JavaScript error: `accounts/js/login.js` only adds its listener when `.form-container` and the username input exist (the login page has neither); no change where they exist.
+- A user whose role is student but who has no `StudentProfile` no longer gets a 500 on every page (the public site, the blog, …): `student.context_processors.student_info` gives them no student details, and the page renders without them. The student panel itself still refuses them with a 403, as before.
+- `requirements.txt` notes that `tinyhtml5` is imported directly by `blog/content.py`, so it stays pinned even if WeasyPrint changes.
+
 ## Added (school blog, Phase 3 of 3: «نوشته‌های من», the authoring area)
 
 - Authors write in their own panel (`/blog/write/`, `docs/apps/blog.md` §7): teachers in the teacher panel, supervisors, the counselor, the director and the system admin in the `base.html` panel. A list of their posts by status (a returned draft shows the editor's note), the editor (Trix, cover, category, tags, SEO, slug until first published), «ذخیره پیش‌نویس», «ارسال برای بررسی» with the privacy acknowledgement, «پس گرفتن», «بایگانی», «برگرداندن به پیش‌نویس», preview, image upload into their draft, and «معرفی من» (bio and photo). A post that isn't a draft is read-only with the reason; a published post is changed by an editor (D9). Publishing stays with the editors in the admin.
