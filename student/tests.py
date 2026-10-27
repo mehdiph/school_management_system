@@ -5,7 +5,7 @@ dashboard (the same place login sends them).
 """
 
 import jdatetime
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from core.testing import (
@@ -17,6 +17,7 @@ from core.testing import (
     make_student,
     make_user,
 )
+from student.context_processors import student_info
 
 STUDENT_PAGES = (
     reverse('student:dashboard'),
@@ -71,6 +72,37 @@ class StudentPagesAccessTests(TestCase):
 
         self.assertEqual(self.client.get(reverse('student:dashboard')).status_code, 200)
 
+
+
+class StudentInfoContextTests(TestCase):
+    """
+    The context processor runs on every page: a student account with no
+    StudentProfile row must not break pages outside the student panel.
+    """
+
+    def context_for(self, user):
+        request = RequestFactory().get('/')
+        request.user = user
+        return student_info(request)
+
+    def test_student_without_profile_gets_no_student_info(self):
+        self.assertEqual(self.context_for(make_user('student')), {})
+
+    def test_student_without_profile_can_open_the_public_site(self):
+        self.client.force_login(make_user('student'))
+
+        self.assertEqual(self.client.get(reverse('website:website')).status_code, 200)
+
+    def test_student_with_profile_still_gets_the_class(self):
+        year = make_academic_year(start_date=jdatetime.date(1405, 7, 1), is_current=True)
+        school_class = make_school_class(make_branch(), make_grade(), year)
+        student = make_student()
+        make_enrollment(student, school_class)
+
+        context = self.context_for(student.user)
+
+        self.assertEqual(context['student'], student.user)
+        self.assertEqual(context['school_class'], school_class)
 
 class StudentSessionJsonCalendarTests(TestCase):
     """Holiday sessions in the student's session list: flagged, no number, reason."""

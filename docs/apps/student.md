@@ -15,6 +15,7 @@ To ease template rendering across various school directories, the app defines a 
     *   Checks if the user is authenticated and possesses the `'student'` role.
     *   If matched, returns the user instance under the variable key `student` and the student's associated class under `school_class`.
     *   If not matched, returns an empty dictionary.
+    *   A user with the `'student'` role but no `StudentProfile` row also gets an empty dictionary, so every page still renders (the topbar shows «دانش‌آموز» without a class). The student pages themselves refuse that user with a 403 (`student.decorators.student_required`).
 
 ---
 
