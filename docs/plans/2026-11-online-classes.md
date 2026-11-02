@@ -88,12 +88,10 @@ and there is no data migration.** `docs/database.md` has the fields.
 **Constraints:** `online_event_end_after_start`, `unique_online_access_per_student`, `online_access_has_a_way_in`,
 `announcement_until_after_from`, `announcement_button_label_and_url`, `unique_dismissal_per_student`.
 
-**Verified:** `makemigrations --check` reports no changes. On a scratch SQLite database, `migrate`, then `migrate online_classes
-zero` (all the tables are gone), then `migrate` again. PostgreSQL applied it forward in the test database; the reverse ran on
-SQLite only.
+**Verified:** `makemigrations --check` reports no changes. The round trip (`migrate online_classes zero`, then forward again) ran on a scratch SQLite database and on a throwaway PostgreSQL 16 test database. On PostgreSQL the 15 tables went to 0 and back to the same 15, the app's `django_migrations` row went away and returned, no other table changed, and a row could be written afterwards.
 
 **Rollback:** `migrate online_classes zero` removes the tables and **everything in them, including entered credentials**. To
-roll back without losing data, keep the tables and revert the code. The other changes need no rollback steps.
+roll back without losing data, keep the tables and revert the code. `zero` leaves the app's `auth_permission` and content type rows behind, which is normal and harmless, and migrating forward reuses them. The other changes need no rollback steps.
 
 ## 4. URLs, views and permissions
 
@@ -173,14 +171,15 @@ The new tests found three real bugs, all fixed:
 | Run | Result |
 | --- | --- |
 | Baseline, PostgreSQL, `main` 8200d05 | 1048 tests, OK |
-| Branch, PostgreSQL, full | 1264 tests, OK (1048 + 216 new), before the last small admin, form and CSS changes |
-| Branch, PostgreSQL, `online_classes`, final code | 210 tests, OK |
-| Branch, SQLite, full | 1264 tests, OK, 1 skipped, on the final code |
+| Branch, PostgreSQL, full, final code (`c250e64`) | 1264 tests, OK (1048 + 216 new) |
+| Branch, SQLite, full | 1264 tests, OK, 1 skipped, just before two test-only changes (image tests moved to a temporary `MEDIA_ROOT`, one test moved between files) |
+| Branch, SQLite, `online_classes`, after those changes | 210 tests, OK, also with a real key in the environment |
+| Each code commit alone, in a clean worktree, SQLite | Passes: `798ea8f` (blog, academic_calendar), `6c414d6` (online_classes), `76ec2f7` (online_classes, student) |
 | `makemigrations --check` | No changes |
 
 **Browser, on a scratch database, in headless Chrome:**
-- The dashboard and all three tabs at 1280 and 375 px, with JS on and off: no horizontal overflow, no JS errors, no request leaves the site.
-- With JS: the countdown ticks, dismissing removes the banner and it stays gone after reload, reveal and copy work, and new-tab links carry `noopener noreferrer`.
+- The dashboard and all three tabs at 1280 and 375 px: no horizontal overflow, no JS errors, no request leaves the site. The dashboard and «امروز» were also checked with JS off.
+- With JS, at 375 px: the countdown ticks, dismissing removes the banner and it stays gone after reload, reveal and copy work, and new-tab links carry `noopener noreferrer`.
 - Admin event list and page, rows list, import, platform and announcement forms load at both widths. As usual in the admin, wide tables scroll inside their own box.
 - The topbar's class label is cut off on a phone when the text is long. That's the existing shared header, which I didn't change.
 
