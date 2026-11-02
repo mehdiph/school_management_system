@@ -188,10 +188,10 @@ The new tests found three real bugs, all fixed:
 
 **Fixed in this work:**
 - `docs/apps/student.md` said `StudentProfile` has `school_class`, `enrollment_date` and `status` (they're on `StudentEnrollment`). Its sessions URL, dashboard query and admin were also out of date.
+- `docs/apps/school.md` omitted `Branch`, `SchoolClass.branch` and `Subject.color`, and gave `ClassSubject` a `teacher` field where the code uses `teacher_assignment`. Correcting that also corrected its `SchoolClass` string format, its `ClassSubject` validation and its admin search fields.
+- `CLAUDE.md` said ADR-001…022; the file now reaches ADR-027.
 
 **Not fixed, outside this work:**
-- `docs/apps/school.md` omits `Branch`, `SchoolClass.branch` and `Subject.color`, and gives `ClassSubject` a `teacher` field where the code uses `teacher_assignment`.
-- `CLAUDE.md` says ADR-001…022, but the file reached ADR-026 before this work and now ADR-027.
 - `docs/apps/student.md` §6 still describes some dashboard parts loosely (achievements are static text in the template).
 
 ## 9. Open questions and deploy actions
