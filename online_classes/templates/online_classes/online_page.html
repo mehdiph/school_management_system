@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}کلاس‌ها و آزمون‌های آنلاین{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'student/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'online_classes/css/online.css' %}">
+{% endblock %}
+
+{% block sidebar %}
+    {% include "partials/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+  <main class="main-content">
+    <section class="online-page-head">
+      <h1>کلاس‌ها و آزمون‌های آنلاین</h1>
+      <nav class="online-tabs" aria-label="زمان">
+        {% for value, label in tabs %}
+        <a href="?tab={{ value }}" class="online-tab{% if value == tab %} is-active{% endif %}"{% if value == tab %} aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </nav>
+    </section>
+    <div id="online-page-list" data-online-refresh data-tab="{{ tab }}">
+      {% include "online_classes/_page_list.html" %}
+    </div>
+  </main>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'online_classes/js/online.js' %}"></script>
+{% endblock scripts %}

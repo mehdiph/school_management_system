@@ -6,6 +6,8 @@ from teaching.models.session_content import SessionContent
 from school.models.class_subject import ClassSubject
 from datetime import timedelta
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from online_classes.selectors import dashboard_block
 from .templatetags import persian_filters
 from .decorators import student_required
 from .selectors import panel_enrollment
@@ -14,7 +16,13 @@ from .services import get_classes_for_day
 # Create your views here.
 
 @student_required
+@never_cache
 def student_dashboard(request):
+    # The online card can hold personal links, so this page is never cached.
+    online = dashboard_block(request.user.student_profile)
+    if request.GET.get('partial') == '1':
+        return render(request, 'online_classes/_dashboard_card.html', online)
+
     enrollment = panel_enrollment(request.user.student_profile)
     school_class = enrollment.school_class if enrollment else None
     today = timezone.localdate()
@@ -36,6 +44,7 @@ def student_dashboard(request):
         'student': enrollment or request.user,
         'school_class': school_class,
         'has_enrollment': enrollment is not None,
+        **online,
     }
 
     return render(request, 'student/dashboard.html', context)

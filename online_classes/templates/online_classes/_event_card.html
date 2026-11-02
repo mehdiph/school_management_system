@@ -1,0 +1,81 @@
+{% comment %}One event. "compact" is the dashboard's version: no help text and no credentials, which stay on the full page.{% endcomment %}
+{% load static %}
+{% with event=card.event platform=card.event.platform %}
+<article class="online-card online-card--{{ card.status_kind }}" style="--online-accent: {{ card.accent }}">
+  <header class="online-card__head">
+    <span class="online-card__logo">
+      {% if platform.logo_url %}<img src="{{ platform.logo_url }}" alt="{{ platform.name }}" width="44" height="44" loading="lazy">
+      {% else %}<i class="fas {{ card.icon }}" aria-hidden="true"></i>{% endif %}
+    </span>
+    <div class="online-card__title">
+      <h3>{{ event.title }}</h3>
+      <p>{{ event.get_event_type_display }}{% if event.subject %} · {{ event.subject.name }}{% endif %}{% if platform %} · {{ platform.name }}{% endif %}</p>
+    </div>
+    <span class="online-status online-status--{{ card.status_kind }}">{{ card.status_label }}</span>
+  </header>
+
+  {% if event.is_postponed %}
+    <p class="online-card__time"><i class="far fa-clock" aria-hidden="true"></i> زمان جدید اعلام می‌شود</p>
+  {% else %}
+    <p class="online-card__time"><i class="far fa-clock" aria-hidden="true"></i> {{ card.starts_text }} تا {{ card.ends_text }}</p>
+  {% endif %}
+
+  {% if event.status_note and not event.is_scheduled %}
+    <p class="online-card__note">{{ event.status_note }}</p>
+  {% endif %}
+
+  {% if card.shows_countdown %}
+    <p class="online-card__countdown"><span data-countdown="{{ card.seconds_to_start }}">{{ card.countdown }}</span></p>
+  {% endif %}
+
+  {% if not compact and event.description %}<p class="online-card__description">{{ event.description|linebreaksbr }}</p>{% endif %}
+
+  {% if card.missing_row %}
+    <p class="online-card__alert">لینک شما هنوز ثبت نشده؛ با مدرسه تماس بگیرید</p>
+  {% elif card.credentials_failed %}
+    <p class="online-card__alert">اطلاعات ورود شما باز نشد؛ با مدرسه تماس بگیرید</p>
+  {% elif card.row_waiting %}
+    <p class="online-card__ok">اطلاعات ورود شما ثبت شده است و از {{ card.credentials_text }} اینجا نمایش داده می‌شود.</p>
+  {% endif %}
+
+  {% if card.has_credentials %}
+    {% if compact %}
+      <a class="online-card__more" href="{% url 'online_classes:online' %}">دیدن نام کاربری و رمز</a>
+    {% else %}
+      <div class="online-secrets">
+        {% if card.username %}
+        <div class="online-secret"><span class="online-secret__label">نام کاربری</span><span class="online-secret__value" dir="ltr">{{ card.username }}</span><button type="button" class="online-secret__copy" data-copy="{{ card.username }}" hidden>کپی</button></div>
+        {% endif %}
+        {% if card.password %}
+        <details class="online-secret"><summary><span class="online-secret__label">رمز عبور</span> <span class="online-secret__mask" aria-hidden="true">••••••</span> <span class="online-secret__show">نمایش</span></summary><span class="online-secret__value" dir="ltr">{{ card.password }}</span><button type="button" class="online-secret__copy" data-copy="{{ card.password }}" hidden>کپی</button></details>
+        {% endif %}
+        {% if card.access_code %}
+        <details class="online-secret"><summary><span class="online-secret__label">کد دسترسی</span> <span class="online-secret__mask" aria-hidden="true">••••••</span> <span class="online-secret__show">نمایش</span></summary><span class="online-secret__value" dir="ltr">{{ card.access_code }}</span><button type="button" class="online-secret__copy" data-copy="{{ card.access_code }}" hidden>کپی</button></details>
+        {% endif %}
+        {% if card.note %}<p class="online-card__description">{{ card.note }}</p>{% endif %}
+      </div>
+    {% endif %}
+  {% endif %}
+
+  {% if card.test_url %}
+    <a class="online-card__test" href="{{ card.test_url }}" target="_blank" rel="noopener noreferrer">آزمایش ورود</a>
+  {% endif %}
+
+  {% if card.can_join %}
+    <a class="online-join" href="{{ card.join_url }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-video" aria-hidden="true"></i> ورود به {{ event.get_event_type_display }}</a>
+  {% elif card.is_waiting_to_join %}
+    <span class="online-join online-join--off" aria-disabled="true">دکمه‌ی ورود از {{ card.joins_text }} فعال می‌شود</span>
+  {% endif %}
+
+  {% if not compact and platform and event.is_scheduled and not card.is_past %}
+    {% if platform.join_help or platform.support_contact or platform.support_url %}
+    <details class="online-help">
+      <summary>راهنمای ورود و پشتیبانی</summary>
+      {% if platform.join_help %}<p>{{ platform.join_help|linebreaksbr }}</p>{% endif %}
+      {% if platform.support_contact %}<p>پشتیبانی: <span dir="ltr">{{ platform.support_contact }}</span></p>{% endif %}
+      {% if platform.support_url %}<p><a href="{{ platform.support_url }}" target="_blank" rel="noopener noreferrer">صفحه‌ی پشتیبانی {{ platform.name }}</a></p>{% endif %}
+    </details>
+    {% endif %}
+  {% endif %}
+</article>
+{% endwith %}

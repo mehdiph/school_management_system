@@ -1,0 +1,13 @@
+<section class="online-block" data-refresh-seconds="{{ online_refresh_seconds|default_if_none:'' }}">
+  <div class="online-block__head">
+    <h3>کلاس‌ها و آزمون‌های آنلاین <i class="fas fa-video" aria-hidden="true"></i></h3>
+    <a href="{% url 'online_classes:online' %}">همه</a>
+  </div>
+  <div class="online-list">
+    {% for card in online_cards %}
+      {% include "online_classes/_event_card.html" with compact=True %}
+    {% empty %}
+      <p class="online-empty">فعلاً کلاس یا آزمون آنلاینی ندارید.</p>
+    {% endfor %}
+  </div>
+</section>

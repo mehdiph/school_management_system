@@ -1,0 +1,35 @@
+{% if banners %}
+<section class="online-banners" aria-label="اطلاعیه‌ها">
+  {% for banner in banners %}
+  {% with item=banner.announcement %}
+  <article class="online-banner online-banner--{{ item.level }}" data-banner>
+    {% if item.image_url %}
+    <picture class="online-banner__picture">
+      {% if item.image_mobile_url %}<source media="(max-width: 640px)" srcset="{{ item.image_mobile_url }}">{% endif %}
+      <img src="{{ item.image_url }}" alt="{{ item.title }}" loading="lazy">
+    </picture>
+    {% endif %}
+    <div class="online-banner__body">
+      <p class="online-banner__level">
+        <i class="fas {% if item.level == 'urgent' %}fa-bell{% elif item.level == 'important' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}" aria-hidden="true"></i>
+        {{ item.get_level_display }}
+      </p>
+      <h2 class="online-banner__title">{{ item.title }}</h2>
+      {% if item.body %}<p class="online-banner__text">{{ item.body|linebreaksbr }}</p>{% endif %}
+      {% if banner.event_note %}<p class="online-banner__event">{{ banner.event_note }}</p>{% endif %}
+      {% if banner.countdown %}<p class="online-banner__event"><i class="far fa-clock" aria-hidden="true"></i> <span data-countdown="{{ banner.seconds_to_event }}">{{ banner.countdown }}</span></p>{% endif %}
+      {% if item.button_label and item.safe_button_url %}
+      <a class="online-banner__button" href="{{ item.safe_button_url }}"{% if item.button_is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.button_label }}</a>
+      {% endif %}
+    </div>
+    {% if item.can_be_dismissed %}
+    <form method="post" action="{% url 'online_classes:dismiss_announcement' item.pk %}" class="online-banner__close" data-dismiss>
+      {% csrf_token %}
+      <button type="submit" aria-label="بستن این اطلاعیه"><i class="fas fa-times" aria-hidden="true"></i></button>
+    </form>
+    {% endif %}
+  </article>
+  {% endwith %}
+  {% endfor %}
+</section>
+{% endif %}

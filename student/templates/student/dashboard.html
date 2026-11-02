@@ -4,6 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{% static '/student/css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'online_classes/css/online.css' %}">
 {% endblock %}
 
 {% block title %}داشبورد دانش آموز{% endblock %}
@@ -15,7 +16,9 @@
 {% block content %}
     <div class="dashboard-wrapper">
         <main class="main-content">
-            
+
+            {% include "online_classes/_announcements.html" %}
+
             <!-- Hero Banner -->
             <section class="hero-banner">
                 <div class="hero-text">
@@ -30,6 +33,10 @@
             {% if not has_enrollment %}
             <section class="no-enrollment-note">برای این حساب ثبت‌نامی پیدا نشد؛ لطفاً با مدرسه تماس بگیرید.</section>
             {% endif %}
+
+            <div id="online-dashboard" data-online-refresh>
+                {% include "online_classes/_dashboard_card.html" %}
+            </div>
 
             <!-- Achievements & Classes -->
             <div class="grid-2-col">
@@ -167,3 +174,7 @@
         </main>
     </div>
 {% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'online_classes/js/online.js' %}"></script>
+{% endblock scripts %}

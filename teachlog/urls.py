@@ -41,6 +41,7 @@ urlpatterns = [
     path('dashboard/', include('core.urls')),
     path('auth/', include('accounts.urls')),
     path('student/', include('student.urls')),
+    path('student/', include('online_classes.urls')),
     path('scheduling/', include('scheduling.urls')),
     path('attendance/', include('attendance.urls')),
     path('supervisor/', include('supervisor.urls')),
