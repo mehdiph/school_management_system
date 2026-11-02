@@ -27,6 +27,10 @@
                 </div>
             </section>
 
+            {% if not has_enrollment %}
+            <section class="no-enrollment-note">برای این حساب ثبت‌نامی پیدا نشد؛ لطفاً با مدرسه تماس بگیرید.</section>
+            {% endif %}
+
             <!-- Achievements & Classes -->
             <div class="grid-2-col">
                 <!-- Achievements -->

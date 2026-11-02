@@ -18,6 +18,8 @@ from core.testing import (
     make_user,
 )
 from student.context_processors import student_info
+from student.models.student_enrollment import StudentEnrollment
+from student.selectors import current_enrollment, panel_enrollment
 
 STUDENT_PAGES = (
     reverse('student:dashboard'),
@@ -144,3 +146,76 @@ class StudentSessionJsonCalendarTests(TestCase):
         # the held session without content no longer breaks the endpoint
         self.assertFalse(held['is_holiday'])
         self.assertIn('اول', held['label'])
+
+
+class EnrollmentStatesTests(TestCase):
+    """A student has one enrolment per year, or none: no page may assume exactly one."""
+
+    def setUp(self):
+        self.branch = make_branch()
+        self.grade = make_grade()
+        self.old_year = make_academic_year(start_date=jdatetime.date(1404, 7, 1), is_current=False)
+        self.year = make_academic_year(start_date=jdatetime.date(1405, 7, 1), is_current=True)
+        self.old_class = make_school_class(self.branch, self.grade, self.old_year)
+        self.school_class = make_school_class(self.branch, self.grade, self.year)
+        self.student = make_student()
+        self.client.force_login(self.student.user)
+
+    def _pages_work(self):
+        self.assertEqual(self.client.get(reverse('student:dashboard')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('student:sessions')).status_code, 200)
+
+    def test_student_with_no_enrollment_gets_empty_pages_not_a_500(self):
+        self._pages_work()
+        response = self.client.get(reverse('student:dashboard'))
+        self.assertContains(response, 'برای این حساب ثبت‌نامی پیدا نشد')
+        self.assertEqual(response.context['student'], self.student.user)
+        self.assertEqual(self.client.get(reverse('student:session_list_json', args=['math'])).status_code, 404)
+
+    def test_student_with_two_years_gets_the_newest(self):
+        make_enrollment(self.student, self.old_class)
+        make_enrollment(self.student, self.school_class)
+        self._pages_work()
+        self.assertEqual(panel_enrollment(self.student).school_class, self.school_class)
+        response = self.client.get(reverse('student:dashboard'))
+        self.assertEqual(response.context['school_class'], self.school_class)
+        self.assertNotContains(response, 'برای این حساب ثبت‌نامی پیدا نشد')
+
+    def test_unknown_subject_is_a_404_not_a_500(self):
+        make_enrollment(self.student, self.school_class)
+        self.assertEqual(self.client.get(reverse('student:session_list_json', args=['nope'])).status_code, 404)
+
+    def test_old_year_only_keeps_the_panel_but_is_not_current(self):
+        make_enrollment(self.student, self.old_class)
+        self._pages_work()
+        self.assertEqual(panel_enrollment(self.student).school_class, self.old_class)
+        self.assertIsNone(current_enrollment(self.student))
+
+    def test_current_enrollment_states(self):
+        enrollment = make_enrollment(self.student, self.school_class)
+        self.assertEqual(current_enrollment(self.student), enrollment)
+
+        for status in ('transferred', 'graduated', 'withdrawn'):
+            with self.subTest(status=status):
+                StudentEnrollment.objects.filter(pk=enrollment.pk).update(status=status)
+                self.assertIsNone(current_enrollment(self.student))
+        StudentEnrollment.objects.filter(pk=enrollment.pk).update(status='active')
+
+        self.school_class.is_active = False
+        self.school_class.save()
+        self.assertIsNone(current_enrollment(self.student))
+        self.school_class.is_active = True
+        self.school_class.save()
+
+        self.branch.is_active = False
+        self.branch.save()
+        self.assertIsNone(current_enrollment(self.student))
+
+    def test_two_years_flagged_current_the_newest_wins(self):
+        self.old_year.is_current = True
+        self.old_year.save()
+        make_enrollment(self.student, self.old_class)
+        self.assertIsNone(current_enrollment(self.student))
+
+        enrollment = make_enrollment(self.student, self.school_class)
+        self.assertEqual(current_enrollment(self.student), enrollment)
