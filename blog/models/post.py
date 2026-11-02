@@ -1,5 +1,4 @@
 from datetime import timedelta
-from datetime import timezone as dt_timezone
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -12,6 +11,8 @@ from PIL import Image
 
 from blog import content
 from blog.text import normalize, reading_minutes, search_key, summary, unique_slug
+from core.moments import as_datetime as _aware
+from core.moments import to_utc, utc_now
 from website.images import METADATA_HELP, reencode
 from website.models.base import image_url
 from website.validators import IMAGE_VALIDATORS
@@ -34,16 +35,6 @@ def public_q(prefix=""):
         f"{prefix}published_at__lte": utc_now(),
         f"{prefix}section__is_active": True,
     })
-
-
-def utc_now():
-    """
-    ``timezone.now()`` in UTC, the zone the post's moments are written in
-    (``Post.save``): on SQLite, django_jalali compares them as text, so
-    both sides must carry the same offset.
-    """
-
-    return timezone.now().astimezone(dt_timezone.utc)
 
 
 class PostQuerySet(models.QuerySet):
@@ -219,8 +210,7 @@ class Post(models.Model):
         # into the future and drop it from ``public()``. Write every moment
         # in UTC, like ``timezone.now()`` that queries compare it with.
         for name in MOMENT_FIELDS:
-            value = _aware(getattr(self, name))
-            setattr(self, name, value.astimezone(dt_timezone.utc) if value else value)
+            setattr(self, name, to_utc(getattr(self, name)))
 
         self.title = normalize(self.title)
         self.excerpt = normalize(self.excerpt)
@@ -329,12 +319,6 @@ class Post(models.Model):
     @property
     def seo_description(self):
         return self.meta_description or summary(self.summary, 160)
-
-
-def _aware(value):
-    """A ``jdatetime`` from a jDateTimeField -> a ``datetime`` to compare with ``timezone.now()``."""
-
-    return value.togregorian() if hasattr(value, "togregorian") else value
 
 
 class PostImage(models.Model):

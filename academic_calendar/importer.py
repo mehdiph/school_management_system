@@ -25,14 +25,15 @@ inside it. A row that repeats an active event of that year (same title,
 start and end) or another row of the file is an error.
 """
 
-import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
 
 import jdatetime
-from openpyxl import load_workbook
 
+from core import spreadsheet
 from core.services import access
+from core.spreadsheet import FileRejected
+from core.spreadsheet import normalize as _normalize
+from core.spreadsheet import split_list as _split
 from scheduling.models.bell import Bell
 from school.models import AcademicYear, Branch, Grade
 
@@ -63,35 +64,6 @@ TYPE_ALIASES = {
 
 MAX_ROWS = 500
 MAX_TITLE = 200
-
-_SEPARATORS = re.compile(r"[,،;؛]")
-_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
-
-
-class FileRejected(Exception):
-    """The file as a whole cannot be read (not xlsx, wrong headers, too long...)."""
-
-
-def _text(value):
-    if value is None:
-        return ""
-    if isinstance(value, float) and value.is_integer():
-        value = int(value)
-    if isinstance(value, (datetime, date)):
-        # Excel turned "1405/07/12" into a (Gregorian) date: keep its digits.
-        return f"{value.year:04d}/{value.month:02d}/{value.day:02d}"
-    # ZWNJ is part of Persian words; only collapse ordinary whitespace.
-    return re.sub(r"[ \t\r\n]+", " ", str(value)).strip()
-
-
-def _normalize(value):
-    """For matching names: Arabic ي/ك -> Persian, digits -> Latin, no extra spaces."""
-
-    return _text(value).replace("ي", "ی").replace("ك", "ک").translate(_DIGITS).strip()
-
-
-def _split(value):
-    return [part.strip() for part in _SEPARATORS.split(_normalize(value)) if part.strip()]
 
 
 @dataclass
@@ -146,32 +118,7 @@ class ImportPlan:
 def read_rows(uploaded_file):
     """``[{column: text}, ...]`` from the first sheet; ``FileRejected`` when unreadable."""
 
-    try:
-        workbook = load_workbook(uploaded_file, read_only=True, data_only=True)
-    except Exception:
-        raise FileRejected("فایل قابل خواندن نیست؛ فایل اکسل (xlsx) را با قالب دانلودشده بفرستید.")
-
-    sheet = workbook.worksheets[0]
-    rows = sheet.iter_rows(values_only=True)
-    header = [_text(value) for value in next(rows, ())]
-    while header and not header[-1]:
-        header.pop()
-    if header != COLUMNS:
-        raise FileRejected(
-            "ستون‌های فایل با قالب یکی نیست. ستون‌ها باید دقیقاً این‌ها باشند: "
-            + "، ".join(COLUMNS)
-        )
-
-    data = []
-    for values in rows:
-        cells = {column: _text(value) for column, value in zip(COLUMNS, values)}
-        data.append(cells)
-    while data and not any(data[-1].values()):
-        data.pop()
-    if len(data) > MAX_ROWS:
-        raise FileRejected(f"حداکثر {MAX_ROWS} ردیف در هر فایل مجاز است.")
-    workbook.close()
-    return data
+    return spreadsheet.read_rows(uploaded_file, COLUMNS, MAX_ROWS)
 
 
 def current_year():

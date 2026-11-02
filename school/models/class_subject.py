@@ -114,17 +114,7 @@ class ClassSubject(models.Model):
 
     @property
     def icon(self):
-        icons = {
-            "math": "fa-calculator",
-            "science": "fa-flask",
-            "farsi": "fa-book",
-            "computer": "fa-laptop-code",
-            "qoran": "fa-star-and-crescent",
-            "motaleat": "fa-book",
-            "varzesh": "fa-basketball",
-            "art": "fa-palette",
-        }
-        return icons.get(self.subject.slug, "fa-book")
+        return self.subject.icon
 
     class Meta:
         verbose_name = "درس کلاس"
