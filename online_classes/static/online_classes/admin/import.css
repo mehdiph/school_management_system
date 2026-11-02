@@ -1,0 +1,2 @@
+/* The import preview: calendar.css plus the one row kind the calendar doesn't have. */
+.online-import__row--warning td { background: var(--message-warning-bg, #ffc); }

@@ -11,10 +11,11 @@ rather than silently falling back to insecure development defaults.
 
 import os
 
+from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F401,F403
-from .base import SECRET_KEY, ALLOWED_HOSTS, DATABASES, MIDDLEWARE
+from .base import SECRET_KEY, ALLOWED_HOSTS, DATABASES, MIDDLEWARE, ONLINE_ACCESS_KEYS
 
 DEBUG = False
 
@@ -36,6 +37,21 @@ if DATABASES['default']['ENGINE'] != 'django.db.backends.postgresql':
         'POSTGRES_PASSWORD, POSTGRES_HOST and POSTGRES_PORT environment '
         'variables.'
     )
+
+# The keys of the personal passwords and links (docs/apps/online_classes.md).
+if not ONLINE_ACCESS_KEYS:
+    raise ImproperlyConfigured(
+        'ONLINE_ACCESS_KEYS environment variable must be set in production '
+        '(comma-separated Fernet keys; see docs/apps/online_classes.md).'
+    )
+for _key in ONLINE_ACCESS_KEYS:
+    try:
+        Fernet(_key)
+    except ValueError:
+        raise ImproperlyConfigured(
+            'ONLINE_ACCESS_KEYS holds a value that is not a Fernet key '
+            '(see docs/apps/online_classes.md).'
+        ) from None
 
 # Static files.
 #
