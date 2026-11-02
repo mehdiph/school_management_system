@@ -1,12 +1,30 @@
 # Plan: online classes and exams, and announcements in the student panel (Phase 1 of 3)
 
-Status: **waiting for approval.** No code has been written. After approval, work goes on
-`feature/online-classes`, created from `main`. Nothing on that branch is committed until
-you ask.
+Status: **approved 2026-11-02 as recommended, with the five changes below.** Work goes on
+`feature/online-classes`, created from `main` after this update. On that branch only the
+D5 fix is committed, as you asked; nothing else is committed until you ask.
 
-Items marked **[policy]** are school decisions. Every other D-item is a technical choice,
-and I give a recommendation for each. Answer «تأیید» to accept them all, or name the ones
-to change. **D6 is the one question I can't answer from the code.**
+Items marked **[policy]** are school decisions. Every other D-item is a technical choice.
+
+## Approval (2026-11-02)
+
+All D-items are approved as recommended, except for these changes, which the sections below
+now reflect:
+
+1. **D6.** The school has grades 1–6 only and no fields of study. No `Track` model and no
+   schema change, now or in later phases. Because these are primary-school students, parents
+   usually use the panel for them, so student-facing texts must be short and plain enough for
+   a parent to act on.
+2. **D11.** A new per-event field, "show credentials from N hours before the start" (default
+   0 = the join window), so families can test the login before an exam. The personal link
+   follows the same rule. The join button still opens only at the join window.
+3. **D9.** A postponed event with no new time stays in «پیش‌رو» with «زمان جدید اعلام می‌شود»
+   until an admin edits it. It doesn't move to «گذشته».
+4. **D5.** Yes, as a separate commit.
+5. **D14.** A management command re-encrypts every access row with the newest key (dry run by
+   default, `--apply`), so an old key can be removed after rotation. Generating, storing,
+   backing up (separately from database backups) and rotating the key are documented in
+   `docs/apps/online_classes.md`.
 
 ## 1. Findings, risks and surprises
 
@@ -143,14 +161,13 @@ I'm already changing this view, and the sessions page would otherwise break for 
 returning student at rollover. A student whose only active enrolment is in an old year keeps
 seeing that class's timetable and homework as they do today, but gets no online items.
 
-**D6. [policy, question for you] Does the school have fields of study?** If tracks exist,
-each is presumably its own class («دهم ریاضی الف»). Recommended: **no schema change in
-Phase 1**. The admin ticks the classes of a track, and a mixed-track group waits for Phase 2's
-custom groups.
+**D6. [policy, decided] No fields of study.** The school has grades 1–6 only and no fields of
+study. There is **no `Track` model and no schema change, now or in later phases**. Audiences
+target branches, grades, classes and students.
 
-If you need "all of ریاضی" as one tick, the addition is a `Track` model, a `SchoolClass.track`
-FK and one more audience term. None of it reworks Phase 1, but it does change `school`, so it
-deserves its own decision. Tell me if tracks exist and how the classes are named.
+Because these are primary-school students, **parents usually use the panel on their behalf**.
+Student-facing texts (help, empty states, the "link not registered" message) stay short and
+plain enough for a parent to act on: say what to do next, with no technical words.
 
 **D7. No `academic_year` on events or announcements.** Their moments already place them in
 time, and audiences resolve against the current enrolment. The class picker offers only
@@ -177,13 +194,16 @@ is stored and no job runs.
 | Tab | Contains |
 |---|---|
 | امروز | Not ended, and starts by the end of today (Tehran), live first |
-| پیش‌رو | Starts after today |
-| گذشته | Ended within the last N days (D10), newest first |
+| پیش‌رو | Starts after today, plus **every postponed event** whatever its stored moments |
+| گذشته | Ended within the last N days (D10), newest first; never a postponed event |
 
-- Cancelled and postponed events stay in their tab with a badge and note, with no button and
-  no credentials. The note is required for those two statuses.
-- A postponed event with a new time is edited: new moments, back to scheduled.
-- A postponed event with no new time moves to گذشته when its old end passes.
+- Cancelled and postponed events show a badge and note, with no button and no credentials. The
+  note is required for those two statuses.
+- A cancelled event follows the clock through the tabs like a scheduled one.
+- **A postponed event means "no new time yet".** It stays in پیش‌رو with «زمان جدید اعلام می‌شود»
+  in place of a time and a countdown, until an admin edits it: new moments and back to scheduled.
+  It's listed after the dated items, oldest first, so it can't push real dates off the dashboard.
+- The admin's state filter has «به‌تعویق‌افتاده، بدون زمان جدید», so a forgotten one can be found.
 - `is_active=False` is the separate soft delete, which hides the event. There's no hard delete
   for events.
 
@@ -192,20 +212,36 @@ is stored and no job runs.
   override).
 - Past items stay visible for **14 days** (`ONLINE_PAST_DAYS`).
 
-**D11. [policy] When credentials appear.** Recommended: **the same window as the join button**
-for personal links, usernames, passwords and codes. They're sent to the browser only during
-that window, so an exam password can't be passed around days earlier.
+**D11. [policy] When credentials appear.** By default, **the same window as the join button**
+for personal links, usernames, passwords and codes. A per-event field,
+`credentials_lead_hours` («نمایش اطلاعات ورود از چند ساعت قبل از شروع», default 0 = the join
+window, at most 168), opens them earlier so families can test the login before an exam.
+
+| Moment | Rule |
+|---|---|
+| Credentials open | The earlier of the join window and `start - N hours`, so they're never later than the button |
+| Join button opens | The join window only; N doesn't move it |
+| Both close | At the end of the event, or at once when it's cancelled or postponed |
+
+- Credentials are sent to the browser only while open, so an exam password can't be passed around
+  days earlier than the admin chose.
+- While credentials are open and the button isn't, the personal link appears as a small «آزمایش
+  ورود» link next to the credentials, not as the large join button. A personal row with no link of
+  its own uses the event's link here too, because that's where its credentials are used.
+- The field applies to personal mode only. The form refuses a non-zero value on shared and info-only
+  events, and a shared link still appears only at the join window.
 
 The «لینک شما هنوز ثبت نشده؛ با مدرسه تماس بگیرید» message shows **at all times**, including
-for upcoming events, so a student can act before the exam. Students with a row see «دسترسی شما
-ثبت شده است» until the window opens.
+for upcoming events, so a family can act before the exam. Students with a row see «اطلاعات ورود شما
+ثبت شده است» until credentials open, with the time they will open.
 
 **D12. Direct links, no redirect view.** The button is a plain
 `<a target="_blank" rel="noopener noreferrer">`, as you specified. Open tracking is out of
 scope, and Phase 3 can add a redirect without changing the data.
 - The URL isn't in the page before the window opens.
 - The countdown uses seconds sent by the server, not the phone's clock, which is often wrong.
-- At zero, JS fetches `?partial=1` (ADR-015) to get the button.
+- At the next change (credentials open, join opens, the event ends), JS fetches `?partial=1`
+  (ADR-015) to get the new state.
 - Without JS the page shows the time and a refresh link.
 
 **D13. One validator, `online_classes/validators.py`.**
@@ -239,6 +275,18 @@ accounts, and database dumps and backups travel further than the server.
 **The cost: if the key is lost, the secrets are gone.** The key must be backed up separately
 from the database, and recovery means re-importing the file. A row that can't be decrypted
 shows «با مدرسه تماس بگیرید» and logs an error; it never returns a 500.
+
+**Rotation: `manage.py reencrypt_online_access`.** It re-encrypts every access row with the newest
+key, so an old key can then be removed.
+- A dry run by default, reporting how many rows it would rewrite. `--apply` writes.
+- It runs in batches under row locks, and doesn't touch `updated_by` or `updated_at`.
+- It's idempotent: a second `--apply` rewrites nothing.
+- It prints counts and row ids only, never a secret.
+- A row no configured key can decrypt is listed and left as it is, and the command exits with an
+  error, so nobody removes a key that's still needed.
+
+`docs/apps/online_classes.md` documents generating, storing, backing up (separately from database
+backups) and rotating the key, step by step.
 
 **D15. [policy] Who sees passwords in the admin.** Recommended:
 - New permission `online_classes.view_access_secret`, granted by hand. Superusers have it
@@ -345,7 +393,7 @@ environment, with an entry in `.env.example` and the command to generate a key).
 | Model | Fields |
 |---|---|
 | `OnlinePlatform` | `name` (unique), `logo`, `color`, `join_help`, `support_contact`, `support_url`, `allowed_domains` (one per line), `is_active`, timestamps |
-| `OnlineEvent` | `title`, `event_type` (class, exam, meeting, other), `platform`, `subject`, `class_subject`, `start_at`, `end_at`, `description`, `status`, `status_note`, `access_mode`, `join_url`, `join_lead_minutes`, `is_active`, `created_by`, `updated_by`, timestamps |
+| `OnlineEvent` | `title`, `event_type` (class, exam, meeting, other), `platform`, `subject`, `class_subject`, `start_at`, `end_at`, `description`, `status`, `status_note`, `access_mode`, `join_url`, `join_lead_minutes`, `credentials_lead_hours`, `is_active`, `created_by`, `updated_by`, timestamps |
 | `OnlineEventAccess` | `event`, `student`, `url_encrypted`, `username`, `password_encrypted`, `access_code_encrypted`, `note`, `updated_by`, timestamps |
 | `Announcement` | `title`, `body`, `image`, `image_mobile`, `button_label`, `button_url`, `level`, `visible_from`, `visible_until`, `priority`, `is_pinned`, `is_dismissible`, `event`, `is_active`, `created_by`, `updated_by`, timestamps |
 | `AnnouncementDismissal` | `announcement`, `student`, `dismissed_at` |
@@ -379,6 +427,7 @@ existing table changes and no data migration.
 - `importer.py`, `import_template.py`
 - image cleanup signals
 - `student/selectors.py` for D4
+- the `reencrypt_online_access` management command (D14)
 
 **Student panel, in the panel's current design** (`dashboard.css` cards, colours and Font Awesome).
 - **Dashboard:** the announcement area at the top, then a «کلاس‌ها و آزمون‌های آنلاین» card with the
@@ -411,10 +460,17 @@ The page itself will have a locked total.
 - audience matrix in both directions (D3), and class or branch change taking effect at once
 - enrolment states: none, old year, withdrawn, inactive class, two years
 - time boundaries with a mocked clock: exactly at window open, start and end, tab edges, Tehran midnight
-- link and secret absent from the HTML before the window, after the end and when cancelled
+- link and secret absent from the HTML before credentials open, after the end and when cancelled or
+  postponed
+- `credentials_lead_hours`: credentials and the «آزمایش ورود» link open early while the join button stays
+  closed; refused on shared and info-only events; a value shorter than the join lead doesn't delay them
+- a postponed event stays in پیش‌رو long after its old end, never in گذشته, with «زمان جدید اعلام می‌شود»
 - URL validator, including `user@host`, `//`, wrong domain and subdomain rules
 - encryption: ciphertext in the database, key rotation, undecryptable row, nothing plain in the session
   during import
+- `reencrypt_online_access`: the dry run writes nothing, `--apply` rewrites with the newest key and the
+  old key can then be removed, a second run rewrites nothing, `updated_at` stays, an undecryptable row
+  stops the "safe to remove" message, and no secret in the output
 - importer: every error and warning, leading zeros, Persian digits, blank-keeps, all-or-nothing, row cap
 - admin: each refused role and each branch-scoping rule, masked output, reveal permission and history
 - dismissal: other student's audience, urgent, non-dismissible, repeat POST, no-JS flow
@@ -429,8 +485,8 @@ The page itself will have a locked total.
 
 **Order of work:**
 1. Baseline on `main`
-2. Enrolment fix
-3. Models, audience, validators and crypto
+2. Enrolment fix, as its own commit (D5)
+3. Models, audience, validators, crypto and the re-encryption command
 4. Admin and import
 5. Student panel
 6. Docs and full runs
