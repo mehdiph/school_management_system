@@ -79,7 +79,7 @@ The junction model associating a class, a subject, and a teacher.
 | `is_active` | `BooleanField` | Status indicator. |
 
 *   **Constraints:** `teacher` field is limited using `limit_choices_to={'role': 'teacher'}`.
-*   **Icon Helper Property:** A helper `@property` named `icon` evaluates `self.subject.name` and returns an associated FontAwesome icon class string (defaults to `'fa-book'`).
+*   **Icon Helper Property:** `icon` delegates to `Subject.icon`, which holds the map (`SUBJECT_ICONS`) from a subject's slug to a FontAwesome class (defaults to `'fa-book'`).
 
 ---
 

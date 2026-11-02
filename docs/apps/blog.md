@@ -60,7 +60,7 @@ becomes public when its time comes. An inactive category or tag doesn't hide a p
 its own offset on SQLite, and a loaded row holds Tehran-time jdatetimes; re-saved as they
 were, an edited post would compare as 3½ hours in the future and drop out of the public
 pages. `Post.save()` writes `published_at`, `submitted_at`, `privacy_ack_at`,
-`reviewed_at` and `content_updated_at` in UTC, and queries compare with `utc_now()`.
+`reviewed_at` and `content_updated_at` in UTC, and queries compare with `utc_now()` (`core/moments.py`, shared with `online_classes`).
 PostgreSQL compares instants and was never affected.
 
 **Files:** every image field (`BlogPage.og_image`, `BlogAuthor.photo`, `Post.cover`,

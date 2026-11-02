@@ -298,6 +298,64 @@ erDiagram
 | `Category` | `blog_unique_category_slug_per_section` | one slug per section |
 | `AuthorSection` | `blog_unique_author_section` | one grant per author and section |
 
+## Online classes and announcements
+
+`OnlineEvent` and `Announcement` also each have M2Ms to `Branch`, `Grade`, `SchoolClass` and `StudentProfile` (`students`, `excluded_students`), the abstract `AudienceTargets`; they are left out of the diagram for readability.
+
+```mermaid
+erDiagram
+    OnlinePlatform |o--o{ OnlineEvent : "runs on"
+    Subject |o--o{ OnlineEvent : "optional"
+    ClassSubject |o--o{ OnlineEvent : "optional"
+    OnlineEvent ||--o{ OnlineEventAccess : "has"
+    StudentProfile ||--o{ OnlineEventAccess : "has"
+    OnlineEvent |o--o{ Announcement : "optional link"
+    Announcement ||--o{ AnnouncementDismissal : "closed by"
+    StudentProfile ||--o{ AnnouncementDismissal : "closes"
+
+    OnlineEvent {
+        string title
+        string event_type
+        datetime start_at
+        datetime end_at
+        string status
+        string access_mode
+        string join_url
+        int join_lead_minutes
+        int credentials_lead_hours
+        bool is_whole_school
+        bool is_active
+    }
+    OnlineEventAccess {
+        text url_encrypted
+        string username
+        text password_encrypted
+        text access_code_encrypted
+        string note
+    }
+    Announcement {
+        string title
+        text body
+        string level
+        datetime visible_from
+        datetime visible_until
+        int priority
+        bool is_pinned
+        bool is_dismissible
+        bool is_whole_school
+        bool is_active
+    }
+```
+
+| Table | Constraint | Meaning |
+| --- | --- | --- |
+| `OnlineEvent` | `online_event_end_after_start` | `end_at > start_at` |
+| `OnlineEventAccess` | `unique_online_access_per_student` | one row per `(event, student)` |
+| `OnlineEventAccess` | `online_access_has_a_way_in` | not all of link, username, password and code empty |
+| `Announcement` | `announcement_until_after_from` | `visible_until > visible_from` |
+| `Announcement` | `announcement_button_label_and_url` | a button has both, or neither |
+| `AnnouncementDismissal` | `unique_dismissal_per_student` | one row per `(announcement, student)` |
+
 ## Academic calendar constraints at a glance
 
 | Table | Constraint | Meaning |
