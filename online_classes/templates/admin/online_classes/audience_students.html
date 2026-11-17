@@ -1,0 +1,107 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls static jalali_tags %}
+{% comment %}
+  The students an event or announcement reaches (D2): search, class filter, access
+  filter and pages, all plain GET links and forms (works without JS). Secrets are
+  never shown, only which fields a row holds.
+{% endcomment %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/changelists.css' %}">
+  <link rel="stylesheet" href="{% static 'online_classes/admin/audience.css' %}">
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} change-list{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">خانه</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{{ change_url }}">{{ item }}</a>
+  &rsaquo; دانش‌آموزان مخاطب
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="online-audience-list">
+  <p class="online-audience__summary">
+    {% if scoped %}<strong>فقط دانش‌آموزان شعبه‌های شما:</strong>{% endif %}
+    {{ counts.total|fa_digits }} دانش‌آموز مخاطب
+    {% if counts.with_access %} · {{ counts.with_row|fa_digits }} با ردیف دسترسی · <strong>{{ counts.missing|fa_digits }} بدون ردیف</strong>{% endif %}
+  </p>
+
+  <form method="get" class="online-audience__filters" role="search">
+    <label>جستجو
+      <input type="search" name="q" value="{{ query }}" placeholder="نام، کد دانش‌آموزی یا کد ملی" dir="auto">
+    </label>
+    <label>کلاس
+      <select name="class">
+        <option value="">همه‌ی کلاس‌ها</option>
+        {% for row in counts.classes %}
+          <option value="{{ row.class_id }}"{% if class_id == row.class_id|stringformat:"d" %} selected{% endif %}>{{ row.label }} ({{ row.total|fa_digits }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if event %}
+    <label>ردیف دسترسی
+      <select name="access">
+        <option value="">همه</option>
+        <option value="with"{% if access_filter == "with" %} selected{% endif %}>با ردیف</option>
+        <option value="without"{% if access_filter == "without" %} selected{% endif %}>فقط بدون ردیف</option>
+      </select>
+    </label>
+    {% endif %}
+    <input type="submit" value="نمایش">
+    {% if query or class_id or access_filter %}<a href="?" class="online-audience__reset">پاک کردن فیلترها</a>{% endif %}
+  </form>
+
+  <p class="paginator">{{ page.paginator.count|fa_digits }} نتیجه{% if page.paginator.num_pages > 1 %}؛ صفحه‌ی {{ page.number|fa_digits }} از {{ page.paginator.num_pages|fa_digits }}{% endif %}</p>
+
+  {% if lines %}
+  <div class="results">
+    <table id="result_list">
+      <thead>
+        <tr>
+          <th scope="col">دانش‌آموز</th>
+          <th scope="col">کد دانش‌آموزی</th>
+          <th scope="col">کلاس</th>
+          {% if event %}<th scope="col">ردیف دسترسی</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for line in lines %}
+        {% with enrollment=line.enrollment %}
+        <tr>
+          <td>{{ enrollment.student.user.get_full_name }}</td>
+          <td dir="ltr">{{ enrollment.student.student_code }}</td>
+          <td>{{ enrollment.school_class.grade.name }} {{ enrollment.school_class.section }} · {{ enrollment.school_class.branch.name }}</td>
+          {% if event %}
+          <td>
+            {% if line.row %}
+              {% if line.row_url %}<a href="{{ line.row_url }}">{{ line.stored }}</a>{% else %}{{ line.stored }}{% endif %}
+            {% else %}
+              <strong>بدون ردیف</strong>{% if line.add_url %} · <a href="{{ line.add_url }}" class="addlink">افزودن ردیف</a>{% endif %}
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endwith %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p>دانش‌آموزی پیدا نشد.</p>
+  {% endif %}
+
+  {% if previous_url or next_url %}
+  <nav class="paginator online-audience__pages" aria-label="صفحه‌ها">
+    {% if previous_url %}<a href="{{ previous_url }}">صفحه‌ی قبل</a>{% endif %}
+    {% if next_url %}<a href="{{ next_url }}">صفحه‌ی بعد</a>{% endif %}
+  </nav>
+  {% endif %}
+
+  <p><a href="{{ change_url }}">بازگشت به {{ opts.verbose_name }}</a></p>
+</div>
+{% endblock %}

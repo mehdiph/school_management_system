@@ -35,12 +35,15 @@
     {% if plan.warnings %}
       <p class="errornote">{{ plan.warnings|length|fa_digits }} دانش‌آموز جزو مخاطبان این رویداد نیستند. ردیف آن‌ها ثبت می‌شود، ولی تا جزو مخاطبان نشوند چیزی نمی‌بینند؛ کدها را بررسی کنید.</p>
     {% endif %}
+    {% if plan.flagged %}
+    <h3>ردیف‌هایی که خطا یا هشدار دارند ({{ plan.flagged|length|fa_digits }})</h3>
+    <div class="results">
     <table class="calendar-admin__table">
       <thead>
         <tr><th>ردیف</th><th>دانش‌آموز</th><th>کد دانش‌آموزی</th><th>کد ملی</th><th>لینک</th><th>نام کاربری</th><th>رمز</th><th>کد</th><th>توضیح</th><th>نتیجه</th></tr>
       </thead>
       <tbody>
-        {% for row in plan.rows %}
+        {% for row in plan.flagged %}
         <tr class="{% if row.errors %}calendar-admin__row--error{% elif row.warnings %}online-import__row--warning{% endif %}">
           <td>{{ row.number|fa_digits }}</td>
           <td>{% if row.student %}{{ row.student.user.get_full_name }}{% else %}—{% endif %}</td>
@@ -54,12 +57,29 @@
           <td>
             {% if row.errors %}<ul class="errorlist">{% for error in row.errors %}<li>{{ error }}</li>{% endfor %}</ul>
             {% elif row.warnings %}{% for warning in row.warnings %}<strong>{{ warning }}</strong>{% endfor %}
-            {% elif row.is_update %}بروزرسانی{% else %}تازه{% endif %}
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
+    {% endif %}
+    {% if plan.by_class %}
+    <details class="online-import__classes">
+      <summary>ردیف‌های بدون خطا به تفکیک کلاس</summary>
+      <div class="results">
+      <table class="calendar-admin__table">
+        <thead><tr><th>کلاس</th><th>تازه</th><th>بروزرسانی</th></tr></thead>
+        <tbody>
+        {% for group in plan.by_class %}
+          <tr><td>{{ group.label }}</td><td>{{ group.new|fa_digits }}</td><td>{{ group.update|fa_digits }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </details>
+    {% endif %}
     {% if plan.is_valid %}
     <form method="post" class="submit-row">
       {% csrf_token %}

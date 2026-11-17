@@ -17,7 +17,9 @@ test holds them to the same answer. A custom group (Phase 2) is one more
 many-to-many on ``AudienceTargets`` and one more term here.
 """
 
-from django.db.models import Exists, OuterRef, Q
+from dataclasses import dataclass, field
+
+from django.db.models import Count, Exists, OuterRef, Q, Subquery
 
 from school.models import SchoolClass
 from student.models.student_enrollment import StudentEnrollment
@@ -66,32 +68,157 @@ def visible_to(queryset, enrollment):
 # One item -> its students
 # ----------------------------------------------------------------------
 
-def _target_ids(item):
-    return {field: set(getattr(item, field).values_list("pk", flat=True)) for field in ALL_TARGET_FIELDS}
+def _target_rows(item, field):
+    """The item's ``field`` rows as a subquery: nothing is read until the outer query runs."""
+
+    through = getattr(type(item), field).through
+    return through.objects.filter(**{type(item)._meta.model_name: item.pk})
+
+
+def _target_ids(item, field):
+    column = getattr(type(item), field).field.m2m_reverse_name()
+    return _target_rows(item, field).values(column)
 
 
 def reached_enrollments(item):
-    """The current enrolments a saved item reaches, by name (the admin's counts and lists, the import)."""
+    """
+    The current enrolments a saved item reaches (the admin's counts and lists,
+    the import). One query: the targets are subqueries, not lists read first.
+    """
 
-    targets = _target_ids(item)
     enrollments = StudentEnrollment.objects.current()
 
     if not item.is_whole_school:
-        wanted = Q(student__in=targets["students"]) | Q(school_class__in=targets["classes"])
-        if targets["branches"] or targets["grades"]:
-            by_group = Q()
-            if targets["branches"]:
-                by_group &= Q(school_class__branch__in=targets["branches"])
-            if targets["grades"]:
-                by_group &= Q(school_class__grade__in=targets["grades"])
-            wanted |= by_group
-        enrollments = enrollments.filter(wanted)
+        any_branch = Exists(_target_rows(item, "branches"))
+        any_grade = Exists(_target_rows(item, "grades"))
+        by_group = (
+            (Q(any_branch) | Q(any_grade))
+            & (~Q(any_branch) | Q(school_class__branch__in=_target_ids(item, "branches")))
+            & (~Q(any_grade) | Q(school_class__grade__in=_target_ids(item, "grades")))
+        )
+        enrollments = enrollments.filter(
+            Q(student__in=_target_ids(item, "students"))
+            | Q(school_class__in=_target_ids(item, "classes"))
+            | by_group
+        )
 
     return (
-        enrollments.exclude(student__in=targets["excluded_students"])
+        enrollments.exclude(student__in=_target_ids(item, "excluded_students"))
         .select_related("student__user", "school_class__grade", "school_class__branch")
         .order_by("student__user__last_name", "student__user__first_name", "pk")
     )
+
+
+# ----------------------------------------------------------------------
+# The admin's summary and lists: aggregated in the database, scoped (D1)
+# ----------------------------------------------------------------------
+
+def _scoped(item, branch_ids):
+    """``reached_enrollments`` limited to ``branch_ids``; ``None`` means every branch (a superuser)."""
+
+    enrollments = reached_enrollments(item)
+    if branch_ids is not None:
+        enrollments = enrollments.filter(school_class__branch__in=branch_ids)
+    return enrollments
+
+
+def _has_row(event):
+    from .models import OnlineEventAccess  # models import this module
+
+    return Exists(OnlineEventAccess.objects.filter(event=event, student=OuterRef("student_id")))
+
+
+@dataclass
+class ClassCount:
+    class_id: int
+    grade: str
+    section: str
+    branch: str
+    total: int
+    missing: int = 0
+
+    @property
+    def label(self):
+        return f"{self.grade} {self.section} · {self.branch}"
+
+
+@dataclass
+class Breakdown:
+    """Who an item reaches, per class, ordered by grade, section and branch. ``missing``: no access row."""
+
+    classes: list = field(default_factory=list)
+    with_access: bool = False
+
+    @property
+    def total(self):
+        return sum(row.total for row in self.classes)
+
+    @property
+    def missing(self):
+        return sum(row.missing for row in self.classes)
+
+    @property
+    def with_row(self):
+        return self.total - self.missing
+
+
+def breakdown(item, branch_ids=None, event=None):
+    """
+    One aggregate query, whatever the audience size. ``event``: a personal
+    event, to count who has no access row; rows of students outside the
+    audience aren't counted.
+    """
+
+    counts = {"total": Count("pk")}
+    if event is not None:
+        counts["missing"] = Count("pk", filter=~Q(_has_row(event)))
+    rows = (
+        _scoped(item, branch_ids)
+        .order_by()
+        .values(
+            "school_class_id", "school_class__grade__name", "school_class__grade__level", "school_class__section",
+            "school_class__branch__name", "school_class__branch__order",
+        )
+        .annotate(**counts)
+        .order_by(
+            "school_class__grade__level", "school_class__section", "school_class__branch__order",
+            "school_class__branch__name",
+        )
+    )
+    return Breakdown(
+        classes=[
+            ClassCount(
+                class_id=row["school_class_id"],
+                grade=row["school_class__grade__name"],
+                section=row["school_class__section"],
+                branch=row["school_class__branch__name"],
+                total=row["total"],
+                missing=row.get("missing", 0),
+            )
+            for row in rows
+        ],
+        with_access=event is not None,
+    )
+
+
+def students(item, branch_ids=None, event=None):
+    """
+    The list page's enrolments, ordered by class and name. With ``event``, each
+    carries ``access_id`` (its row, or ``None``), so a page costs no query per
+    student.
+    """
+
+    enrollments = _scoped(item, branch_ids).order_by(
+        "school_class__grade__level", "school_class__section", "school_class__branch__order",
+        "student__user__last_name", "student__user__first_name", "pk",
+    )
+    if event is not None:
+        from .models import OnlineEventAccess
+
+        enrollments = enrollments.annotate(access_id=Subquery(
+            OnlineEventAccess.objects.filter(event=event, student=OuterRef("student_id")).values("pk")[:1]
+        ))
+    return enrollments
 
 
 def has_targets(item):

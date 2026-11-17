@@ -673,6 +673,11 @@ The school runs some classes and exams online, on services that change. Families
 
 **One validator.** `online_classes/validators.py` requires https with a host and no `user@host`, with optional per-platform domains. Templates check again when rendering.
 
+*Amended 2026-11-17 (audience lists):*
+- **Admin counts and lists are branch-scoped.** For a non-superuser, the «چه کسانی می‌بینند» summary, the per-class breakdown and the student list page count and show only students currently enrolled in their branches, under «فقط دانش‌آموزان شعبه‌های شما». This holds even on whole-school items they may view but not change. A superuser sees everyone.
+- **No form page lists students one by one.** The event and announcement pages show counts, a collapsed per-class table and links to a paginated list page. Student pickers are server-side autocomplete. Existing access rows are edited on their own pages. The import preview lists only rows with an error or a warning.
+- **Aggregation stays in `audience.py`.** It runs in the database with a fixed number of queries whatever the audience size.
+
 *Amended 2026-11-17 (allowed-domains fix):*
 - `clean_url` removes bidi controls and zero-width characters from every link before checking it. ZWNJ is removed only from the scheme and host. The cleaned link is stored and rendered, because staff paste links from Persian messengers.
 - A host must be plain ASCII after cleaning, so IDN hosts are refused.

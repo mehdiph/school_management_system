@@ -24,6 +24,14 @@
 
 # [Unreleased]
 
+## Changed (online classes: audience summaries and student lists)
+
+- The event and announcement admin pages show one line of counts: audience, plus with a row and without a row for personal events. Below it is a per-class table, collapsed by default and ordered by grade and section. Students are never listed one by one, and the query count is fixed whatever the audience size.
+- Each count opens a new student list page for that item: search by name, student code or national code (not shown), a class filter, «با ردیف / فقط بدون ردیف», and 100 per page. For a personal event, a missing student has «افزودن ردیف», which opens the access row form prefilled with the event and the student. The student must be in the audience and the admin's branches. After saving, the admin returns to the same filtered page; only a same-site link to that list is accepted.
+- A branch admin sees counts and names of their own branches only («فقط دانش‌آموزان شعبه‌های شما»), including on whole-school items they can view. This closes a gap where a whole-school event's «بدون ردیف» list showed names from every branch.
+- The event page no longer lists existing access rows. Its inline only adds new ones, and `ONLINE_ACCESS_INLINE_MAX` is removed.
+- The Excel import preview lists only rows with an error or a warning; valid rows are counted per class.
+
 ## Fixed (online classes: student pickers)
 
 - «دانش‌آموزان» and «دانش‌آموزان مستثنا» on the event and announcement admin pages rendered every student profile as a checkbox, twice, including other branches' students for a branch admin. A `formfield_overrides` for every ManyToManyField stopped Django's autocomplete from applying. They're now server-side autocomplete pickers: current students in the admin's branches only, searchable by name, student code and national code, and showing name, code and class. A forged id is still refused on save. The access row's student picker uses the same scoped search.

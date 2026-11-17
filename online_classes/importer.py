@@ -64,6 +64,9 @@ class ImportRow:
     access_code: str = ""
     note: str = ""
     is_update: bool = False
+    #: The student's current class, for the preview's per-class counts (read with the branch, no extra query).
+    class_label: str = ""
+    class_order: tuple = ()
     errors: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
 
@@ -115,6 +118,24 @@ class ImportPlan:
     def is_valid(self):
         return bool(self.rows) and not self.errors
 
+    @property
+    def flagged(self):
+        """The rows the preview lists one by one: those with an error or a warning (D4)."""
+
+        return [row for row in self.rows if row.errors or row.warnings]
+
+    @property
+    def by_class(self):
+        """Rows without errors, counted per class: ``[{"label", "new", "update"}]`` in grade and section order."""
+
+        groups = {}
+        for row in self.rows:
+            if row.errors:
+                continue
+            group = groups.setdefault(row.class_order, {"label": row.class_label or "بدون کلاس جاری", "new": 0, "update": 0})
+            group["update" if row.is_update else "new"] += 1
+        return [groups[key] for key in sorted(groups)]
+
 
 def read_rows(uploaded_file):
     if uploaded_file.size > MAX_UPLOAD_BYTES:
@@ -163,11 +184,18 @@ def validate(raw_rows, event, acting_user):
 
     by_code, by_national = _student_lookup(raw_rows)
     named_ids = {s.pk for s in by_code.values()} | {s.pk for s in by_national.values()}
-    branch_of = dict(
-        StudentEnrollment.objects.current()
-        .filter(student__in=named_ids)
-        .values_list("student_id", "school_class__branch_id")
-    )
+    placement = {
+        student_id: (branch_id, (level, section, branch_order), f"{grade} {section} · {branch}")
+        for student_id, branch_id, level, grade, section, branch_order, branch in (
+            StudentEnrollment.objects.current()
+            .filter(student__in=named_ids)
+            .values_list(
+                "student_id", "school_class__branch_id", "school_class__grade__level", "school_class__grade__name",
+                "school_class__section", "school_class__branch__order", "school_class__branch__name",
+            )
+        )
+    }
+    branch_of = {student_id: place[0] for student_id, place in placement.items()}
     in_audience = set(audience.reached_enrollments(event).values_list("student_id", flat=True))
     existing = set(OnlineEventAccess.objects.filter(event=event).values_list("student_id", flat=True))
     allowed = None if acting_user.is_superuser else set(access.get_accessible_branch_ids(acting_user))
@@ -206,6 +234,8 @@ def validate(raw_rows, event, acting_user):
         if row.student is not None:
             student_id = row.student.pk
             row.is_update = student_id in existing
+            if student_id in placement:
+                _, row.class_order, row.class_label = placement[student_id]
             if allowed is not None and branch_of.get(student_id) not in allowed:
                 row.errors.append("این دانش‌آموز در شعبه‌های شما نیست.")
             if student_id in seen:

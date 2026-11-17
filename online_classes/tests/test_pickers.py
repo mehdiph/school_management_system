@@ -34,7 +34,11 @@ class PageTests(AdminBase, TestCase):
     def setUp(self):
         super().setUp()
         self.event = make_event({"classes": [self.class_a1], "students": [self.student_b1]})
-        self.announcement = make_announcement({"classes": [self.class_a1], "excluded_students": [self.student_a1]})
+        # Every class in it already has a student: the per-class block lists one row per class, and only the
+        # numbers may change as students are added.
+        self.announcement = make_announcement(
+            {"classes": [self.class_a1, self.class_b1], "excluded_students": [self.student_a2]}
+        )
         self.pages = (
             change(self.event.pk),
             reverse("admin:online_classes_announcement_change", args=[self.announcement.pk]),

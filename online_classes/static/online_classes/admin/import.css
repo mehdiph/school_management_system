@@ -1,2 +1,6 @@
 /* The import preview: calendar.css plus the one row kind the calendar doesn't have. */
 .online-import__row--warning td { background: var(--message-warning-bg, #ffc); }
+/* Only flagged rows are listed; valid ones are counted per class in a collapsed block (D4). */
+.online-import__classes { margin: 1em 0; }
+.online-import__classes summary { cursor: pointer; }
+.results { overflow-x: auto; }

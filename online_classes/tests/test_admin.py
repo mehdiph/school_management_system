@@ -192,14 +192,17 @@ class AccessInlineTests(AdminBase, TestCase):
                 data[f"access_rows-{index}-{key}"] = value
         return data
 
-    def test_masked_on_the_event_page(self):
+    def test_masked_on_the_event_page_and_the_student_list(self):
+        # Since the audience-lists change the event page lists no existing row (D3); the student list names
+        # what a row holds, never a value.
         make_access(self.event, self.student_a1, url="https://example.com/secret-path", password="pw-secret", access_code="code-secret")
-        response = self.client.get(change(self.event.pk))
-        for secret in ("pw-secret", "code-secret", "secret-path"):
-            self.assertNotContains(response, secret)
         row = OnlineEventAccess.objects.get()
-        self.assertNotContains(response, row.password_encrypted)
-        self.assertContains(response, "ثبت شده")
+        students = reverse("admin:online_classes_onlineevent_students", args=[self.event.pk])
+        for url in (change(self.event.pk), students):
+            response = self.client.get(url)
+            for secret in ("pw-secret", "code-secret", "secret-path", row.password_encrypted):
+                self.assertNotContains(response, secret)
+        self.assertContains(self.client.get(students), "لینک، رمز، کد")
 
     def test_masked_in_the_rows_list(self):
         row = make_access(self.event, self.student_a1, url="https://example.com/secret-path", password="pw-secret")
@@ -218,16 +221,15 @@ class AccessInlineTests(AdminBase, TestCase):
         self.assertEqual(row.updated_by, self.superuser)
 
     def test_blank_keeps_the_secret_and_a_new_value_replaces_it(self):
+        # Existing rows are edited on their own page now (D3), with the same form.
         row = make_access(self.event, self.student_a1, password="pw-old", url="https://example.com/old")
-        self.client.post(change(self.event.pk), self.inline_data(
-            {"id": row.pk, "student": self.student_a1.pk, "event": self.event.pk, "username": "added"}, initial=1,
-        ))
+        url = reverse("admin:online_classes_onlineeventaccess_change", args=[row.pk])
+        blank = {"username": "", "url": "", "password": "", "access_code": "", "note": ""}
+        self.client.post(url, {**blank, "username": "added"})
         row.refresh_from_db()
         self.assertEqual(row.username, "added")
         self.assertEqual(row.read_secrets()["password"], "pw-old")
-        self.client.post(change(self.event.pk), self.inline_data(
-            {"id": row.pk, "student": self.student_a1.pk, "event": self.event.pk, "password": "pw-new"}, initial=1,
-        ))
+        self.client.post(url, {**blank, "username": "added", "password": "pw-new"})
         row.refresh_from_db()
         self.assertEqual(row.read_secrets()["password"], "pw-new")
         self.assertEqual(row.read_secrets()["url"], "https://example.com/old")
@@ -258,25 +260,31 @@ class AccessInlineTests(AdminBase, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(OnlineEventAccess.objects.count(), 1)
 
-    def test_page_shows_the_count_and_the_list_of_missing_students(self):
+    def test_page_shows_the_counts_and_the_list_page_the_names(self):
+        # The event page shows counts only since the audience-lists change; names are on the list page.
         second = self.enrol(self.class_a1)
         make_access(self.event, self.student_a1, password="x")
         response = self.client.get(change(self.event.pk))
-        self.assertContains(response, "۱ دانش‌آموز بدون ردیف")
-        self.assertContains(response, second.user.get_full_name())
+        self.assertContains(response, "۲ دانش‌آموز مخاطب")
+        self.assertContains(response, "۱ با ردیف دسترسی")
+        self.assertContains(response, "۱ بدون ردیف")
+        self.assertNotContains(response, second.user.get_full_name())
+        listing = self.client.get(reverse("admin:online_classes_onlineevent_students", args=[self.event.pk]), {"access": "without"})
+        self.assertContains(listing, second.user.get_full_name())
+        self.assertNotContains(listing, self.student_a1.user.get_full_name())
         self.assertEqual([e.student for e in services.missing_access(self.event)], [second])
 
     def test_shared_event_has_no_inline(self):
         event = make_event()
         self.assertNotContains(self.client.get(change(event.pk)), "access_rows-TOTAL_FORMS")
 
-    @override_settings(ONLINE_ACCESS_INLINE_MAX=1)
-    def test_a_large_event_does_not_list_its_rows_and_still_saves(self):
+    def test_the_page_never_lists_existing_rows_and_still_saves(self):
+        # Was a threshold (ONLINE_ACCESS_INLINE_MAX); since the audience-lists change no row is ever listed (D3).
         first = make_access(self.event, self.student_a1, password="a", username="u-first")
         make_access(self.event, self.student_b1, password="b", username="u-second")
         response = self.client.get(change(self.event.pk))
         self.assertNotContains(response, "u-first")
-        self.assertContains(response, "فهرست ردیف‌ها")
+        self.assertContains(response, "همه‌ی ردیف‌های ثبت‌شده‌ی این رویداد")
         response = self.client.post(change(self.event.pk), self.inline_data())
         self.assertEqual(response.status_code, 302)
         self.assertEqual(OnlineEventAccess.objects.count(), 2)

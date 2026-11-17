@@ -10,3 +10,8 @@
   {% endif %}
   {{ block.super }}
 {% endblock %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+  {% if audience %}{% include "admin/online_classes/_audience_report.html" %}{% endif %}
+{% endblock %}

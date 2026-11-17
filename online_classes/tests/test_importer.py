@@ -245,7 +245,10 @@ class ImportPageTests(SchoolMixin, TestCase):
         self.row = cells(self.student_a1, password="pw-secret", access_code="code-secret", url="https://host.example.com/secret-path")
 
     def test_preview_masks_and_keeps_only_a_token_in_the_session(self):
-        response = self.client.post(self.url, {"file": xlsx([self.row])})
+        # Since the audience-lists change only rows with an error or warning are listed (D4): student_a2 is
+        # outside the audience, so their row is listed, masked.
+        outside = cells(self.student_a2, password="pw-secret", access_code="code-secret", url="https://host.example.com/secret-path")
+        response = self.client.post(self.url, {"file": xlsx([self.row, outside])})
         for secret in ("pw-secret", "code-secret", "secret-path"):
             self.assertNotContains(response, secret)
         self.assertContains(response, importer.MASK)
