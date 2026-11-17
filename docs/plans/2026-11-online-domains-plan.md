@@ -1,6 +1,6 @@
 # Plan: allowed domains for online platforms (bug fix)
 
-Status: **plan only, waiting for approval.** Nothing implemented yet. Work will go on `fix/online-domains`,
+Status: **approved 2026-11-17 with D4 changed** (invisible marks in links are removed, not refused). Work will go on `fix/online-domains`,
 branched from `main` (6d6321b, which has online classes Phase 1 merged).
 
 ## The report
@@ -65,17 +65,21 @@ Also found: invisible marks in the link's *path* (e.g. a trailing RLM) are accep
   admin shows the stored, normalised list after saving. **No data migration.** Matching also normalises when
   reading (same function, ignoring unusable lines), so an existing `www.skyroom.online` row already accepts
   `skyroom.online` before anyone re-saves it.
-- **D4, the link side (rule change):** the link itself isn't rewritten beyond trimming whitespace and invisible
-  characters at both ends. Inside the link:
-  - Bidi controls and zero-width characters (U+200B, U+200E/F, U+202A–E, U+2066–9, U+FEFF) are refused with
-    «لینک نویسه‌ی نامرئی دارد (معمولاً از کپی کردن متن فارسی می‌آید)؛ لینک را دوباره کپی یا تایپ کنید.»
-    ZWNJ (U+200C) is still allowed in the path because Persian slugs use it.
-  - A host with anything but ASCII letters, digits, `-` and `.` is refused, with
-    «دامنه‌ی لینک باید با حروف انگلیسی باشد.» This means IDN (Persian-script) domains are no longer accepted
-    for links. They also can't match any allowed domain, and they're a look-alike risk. **Policy: confirm.**
-  - A trailing dot in the host (`skyroom.online.`) counts as the same host. The port is ignored (as now).
-  These rules apply wherever links are validated: event `join_url`, personal access `url` (form and Excel import),
-  platform `support_url` and announcement buttons. The render-time `safe_*` checks get them too.
+- **D4, the link side (rule change, changed at approval):** invisible marks in a link are **removed, not
+  refused**, because staff copy links from Persian messengers all the time and retyping long exam links causes more
+  mistakes than it prevents. One helper cleans the link before validating:
+  - surrounding whitespace is trimmed;
+  - bidi controls and zero-width characters (U+200B, U+200E/F, U+202A–E, U+2066–9, U+FEFF) are removed
+    everywhere in the link;
+  - ZWNJ (U+200C) is removed from the scheme and host only and kept in the path, query and fragment, because
+    Persian slugs use it.
+  Then the cleaned link is validated, and **the cleaned link is what's stored and rendered**. If the host still
+  isn't plain ASCII (letters, digits, `-`, `.`) after cleaning, the link is refused with
+  «دامنه‌ی لینک باید با حروف انگلیسی باشد.» This means IDN (Persian-script) domain links are no longer accepted
+  (confirmed). A trailing dot in the host (`skyroom.online.`) counts as the same host. The port is ignored (as now).
+  The same helper is used for the event `join_url`, personal access `url` (form and Excel import), platform
+  `support_url` and announcement buttons, and each path is tested. The render-time `safe_*` checks validate the
+  same way.
 - **D5, the event error lists the allowed domains and the host read from the link:**
   «دامنه‌ی این لینک (example.com) جزو دامنه‌های مجاز این پلتفرم نیست. دامنه‌های مجاز: skyroom.online، monta.ir
   (و زیردامنه‌هایشان).» The same message appears in the personal-access form and the Excel import rows. The host
@@ -85,13 +89,15 @@ Also found: invisible marks in the link's *path* (e.g. a trailing RLM) are accep
 
 - **validators.py:** `normalise_domain(line)` and `normalise_domains(text)` → `(domains, errors)`;
   `validate_domains` raises the collected errors; `split_domains` returns the normalised usable domains;
-  `validate_https_url` trims the ends, refuses invisible marks and non-ASCII hosts, drops a trailing host dot and
-  builds the D5 message. One set of invisible-character constants.
+  `clean_url(value)` removes the invisible marks (D4); `validate_https_url` refuses non-ASCII hosts, drops a
+  trailing host dot and builds the D5 message. Every place that stores a link stores `clean_url(value)`. One set
+  of invisible-character constants.
 - **models/platform.py:** `clean()` stores the normalised text; help text mentions one domain per line and that
   `www` and subdomains are included. A help-text change makes a no-op `AlterField` migration
   (`online_classes.0002`, no database effect).
-- **event model / access form / importer:** no logic change; they already call `validate_https_url` with the
-  platform's text. The access form and the event model strip the link's ends via the validator's helper.
+- **Every link-storing path** (event `join_url` and announcement `button_url` in the model's `clean()`, platform
+  `support_url`, the access form's `clean_url`, and the Excel importer) replaces the value with `clean_url(value)`
+  before validating, so what's stored is the cleaned link.
 - **admin:** `domains_summary` shows the normalised list (already uses `domains`).
 - **Tests** (`online_classes/tests/test_validators.py`, plus admin tests for saving a platform):
   - each normalisation case: scheme, path, port, `user@`, whitespace, ZWNJ/RLM/BOM, trailing dot and slash, `*.`,
@@ -99,8 +105,10 @@ Also found: invisible marks in the link's *path* (e.g. a trailing RLM) are accep
   - refusals with the right Persian message for Persian letters, a bare word, an IP, and several bad lines at once;
   - platform admin save stores the normalised text;
   - `www` in either place accepts both;
-  - the reported link with RLM after or inside the host, and a trailing host dot;
-  - a non-ASCII host is refused, and ZWNJ in the path is still accepted;
+  - the reported link with RLM after or inside the host is accepted and stored cleaned, and so is one with a
+    trailing host dot, through each path: event admin, access form, Excel import, `support_url` and
+    announcement button;
+  - ZWNJ is removed from the host and kept in the path; a host still non-ASCII after cleaning is refused;
   - the error lists the allowed domains in the event admin, the access form and the import preview;
   - existing tests (`user@host`, look-alike domains like `skyroom.online.evil.com`, `evilskyroom.online`) still
     pass.
@@ -117,8 +125,9 @@ Also found: invisible marks in the link's *path* (e.g. a trailing RLM) are accep
 
 ## 5. Questions
 
-- **Q1:** Where did you see the error (which server or database)? If you can run this there, it confirms which
-  of the two causes it was:
+- **Q1 (answered at approval, partly):** the field showed `skyroom.online`. Which environment wasn't stated, and
+  the fix goes ahead either way: it covers both candidate causes. To confirm which one it was, run this where the
+  error appeared:
   `python manage.py shell -c "from online_classes.models import OnlinePlatform as P; [print(p.pk, ascii(p.allowed_domains)) for p in P.objects.all()]"`
   and paste the link into the event form again after typing it by hand. If it works when typed by hand, the
   pasted text carried an invisible mark.
