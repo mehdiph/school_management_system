@@ -142,10 +142,11 @@ class SaveTests(SchoolMixin, TestCase):
         return services.save_access_import(importer.validate(list(rows), self.event, self.admin), user=self.admin)
 
     def test_creates_encrypted_rows_with_who_did_it(self):
-        self.assertEqual(self.save(cells(self.student_a1, password="pw", username="u", note="n")), (1, 0))
+        # Long enough not to turn up in a random ciphertext by chance ("pw" did, about 1 run in 40).
+        self.assertEqual(self.save(cells(self.student_a1, password="pw-secret", username="u", note="n")), (1, 0))
         row = OnlineEventAccess.objects.get()
-        self.assertEqual(row.read_secrets()["password"], "pw")
-        self.assertNotIn("pw", row.password_encrypted)
+        self.assertEqual(row.read_secrets()["password"], "pw-secret")
+        self.assertNotIn("pw-secret", row.password_encrypted)
         self.assertEqual((row.username, row.note, row.updated_by), ("u", "n", self.admin))
 
     def test_blank_cells_keep_what_is_stored(self):

@@ -116,10 +116,47 @@ content; the admin's help text says so.
 
 ## 5. Validators (`validators.py`)
 
-Links must be https with a host and no `user@host` form, so `https://skyroom.online@evil.com` is refused. If the
-platform lists domains, the host must match one or be a subdomain of one. Announcement buttons also accept internal
-paths (`/…`, never `//…` or `/\…`). Models, forms and the importer all call this, and templates check again when
-rendering (`safe_https_url`, `safe_button_url`), so a bad row written another way can't produce a dangerous link.
+Links must be https with a plain-ASCII host and no `user@host` form, so `https://skyroom.online@evil.com` is
+refused. If the platform lists domains, the host must match one or be a subdomain of one. Announcement buttons also
+accept internal paths (`/…`, never `//…` or `/\…`). Models, forms and the importer all call this, and templates
+check again when rendering (`safe_https_url`, `safe_button_url`, `OnlinePlatform.safe_support_url`), so a bad row
+written another way can't produce a dangerous link.
+
+**Invisible marks are removed, not refused** (2026-11). Staff copy links out of Persian messengers, which add
+direction marks the admin can't see. `clean_url` runs before every check:
+
+- it trims surrounding whitespace;
+- it removes bidi controls and zero-width characters everywhere in the link: U+200B, U+200E/F, U+202A–E, U+2066–9,
+  U+FEFF and the Arabic letter mark U+061C;
+- it removes ZWNJ (U+200C) from the scheme and host only, keeping it in the path, query and fragment, where Persian
+  slugs use it.
+
+The cleaned link is what's stored and what's rendered. This applies to the event's `join_url`, the personal
+access `url` (admin form and Excel import), the platform's `support_url` and announcement buttons. The models clean
+in `clean_fields`, before the field validators run. A host that still isn't plain ASCII after cleaning is refused
+(«دامنه‌ی لینک باید با حروف انگلیسی باشد»), so Persian-script (IDN) domains aren't accepted. Their punycode form
+(`xn--…`) is ASCII and passes. A trailing dot in the host (`skyroom.online.`) and the port don't matter when
+comparing domains.
+
+**Allowed domains** (`OnlinePlatform.allowed_domains`, one per line; commas and semicolons also separate). On save
+(`OnlinePlatform.clean_fields`, so the admin and any `full_clean()` agree), each line is normalised:
+
+- invisible characters (ZWNJ and ZWJ included) and surrounding spaces are removed;
+- the scheme, `user@`, path, query, fragment, port, trailing dot, leading `*.` and leading `www.` are removed;
+- Persian/Arabic digits become Latin and `۔ ٫ 。 ．` become `.`;
+- the line is lower-cased, and duplicates are dropped.
+
+A line that still isn't an ASCII hostname is refused, and each bad line is named in the error. If any line is
+refused, the text is kept as typed so the admin can fix it.
+
+`www` is not special when matching: a domain covers itself and every subdomain, and `www.example.com` is stored as
+`example.com`. Entering either one accepts `example.com`, `www.example.com` and `class.example.com`. Matching
+normalises when it reads too (`split_domains`), so rows saved before this fix (e.g. `www.skyroom.online`) work
+without being re-saved. Unusable old lines are ignored when matching.
+
+When a link's host isn't allowed, the error names the host it read and lists the platform's domains: «دامنه‌ی
+این لینک (example.com) جزو دامنه‌های مجاز این پلتفرم نیست. دامنه‌های مجاز: skyroom.online (و زیردامنه‌هایشان).»
+The same message appears in the event admin, the access rows and the import preview.
 
 ## 6. Personal secrets and the key
 

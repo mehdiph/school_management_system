@@ -673,6 +673,12 @@ The school runs some classes and exams online, on services that change. Families
 
 **One validator.** `online_classes/validators.py` requires https with a host and no `user@host`, with optional per-platform domains. Templates check again when rendering.
 
+*Amended 2026-11-17 (allowed-domains fix):*
+- `clean_url` removes bidi controls and zero-width characters from every link before checking it. ZWNJ is removed only from the scheme and host. The cleaned link is stored and rendered, because staff paste links from Persian messengers.
+- A host must be plain ASCII after cleaning, so IDN hosts are refused.
+- Allowed domains are normalised on save (scheme, path, port, `*.`, `www.`, invisible characters, case), and a domain covers itself and its subdomains, so `www.example.com` and `example.com` are equivalent.
+- The domain error names the host and the allowed domains.
+
 **Direct links.** A plain link with `noopener noreferrer`, with no redirect view and no open tracking.
 
 ## Consequences

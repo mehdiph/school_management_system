@@ -16,7 +16,7 @@ from student.models.student_enrollment import StudentEnrollment
 
 from . import audience
 from .models import Announcement, OnlineEvent, OnlineEventAccess, OnlinePlatform
-from .validators import validate_https_url
+from .validators import clean_url, validate_https_url
 
 MOMENT_HELP = "به تاریخ شمسی و ساعت تهران، مثل ۱۴۰۵/۰۹/۱۲ ۱۰:۳۰."
 
@@ -228,7 +228,7 @@ class OnlineEventAccessForm(forms.ModelForm):
         return student
 
     def clean_url(self):
-        url = self.cleaned_data["url"].strip()
+        url = clean_url(self.cleaned_data["url"])
         if url:
             event = self._event()
             platform = event.platform if event is not None and event.platform_id else None

@@ -6,7 +6,7 @@ from website.images import METADATA_HELP, reencode
 from website.models.base import image_url
 from website.validators import IMAGE_VALIDATORS
 
-from ..validators import split_domains, validate_domains, validate_https_url
+from ..validators import clean_url, safe_https_url, split_domains, tidy_domains, validate_domains, validate_https_url
 
 LOGO_MAX_SIDE = 256
 
@@ -41,7 +41,8 @@ class OnlinePlatform(models.Model):
         validators=[validate_domains],
         verbose_name="دامنه‌های مجاز",
         help_text="اختیاری؛ هر دامنه در یک خط، مثل skyroom.online. اگر پر باشد، فقط لینک‌های این دامنه‌ها "
-                  "و زیردامنه‌هایشان پذیرفته می‌شوند.",
+                  "و زیردامنه‌هایشان (از جمله www) پذیرفته می‌شوند. اگر لینک کامل یا www بنویسید، "
+                  "هنگام ذخیره فقط نام دامنه نگه داشته می‌شود.",
     )
     is_active = models.BooleanField(default=True, verbose_name="فعال")
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
@@ -60,8 +61,22 @@ class OnlinePlatform(models.Model):
         return split_domains(self.allowed_domains)
 
     @property
+    def safe_support_url(self):
+        return safe_https_url(self.support_url)
+
+    @property
     def logo_url(self):
         return image_url(self.logo)
+
+    def clean_fields(self, exclude=None):
+        # Store one plain domain per line and the link without invisible marks;
+        # an unusable line is left as typed so the validator can name it.
+        exclude = exclude or ()
+        if "allowed_domains" not in exclude:
+            self.allowed_domains = tidy_domains(self.allowed_domains)
+        if "support_url" not in exclude:
+            self.support_url = clean_url(self.support_url)
+        super().clean_fields(exclude)
 
     def save(self, *args, **kwargs):
         if self.logo and not self.logo._committed:
