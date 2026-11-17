@@ -14,7 +14,6 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.core.exceptions import PermissionDenied
-from django.db import models
 from django.db.models import Count
 from django.forms import BaseInlineFormSet, CheckboxSelectMultiple
 from django.http import Http404, HttpResponse
@@ -32,6 +31,7 @@ from school.models import Branch, Grade
 from student.models.student_profile import StudentProfile
 
 from . import audience, crypto, importer, services
+from .pickers import URL_NAME as STUDENT_AUTOCOMPLETE, StudentAutocompleteView, StudentPicker, StudentsPicker
 from .forms import AccessImportForm, AnnouncementAdminForm, OnlineEventAccessForm, OnlineEventAdminForm
 from .import_template import build_template
 from .models import Announcement, OnlineEvent, OnlineEventAccess, OnlinePlatform
@@ -151,8 +151,14 @@ class StampsMixin:
 
 
 class AudienceAdminMixin(StampsMixin):
-    autocomplete_fields_audience = ("students", "excluded_students")
-    formfield_overrides = {models.ManyToManyField: {"widget": CheckboxSelectMultiple}}
+    """
+    Branches, grades and classes are checkboxes (a few dozen at most). Students
+    are server-side autocomplete pickers, never one checkbox per student: a
+    ``formfield_overrides`` for every ManyToManyField used to give them
+    checkboxes too, since Django only applies autocomplete when no widget is set.
+    """
+
+    STUDENT_FIELDS = ("students", "excluded_students")
 
     def allowed_branches(self, request):
         return access.get_accessible_branch_ids(request.user, request=request)
@@ -172,8 +178,12 @@ class AudienceAdminMixin(StampsMixin):
         return super().has_change_permission(request, obj) and self.owns(request, obj)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name in self.autocomplete_fields_audience:
+        if db_field.name in self.STUDENT_FIELDS:
+            # The form narrows the queryset to who this admin may pick (setup_audience).
+            kwargs["widget"] = StudentsPicker(db_field, self.admin_site)
             kwargs["queryset"] = StudentProfile.objects.select_related("user")
+        else:
+            kwargs.setdefault("widget", CheckboxSelectMultiple)
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
@@ -294,6 +304,11 @@ class OnlineEventAccessInline(AccessFormMixin, admin.TabularInline):
     def has_view_permission(self, request, obj=None):
         return super().has_view_permission(request, obj) and self._event_owned(request, obj)
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "student":
+            kwargs["widget"] = StudentPicker(db_field, self.admin_site)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def has_change_permission(self, request, obj=None):
         return super().has_change_permission(request, obj) and self._event_owned(request, obj)
 
@@ -362,6 +377,11 @@ class OnlineEventAccessAdmin(StampsMixin, AccessFormMixin, admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         return self._form_with_request(request, super().get_form(request, obj, **kwargs))
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "student":
+            kwargs["widget"] = StudentPicker(db_field, self.admin_site)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     @admin.display(description="دانش‌آموز", ordering="student__user__last_name")
     def student_name(self, obj):
@@ -583,6 +603,11 @@ class OnlineEventAdmin(AudienceAdminMixin, admin.ModelAdmin):
     def get_urls(self):
         view = self.admin_site.admin_view
         return [
+            path(
+                "student-autocomplete/",
+                view(StudentAutocompleteView.as_view(admin_site=self.admin_site)),
+                name=STUDENT_AUTOCOMPLETE,
+            ),
             path("<int:pk>/access-import/", view(never_cache(self.import_view)), name="online_classes_onlineevent_access_import"),
             path("<int:pk>/access-import/template/", view(never_cache(self.import_template_view)), name="online_classes_onlineevent_access_template"),
         ] + super().get_urls()

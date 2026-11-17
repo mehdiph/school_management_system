@@ -410,7 +410,7 @@ class BranchScopeTests(AdminBase, TestCase):
         self.assertFalse(OnlineEvent.objects.filter(title="جعلی", is_whole_school=True).exists())
 
     def test_student_picker_only_finds_their_students(self):
-        url = reverse("admin:autocomplete")
+        url = reverse("admin:online_classes_student_autocomplete")
         params = {"app_label": "online_classes", "model_name": "onlineevent", "field_name": "students", "term": ""}
         ids = {int(item["id"]) for item in self.client.get(url, params).json()["results"]}
         self.assertIn(self.student_a1.pk, ids)
@@ -418,7 +418,7 @@ class BranchScopeTests(AdminBase, TestCase):
 
     def test_student_picker_search_by_code(self):
         self.client.force_login(self.superuser)
-        url = reverse("admin:autocomplete")
+        url = reverse("admin:online_classes_student_autocomplete")
         params = {
             "app_label": "online_classes", "model_name": "onlineevent", "field_name": "students",
             "term": self.student_b1.student_code,

@@ -24,6 +24,10 @@
 
 # [Unreleased]
 
+## Fixed (online classes: student pickers)
+
+- «دانش‌آموزان» and «دانش‌آموزان مستثنا» on the event and announcement admin pages rendered every student profile as a checkbox, twice, including other branches' students for a branch admin. A `formfield_overrides` for every ManyToManyField stopped Django's autocomplete from applying. They're now server-side autocomplete pickers: current students in the admin's branches only, searchable by name, student code and national code, and showing name, code and class. A forged id is still refused on save. The access row's student picker uses the same scoped search.
+
 ## Fixed (online classes: allowed domains)
 
 - A link pasted from a Persian messenger was refused as «جزو دامنه‌های مجاز این پلتفرم نیست» even though its domain was allowed. The invisible direction mark it carried had become part of the host. Links are now cleaned before being checked, and the cleaned link is stored and rendered: bidi and zero-width marks are removed everywhere, and ZWNJ is removed from the scheme and host only. This applies to events, access rows (form and Excel import), the platform's support link and announcement buttons. A host that is still not plain ASCII is refused (no IDN hosts).

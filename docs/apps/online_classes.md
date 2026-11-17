@@ -246,8 +246,14 @@ shared with the calendar importer).
 - **Filters:** date, state (including «به‌تعویق‌افتاده، بدون زمان جدید»), type, platform, branch, grade. Branch and grade include
   whole-school items and items reaching them through a class.
 - **Images:** re-encoded to JPEG through `website.images`; no SVG. Logos sit on a white tile because JPEG flattens transparency.
-- **Student picker:** `StudentProfileAdmin.search_fields`; results are branch-scoped only when the request comes from this
-  app. Staff need `student.view_studentprofile` for it.
+- **Student pickers** (`pickers.py`): «دانش‌آموزان», «دانش‌آموزان مستثنا» and an access row's student are select2
+  autocomplete widgets backed by this app's own view (`…/onlineevent/student-autocomplete/`), never one checkbox per
+  student. Branches, grades and classes stay checkboxes.
+  - **Results:** students with a current enrolment, in the admin's branches (superuser: every branch). Searchable by
+    name, student code and national code, and labelled «name · code · class · branch».
+  - **Who can ask:** only this app's student fields; staff need `student.view_studentprofile` (or change).
+  - **Form validation:** the form's queryset is the same set plus the students already selected on the item, so a
+    forged id is "not a valid choice", and `targets_problems` checks branches again.
 
 ## 9. Settings (`base.py`)
 

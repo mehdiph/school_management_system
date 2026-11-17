@@ -13,8 +13,10 @@ from core.moments import format_jalali_datetime, parse_jalali_datetime
 from core.services import access
 from school.models import Branch, Grade, SchoolClass
 from student.models.student_enrollment import StudentEnrollment
+from student.models.student_profile import StudentProfile
 
 from . import audience
+from .pickers import pickable_students
 from .models import Announcement, OnlineEvent, OnlineEventAccess, OnlinePlatform
 from .validators import clean_url, validate_https_url
 
@@ -59,6 +61,15 @@ class AudienceFormMixin:
             classes = classes.filter(branch__in=allowed)
             branches = branches.filter(pk__in=allowed)
         selected = self.instance.classes.all() if self.instance.pk else SchoolClass.objects.none()
+
+        # Students: who the picker offers, plus whoever is already selected (they may have left since).
+        # A forged id outside this set is "not a valid choice"; targets_problems checks branches again.
+        for name in ("students", "excluded_students"):
+            if name in self.fields:
+                chosen = getattr(self.instance, name).all() if self.instance.pk else StudentProfile.objects.none()
+                self.fields[name].queryset = StudentProfile.objects.filter(
+                    Q(pk__in=pickable_students(request).values("pk")) | Q(pk__in=chosen.values("pk"))
+                ).select_related("user")
 
         if "branches" in self.fields:
             self.fields["branches"].queryset = branches.order_by("order", "name")
