@@ -258,7 +258,6 @@ ONLINE_PAST_DAYS = 14
 ONLINE_DASHBOARD_ITEMS = 5             # items in the dashboard's card
 ANNOUNCEMENT_MAX_VISIBLE = 3           # banners shown at once
 ONLINE_ACCESS_IMPORT_MAX_ROWS = 1000   # rows in one Excel file of personal access
-ONLINE_ACCESS_INLINE_MAX = 100         # above this, the event page doesn't list its rows
 # Keys encrypting personal passwords, codes and links at rest, comma separated
 # Fernet keys: the first encrypts, all decrypt. If they are lost the secrets
 # are gone. Generating, backing up and rotating: docs/apps/online_classes.md.

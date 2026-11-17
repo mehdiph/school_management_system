@@ -9,29 +9,32 @@ click that is written to the admin history (D15).
 """
 
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.core.exceptions import PermissionDenied
-from django.db import models
-from django.db.models import Count
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
 from django.forms import BaseInlineFormSet, CheckboxSelectMultiple
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
-from django.utils.html import format_html, format_html_join
+from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.cache import never_cache
 
 from core.moments import to_utc, utc_now
 from core.services import access
-from core.spreadsheet import FileRejected
+from core.spreadsheet import FileRejected, normalize
 from core.templatetags.jalali_tags import fa_digits, jalali_datetime
 from school.models import Branch, Grade
 from student.models.student_profile import StudentProfile
 
 from . import audience, crypto, importer, services
+from .pickers import URL_NAME as STUDENT_AUTOCOMPLETE, StudentAutocompleteView, StudentPicker, StudentsPicker
 from .forms import AccessImportForm, AnnouncementAdminForm, OnlineEventAccessForm, OnlineEventAdminForm
 from .import_template import build_template
 from .models import Announcement, OnlineEvent, OnlineEventAccess, OnlinePlatform
@@ -39,10 +42,24 @@ from .models import Announcement, OnlineEvent, OnlineEventAccess, OnlinePlatform
 IMPORT_SESSION_KEY = "online_classes_access_import"
 MASK = importer.MASK
 SECRET_PERMISSION = "online_classes.view_access_secret"
+ADD_ROW_PERMISSION = "online_classes.add_onlineeventaccess"
+STUDENTS_PER_PAGE = 100
 
 
 def _mask(value):
     return MASK if value else "—"
+
+
+def _stored(row):
+    """What an access row holds, by name only («لینک، رمز»), never a value."""
+
+    names = [
+        ("لینک", row.url_encrypted),
+        ("نام کاربری", row.username),
+        ("رمز", row.password_encrypted),
+        ("کد", row.access_code_encrypted),
+    ]
+    return "، ".join(label for label, value in names if value) or "—"
 
 
 # ----------------------------------------------------------------------
@@ -151,8 +168,17 @@ class StampsMixin:
 
 
 class AudienceAdminMixin(StampsMixin):
-    autocomplete_fields_audience = ("students", "excluded_students")
-    formfield_overrides = {models.ManyToManyField: {"widget": CheckboxSelectMultiple}}
+    """
+    Branches, grades and classes are checkboxes (a few dozen at most). Students
+    are server-side autocomplete pickers, never one checkbox per student: a
+    ``formfield_overrides`` for every ManyToManyField used to give them
+    checkboxes too, since Django only applies autocomplete when no widget is set.
+    """
+
+    STUDENT_FIELDS = ("students", "excluded_students")
+
+    class Media:
+        css = {"all": ("online_classes/admin/audience.css",)}
 
     def allowed_branches(self, request):
         return access.get_accessible_branch_ids(request.user, request=request)
@@ -172,8 +198,12 @@ class AudienceAdminMixin(StampsMixin):
         return super().has_change_permission(request, obj) and self.owns(request, obj)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name in self.autocomplete_fields_audience:
+        if db_field.name in self.STUDENT_FIELDS:
+            # The form narrows the queryset to who this admin may pick (setup_audience).
+            kwargs["widget"] = StudentsPicker(db_field, self.admin_site)
             kwargs["queryset"] = StudentProfile.objects.select_related("user")
+        else:
+            kwargs.setdefault("widget", CheckboxSelectMultiple)
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
@@ -200,6 +230,130 @@ class AudienceAdminMixin(StampsMixin):
             return
         count = audience.reached_enrollments(item).count()
         self.message_user(request, f"این مورد به {fa_digits(count)} دانش‌آموز نشان داده می‌شود.", messages.INFO)
+
+    # -- who it reaches: the summary on the change page and the list page (D1, D2)
+
+    def scope_branch_ids(self, request):
+        """``None`` (every branch) for a superuser, else the admin's branches: counts and names stay inside them."""
+
+        return None if request.user.is_superuser else self.allowed_branches(request)
+
+    def report_event(self, obj):
+        """The personal event whose access rows are counted; ``None`` here (announcements, shared events)."""
+
+        return None
+
+    def students_url(self, obj):
+        return reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_students", args=[obj.pk])
+
+    def audience_context(self, request, obj):
+        context = {"has_targets": audience.has_targets(obj), "scoped": not request.user.is_superuser}
+        if context["has_targets"]:
+            event = self.report_event(obj)
+            context.update(
+                counts=audience.breakdown(obj, self.scope_branch_ids(request), event),
+                students_url=self.students_url(obj),
+                rows_url=(
+                    reverse("admin:online_classes_onlineeventaccess_changelist") + f"?event__id__exact={obj.pk}"
+                    if event is not None and self.has_change_permission(request, obj) else ""
+                ),
+            )
+        return context
+
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        if obj is not None and obj.pk:
+            context["audience"] = self.audience_context(request, obj)
+        return super().render_change_form(request, context, add, change, form_url, obj)
+
+    def get_urls(self):
+        name = f"{self.opts.app_label}_{self.opts.model_name}_students"
+        return [
+            path("<int:pk>/students/", self.admin_site.admin_view(never_cache(self.students_view)), name=name),
+        ] + super().get_urls()
+
+    def students_view(self, request, pk):
+        """
+        The students an item reaches, for its admin: same permission and scope
+        as the item's page (404 outside the admin's items), counts and names of
+        the admin's branches only, searchable, filterable and paginated.
+        """
+
+        if not self.has_view_or_change_permission(request):
+            raise PermissionDenied
+        item = get_object_or_404(self.get_queryset(request), pk=pk)
+        if not self.has_view_or_change_permission(request, item):
+            raise PermissionDenied
+
+        event = self.report_event(item)
+        branch_ids = self.scope_branch_ids(request)
+        counts = audience.breakdown(item, branch_ids, event)
+        enrollments = audience.students(item, branch_ids, event).select_related(
+            "student__user", "school_class__grade", "school_class__branch"
+        )
+
+        query = normalize(request.GET.get("q", ""))
+        for bit in query.split():
+            enrollments = enrollments.filter(
+                Q(student__user__first_name__icontains=bit)
+                | Q(student__user__last_name__icontains=bit)
+                | Q(student__student_code__icontains=bit)
+                | Q(student__user__national_code__icontains=bit)
+            )
+        class_id = request.GET.get("class", "")
+        if class_id.isdigit() and int(class_id) in {row.class_id for row in counts.classes}:
+            enrollments = enrollments.filter(school_class_id=int(class_id))
+        else:
+            class_id = ""
+        access_filter = request.GET.get("access", "") if event is not None else ""
+        if access_filter == "with":
+            enrollments = enrollments.filter(access_id__isnull=False)
+        elif access_filter == "without":
+            enrollments = enrollments.filter(access_id__isnull=True)
+        else:
+            access_filter = ""
+
+        page = Paginator(enrollments, STUDENTS_PER_PAGE).get_page(request.GET.get("p"))
+        here = request.get_full_path()
+        may_change = self.has_change_permission(request, item)
+        rows_by_id = {}
+        if event is not None:
+            ids = [enrollment.access_id for enrollment in page if enrollment.access_id]
+            rows_by_id = OnlineEventAccess.objects.in_bulk(ids)
+        can_add = event is not None and may_change and request.user.has_perm(ADD_ROW_PERMISSION)
+
+        lines = []
+        for enrollment in page:
+            row = rows_by_id.get(getattr(enrollment, "access_id", None))
+            line = {"enrollment": enrollment, "row": row, "stored": _stored(row) if row else ""}
+            if row is not None and may_change:
+                line["row_url"] = reverse("admin:online_classes_onlineeventaccess_change", args=[row.pk]) + "?" + urlencode({"next": here})
+            elif event is not None and row is None and can_add:
+                line["add_url"] = reverse("admin:online_classes_onlineeventaccess_add") + "?" + urlencode(
+                    {"event": item.pk, "student": enrollment.student_id, "next": here}
+                )
+            lines.append(line)
+
+        def page_url(number):
+            params = {key: value for key, value in (("q", query), ("class", class_id), ("access", access_filter)) if value}
+            return "?" + urlencode({**params, "p": number})
+
+        return render(request, "admin/online_classes/audience_students.html", {
+            **self.admin_site.each_context(request),
+            "opts": self.opts,
+            "title": f"دانش‌آموزان مخاطب: {item}",
+            "item": item,
+            "event": event,
+            "counts": counts,
+            "scoped": branch_ids is not None,
+            "lines": lines,
+            "page": page,
+            "previous_url": page_url(page.previous_page_number()) if page.has_previous() else "",
+            "next_url": page_url(page.next_page_number()) if page.has_next() else "",
+            "query": query,
+            "class_id": class_id,
+            "access_filter": access_filter,
+            "change_url": reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_change", args=[item.pk]),
+        })
 
     @admin.display(description="مخاطبان")
     def audience_summary(self, obj):
@@ -253,15 +407,14 @@ class AccessFormMixin:
 
 class AccessInlineFormSet(BaseInlineFormSet):
     """
-    Above ``ONLINE_ACCESS_INLINE_MAX`` rows the page lists none of them: hundreds
-    of rows would pass Django's limit on form fields and fail on save. New rows
-    can still be added; existing ones are edited from their own list.
+    Blank rows for adding a few by hand; existing rows are never listed on the
+    event page (D3), whatever their number. They are edited from the event's
+    student list (each row links to its own page) or the access row list.
     """
 
     def __init__(self, *args, queryset=None, **kwargs):
         super().__init__(*args, queryset=queryset, **kwargs)
-        rows = self.queryset.select_related("student__user")
-        self.queryset = rows.none() if rows.count() > settings.ONLINE_ACCESS_INLINE_MAX else rows
+        self.queryset = self.queryset.none()
 
     def _construct_form(self, i, **kwargs):
         form = super()._construct_form(i, **kwargs)
@@ -284,7 +437,7 @@ class OnlineEventAccessInline(AccessFormMixin, admin.TabularInline):
     fields = ("student", "url", "username", "password", "access_code", "note", "stored", "reveal_link")
     readonly_fields = ("stored", "reveal_link")
     verbose_name = "دسترسی شخصی"
-    verbose_name_plural = "دسترسی‌های شخصی (رمزها نمایش داده نمی‌شوند؛ خانه‌ی خالی یعنی بدون تغییر)"
+    verbose_name_plural = "افزودن دسترسی شخصی (ردیف‌های ثبت‌شده از «دانش‌آموزان مخاطب» ویرایش می‌شوند)"
 
     def _event_owned(self, request, obj):
         return obj is None or request.user.is_superuser or audience.wholly_within(
@@ -293,6 +446,11 @@ class OnlineEventAccessInline(AccessFormMixin, admin.TabularInline):
 
     def has_view_permission(self, request, obj=None):
         return super().has_view_permission(request, obj) and self._event_owned(request, obj)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "student":
+            kwargs["widget"] = StudentPicker(db_field, self.admin_site)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def has_change_permission(self, request, obj=None):
         return super().has_change_permission(request, obj) and self._event_owned(request, obj)
@@ -310,15 +468,7 @@ class OnlineEventAccessInline(AccessFormMixin, admin.TabularInline):
 
     @admin.display(description="ثبت‌شده")
     def stored(self, obj):
-        if not obj.pk:
-            return "—"
-        names = [
-            ("لینک", obj.url_encrypted),
-            ("نام کاربری", obj.username),
-            ("رمز", obj.password_encrypted),
-            ("کد", obj.access_code_encrypted),
-        ]
-        return "، ".join(label for label, value in names if value) or "—"
+        return _stored(obj) if obj.pk else "—"
 
     @admin.display(description="نمایش")
     def reveal_link(self, obj):
@@ -356,12 +506,84 @@ class OnlineEventAccessAdmin(StampsMixin, AccessFormMixin, admin.ModelAdmin):
         )
         return queryset.filter(event__in=owned)
 
+    # -- adding one row: only from an event's student list (``?event=&student=&next=``), never on its own
+
     def has_add_permission(self, request):
-        # A row belongs to an event: it is added from the event's page or import.
-        return False
+        return super().has_add_permission(request) and "event" in request.GET
+
+    def _event_to_add_to(self, request):
+        """The personal event of ``?event=``, which this admin may change; else 404 / 403."""
+
+        event_id = request.GET.get("event", "")
+        if not event_id.isdigit():
+            raise Http404
+        event_admin = self.admin_site.get_model_admin(OnlineEvent)
+        event = get_object_or_404(event_admin.get_queryset(request).select_related("platform"), pk=event_id)
+        if event.access_mode != OnlineEvent.AccessMode.PERSONAL:
+            raise Http404
+        if not event_admin.has_change_permission(request, event):
+            raise PermissionDenied
+        return event
+
+    def add_view(self, request, form_url="", extra_context=None):
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        request.online_access_event = self._event_to_add_to(request)
+        extra = {
+            "title": f"افزودن دسترسی شخصی: {request.online_access_event.title}",
+            "show_save_and_add_another": False,
+            **(extra_context or {}),
+        }
+        return super().add_view(request, form_url, extra)
+
+    def get_fields(self, request, obj=None):
+        if obj is None:
+            return ("student", "url", "username", "password", "access_code", "note")
+        return super().get_fields(request, obj)
+
+    def get_readonly_fields(self, request, obj=None):
+        return () if obj is None else super().get_readonly_fields(request, obj)
 
     def get_form(self, request, obj=None, **kwargs):
-        return self._form_with_request(request, super().get_form(request, obj, **kwargs))
+        form = self._form_with_request(request, super().get_form(request, obj, **kwargs))
+        if obj is None:
+            # A new row: this event, and the student must be in its audience (and the admin's branches).
+            form.parent_event = getattr(request, "online_access_event", None)
+            form.require_audience = True
+        return form
+
+    def _back_to_list(self, request, row):
+        """``?next=``, if it is this site's student list of the row's event; else ``None`` (never an open redirect)."""
+
+        target = request.GET.get("next", "")
+        if not target or not url_has_allowed_host_and_scheme(
+            target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            return None
+        parts = urlsplit(target)
+        if parts.scheme or parts.netloc or parts.path != reverse("admin:online_classes_onlineevent_students", args=[row.event_id]):
+            return None
+        return target
+
+    def _redirect_back(self, request, row, message):
+        target = self._back_to_list(request, row)
+        if target is None or "_continue" in request.POST or "_addanother" in request.POST:
+            return None
+        self.message_user(request, message, messages.SUCCESS)
+        return HttpResponseRedirect(target)
+
+    def response_add(self, request, obj, post_url_continue=None):
+        back = self._redirect_back(request, obj, f"ردیف دسترسی «{obj.student}» ثبت شد.")
+        return back or super().response_add(request, obj, post_url_continue)
+
+    def response_change(self, request, obj):
+        back = self._redirect_back(request, obj, f"ردیف دسترسی «{obj.student}» ذخیره شد.")
+        return back or super().response_change(request, obj)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "student":
+            kwargs["widget"] = StudentPicker(db_field, self.admin_site)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     @admin.display(description="دانش‌آموز", ordering="student__user__last_name")
     def student_name(self, obj):
@@ -433,7 +655,7 @@ class OnlineEventAdmin(AudienceAdminMixin, admin.ModelAdmin):
     search_fields = ("title", "description")
     ordering = ("-start_at", "-pk")
     autocomplete_fields = ("students", "excluded_students", "subject", "class_subject")
-    readonly_fields = ("created_by", "created_jalali", "updated_by", "updated_jalali", "audience_report")
+    readonly_fields = ("created_by", "created_jalali", "updated_by", "updated_jalali")
     actions = ("duplicate_selected", "clear_access_selected")
 
     fieldsets = (
@@ -478,12 +700,8 @@ class OnlineEventAdmin(AudienceAdminMixin, admin.ModelAdmin):
             return []
         return super().get_inline_instances(request, obj)
 
-    def get_fieldsets(self, request, obj=None):
-        fieldsets = super().get_fieldsets(request, obj)
-        if obj is None:
-            return fieldsets
-        report = ("چه کسانی می‌بینند", {"fields": ("audience_report",)})
-        return (*fieldsets[:4], report, *fieldsets[4:])
+    def report_event(self, obj):
+        return obj if obj.access_mode == OnlineEvent.AccessMode.PERSONAL else None
 
     # -- columns
 
@@ -506,35 +724,6 @@ class OnlineEventAdmin(AudienceAdminMixin, admin.ModelAdmin):
         if obj.access_mode != OnlineEvent.AccessMode.PERSONAL:
             return "—"
         return fa_digits(obj.rows)
-
-    @admin.display(description="مخاطبان این رویداد")
-    def audience_report(self, obj):
-        if not obj or not obj.pk:
-            return "—"
-        if not audience.has_targets(obj):
-            return "مخاطبی انتخاب نشده است؛ این رویداد به هیچ‌کس نشان داده نمی‌شود."
-        total = audience.reached_enrollments(obj).count()
-        if obj.access_mode != OnlineEvent.AccessMode.PERSONAL:
-            return f"{fa_digits(total)} دانش‌آموز"
-
-        missing = list(services.missing_access(obj))
-        rows = obj.access_rows.count()
-        head = format_html(
-            "<p>{} دانش‌آموز، {} ردیف ثبت‌شده؛ <strong>{} دانش‌آموز بدون ردیف</strong></p>",
-            fa_digits(total), fa_digits(rows), fa_digits(len(missing)),
-        )
-        extra = ""
-        if rows > settings.ONLINE_ACCESS_INLINE_MAX:
-            url = reverse("admin:online_classes_onlineeventaccess_changelist") + f"?event__id__exact={obj.pk}"
-            extra = format_html('<p>این رویداد ردیف‌های زیادی دارد و پایین صفحه فهرست نمی‌شوند؛ <a href="{}">فهرست ردیف‌ها</a></p>', url)
-        if not missing:
-            return format_html("{}{}", head, extra)
-        items = format_html_join(
-            "",
-            "<li>{} · {}</li>",
-            ((e.student, e.school_class) for e in missing),
-        )
-        return format_html("{}{}<ul>{}</ul>", head, extra, items)
 
     # -- actions
 
@@ -583,6 +772,11 @@ class OnlineEventAdmin(AudienceAdminMixin, admin.ModelAdmin):
     def get_urls(self):
         view = self.admin_site.admin_view
         return [
+            path(
+                "student-autocomplete/",
+                view(StudentAutocompleteView.as_view(admin_site=self.admin_site)),
+                name=STUDENT_AUTOCOMPLETE,
+            ),
             path("<int:pk>/access-import/", view(never_cache(self.import_view)), name="online_classes_onlineevent_access_import"),
             path("<int:pk>/access-import/template/", view(never_cache(self.import_template_view)), name="online_classes_onlineevent_access_template"),
         ] + super().get_urls()
@@ -703,6 +897,7 @@ class AnnouncementActiveFilter(admin.SimpleListFilter):
 @admin.register(Announcement)
 class AnnouncementAdmin(AudienceAdminMixin, admin.ModelAdmin):
     form = AnnouncementAdminForm
+    change_form_template = "admin/online_classes/announcement/change_form.html"
     list_display = (
         "title", "level", "from_jalali", "until_jalali", "priority", "is_pinned",
         "audience_summary", "dismissed_count", "is_active",

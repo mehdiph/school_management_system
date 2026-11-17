@@ -1,0 +1,16 @@
+/* Who an event or announcement reaches: the summary on its page and the student list page. */
+.online-audience__summary { margin: 0 0 .75em; line-height: 1.9; }
+.online-audience__classes summary { cursor: pointer; margin-bottom: .5em; }
+.online-audience__classes table { width: auto; min-width: 18em; }
+.online-audience__filters {
+  display: flex; flex-wrap: wrap; gap: .75em; align-items: flex-end;
+  margin: 0 0 1em; padding: .75em; background: var(--darkened-bg, #f8f8f8);
+}
+.online-audience__filters label { display: flex; flex-direction: column; gap: .25em; font-weight: normal; }
+.online-audience__filters input[type="search"] { min-width: 14em; max-width: 100%; }
+.online-audience__filters select { max-width: 100%; }
+.online-audience__pages { display: flex; gap: 1.5em; }
+.online-audience-list .results { overflow-x: auto; }
+@media (max-width: 767px) {
+  .online-audience__filters label, .online-audience__filters input[type="search"] { width: 100%; min-width: 0; }
+}

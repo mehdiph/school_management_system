@@ -1,0 +1,44 @@
+{% load jalali_tags %}
+{% comment %}
+  Who an event or announcement reaches: one line of counts, then the classes in a
+  collapsed <details> (no JS). Never one line per student (D1, D2).
+{% endcomment %}
+<fieldset class="module aligned online-audience">
+  <h2>چه کسانی می‌بینند</h2>
+  <div class="form-row">
+  {% if not audience.has_targets %}
+    <p>مخاطبی انتخاب نشده است؛ این مورد به هیچ‌کس نشان داده نمی‌شود.</p>
+  {% else %}
+    {% with counts=audience.counts url=audience.students_url %}
+    <p class="online-audience__summary">
+      {% if audience.scoped %}<strong>فقط دانش‌آموزان شعبه‌های شما:</strong>{% endif %}
+      <a href="{{ url }}">{{ counts.total|fa_digits }} دانش‌آموز مخاطب</a>
+      {% if counts.with_access %}
+        · <a href="{{ url }}?access=with">{{ counts.with_row|fa_digits }} با ردیف دسترسی</a>
+        · <a href="{{ url }}?access=without"><strong>{{ counts.missing|fa_digits }} بدون ردیف</strong></a>
+      {% endif %}
+    </p>
+    {% if counts.classes %}
+    <details class="online-audience__classes">
+      <summary>به تفکیک کلاس ({{ counts.classes|length|fa_digits }} کلاس)</summary>
+      <div class="results">
+      <table>
+        <thead><tr><th>کلاس</th><th>مخاطب</th>{% if counts.with_access %}<th>بدون ردیف</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for row in counts.classes %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td><a href="{{ url }}?class={{ row.class_id }}">{{ row.total|fa_digits }}</a></td>
+            {% if counts.with_access %}<td>{% if row.missing %}<a href="{{ url }}?class={{ row.class_id }}&amp;access=without">{{ row.missing|fa_digits }}</a>{% else %}۰{% endif %}</td>{% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </details>
+    {% endif %}
+    {% if audience.rows_url %}<p><a href="{{ audience.rows_url }}">همه‌ی ردیف‌های ثبت‌شده‌ی این رویداد</a></p>{% endif %}
+    {% endwith %}
+  {% endif %}
+  </div>
+</fieldset>

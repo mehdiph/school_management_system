@@ -13,8 +13,10 @@ from core.moments import format_jalali_datetime, parse_jalali_datetime
 from core.services import access
 from school.models import Branch, Grade, SchoolClass
 from student.models.student_enrollment import StudentEnrollment
+from student.models.student_profile import StudentProfile
 
 from . import audience
+from .pickers import pickable_students
 from .models import Announcement, OnlineEvent, OnlineEventAccess, OnlinePlatform
 from .validators import clean_url, validate_https_url
 
@@ -59,6 +61,15 @@ class AudienceFormMixin:
             classes = classes.filter(branch__in=allowed)
             branches = branches.filter(pk__in=allowed)
         selected = self.instance.classes.all() if self.instance.pk else SchoolClass.objects.none()
+
+        # Students: who the picker offers, plus whoever is already selected (they may have left since).
+        # A forged id outside this set is "not a valid choice"; targets_problems checks branches again.
+        for name in ("students", "excluded_students"):
+            if name in self.fields:
+                chosen = getattr(self.instance, name).all() if self.instance.pk else StudentProfile.objects.none()
+                self.fields[name].queryset = StudentProfile.objects.filter(
+                    Q(pk__in=pickable_students(request).values("pk")) | Q(pk__in=chosen.values("pk"))
+                ).select_related("user")
 
         if "branches" in self.fields:
             self.fields["branches"].queryset = branches.order_by("order", "name")
@@ -188,6 +199,8 @@ class OnlineEventAccessForm(forms.ModelForm):
     #: Set by the admin: the logged-in request, and the event of a new row.
     request = None
     parent_event = None
+    #: Set by the access row's add page: the student must be in the event's audience.
+    require_audience = False
 
     class Meta:
         model = OnlineEventAccess
@@ -225,6 +238,12 @@ class OnlineEventAccessForm(forms.ModelForm):
             inside = StudentEnrollment.objects.current().filter(student=student, school_class__branch__in=allowed)
             if not inside.exists():
                 raise ValidationError("این دانش‌آموز در شعبه‌های شما نیست.")
+        event = self._event()
+        if self.require_audience and event is not None and not self.instance.pk:
+            if not audience.reached_enrollments(event).filter(student=student).exists():
+                raise ValidationError("این دانش‌آموز جزو مخاطبان این رویداد نیست.")
+            if OnlineEventAccess.objects.filter(event=event, student=student).exists():
+                raise ValidationError("برای این دانش‌آموز در این رویداد ردیف ثبت شده است.")
         return student
 
     def clean_url(self):
@@ -237,6 +256,8 @@ class OnlineEventAccessForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if self.parent_event is not None and not self.instance.event_id:
+            self.instance.event = self.parent_event  # the add page: the event isn't a form field
         has_input = any(cleaned.get(name) for name in ("url", "username", "password", "access_code"))
         has_stored = any((self.instance.url_encrypted, self.instance.password_encrypted, self.instance.access_code_encrypted))
         if not has_input and not has_stored:

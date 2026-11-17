@@ -34,7 +34,14 @@ Events are never hard-deleted; `is_active=False` hides one. Announcements can be
 The only code that reads the target fields, in both directions:
 
 - `visible_to(queryset, enrollment)`: what one student sees (`EXISTS` subqueries, no per-row query).
-- `reached_enrollments(item)`: who an item reaches (the admin's count, missing rows, the template).
+- `reached_enrollments(item)`: who an item reaches (the admin's counts and lists, missing rows, the import). One
+  query: the targets are subqueries on the through tables, not lists read first.
+- `breakdown(item, branch_ids=None, event=None)`: the admin's per-class counts in **one aggregate query**, ordered by
+  grade level, section, then branch. Totals are summed from the class rows. With a personal `event`, it also counts
+  students without an access row (`~EXISTS`); rows of students outside the audience aren't counted. `branch_ids=None`
+  means every branch (a superuser).
+- `students(item, branch_ids=None, event=None)`: the list page's queryset, with each enrolment's access row id as a
+  subquery annotation.
 
 A test runs both over a matrix of targets and requires them to agree.
 
@@ -216,6 +223,9 @@ shared with the calendar importer).
 - **A warning, still saved:** a student outside the audience, highlighted in the preview. Such a row does nothing unless
   the student joins the audience.
 - **Skipped:** rows with no access data, so a partly filled template works.
+- **Preview:** the totals; then only the rows with an error or a warning, one by one (masked); then the rows without
+  errors counted per class (new and update) in a collapsed block. Valid rows are never listed one by one. The class
+  comes with the branch in the same query, so the preview's query count doesn't grow with the file.
 - **Re-import:** updates the student's row, and blank cells keep the stored value.
 - **Preview:** masked. The session holds one encrypted token of the rows, tied to the admin and the event, expiring after
   30 minutes; it is cleared on confirmation or reload. The file isn't kept.
@@ -235,9 +245,35 @@ shared with the calendar importer).
   `online_classes.view_access_secret` (granted by hand) presses «نمایش» on one row; the page only shows on POST, sends
   `no-store`, and the click goes to the admin history without the value. Without it, staff can enter or replace a secret but
   not read it; a blank field keeps the stored value. A row's student can't be changed after creation.
-- **Event page:** the access inline, the audience count and «دانش‌آموزان بدون ردیف», template, import and «ساختن اطلاعیه». Above
-  `ONLINE_ACCESS_INLINE_MAX` rows the inline lists none of them, because hundreds of rows would pass Django's limit on form
-  fields; new rows can still be added, and existing ones are edited from «دسترسی‌های شخصی».
+- **«چه کسانی می‌بینند»** (event and announcement change pages, `_audience_report.html`): one line of counts, and nothing
+  per student.
+  - **The line:** «N دانش‌آموز مخاطب»; for a personal event also «… با ردیف دسترسی · … بدون ردیف».
+  - **Below it:** a per-class table in a `<details>` element, closed by default (no JS), with one row per class.
+  - **Links:** each number opens the list page, filtered by class and/or access.
+  - **Branch scope:** a non-superuser sees counts of their branches only, under «فقط دانش‌آموزان شعبه‌های شما». This
+    includes whole-school items they can view but not change.
+  - **Queries:** a fixed number whatever the audience size (locked in tests: event page 25, announcement page 19).
+- **Student list page** (`<event or announcement>/<id>/students/`, `audience_students.html`):
+  - **Access:** the same as the item's page. It needs view or change permission on the model, and an item outside the
+    admin's items is a 404.
+  - **Rows:** names of the admin's branches only, 100 per page.
+  - **Search:** first and last name, student code and national code (Persian digits work). The national code is
+    searchable but never shown.
+  - **Filters:** class (only the audience's classes) and, for personal events, «همه / با ردیف / فقط بدون ردیف».
+  - **Without JS:** plain GET forms and links. Pages keep the filters.
+  - **Access rows:** for a personal event, the column names what a row holds («لینک، رمز»), never a value. For admins
+    who may change the event, it links to the row's page. A student without a row gets «افزودن ردیف» if the admin also
+    has `add_onlineeventaccess`.
+  - **Queries:** a fixed number (locked: 18).
+- **Adding one row** (`onlineeventaccess/add/?event=&student=&next=`): the access row add page exists only for a
+  personal event given in `?event=` that the admin may change. Otherwise it's a 403, or a 404 for an unknown or shared
+  event, and the rows list has no add button.
+  - **Student:** prefilled; it must be in the event's audience and the admin's branches, without an existing row,
+    whatever is posted.
+  - **Return:** after saving or adding, the admin goes back to `next` only if it's a path on this site to that event's
+    list page. Anything else gets Django's default redirect. «ذخیره و ادامه» stays on the row.
+- **Event page:** the summary above, a blank inline row for adding by hand (existing rows are **never** listed there:
+  they're edited from the list page or «دسترسی‌های شخصی»), template, import and «ساختن اطلاعیه».
 - **Actions:** duplicate (a hidden copy with the audience, no rows, status back to scheduled, «(کپی)» in the title), and
   «حذف دسترسی‌های شخصی» for ended events (asks first, needs the delete permission). Rows are kept until someone deletes them;
   there is no automatic purge.
@@ -246,8 +282,14 @@ shared with the calendar importer).
 - **Filters:** date, state (including «به‌تعویق‌افتاده، بدون زمان جدید»), type, platform, branch, grade. Branch and grade include
   whole-school items and items reaching them through a class.
 - **Images:** re-encoded to JPEG through `website.images`; no SVG. Logos sit on a white tile because JPEG flattens transparency.
-- **Student picker:** `StudentProfileAdmin.search_fields`; results are branch-scoped only when the request comes from this
-  app. Staff need `student.view_studentprofile` for it.
+- **Student pickers** (`pickers.py`): «دانش‌آموزان», «دانش‌آموزان مستثنا» and an access row's student are select2
+  autocomplete widgets backed by this app's own view (`…/onlineevent/student-autocomplete/`), never one checkbox per
+  student. Branches, grades and classes stay checkboxes.
+  - **Results:** students with a current enrolment, in the admin's branches (superuser: every branch). Searchable by
+    name, student code and national code, and labelled «name · code · class · branch».
+  - **Who can ask:** only this app's student fields; staff need `student.view_studentprofile` (or change).
+  - **Form validation:** the form's queryset is the same set plus the students already selected on the item, so a
+    forged id is "not a valid choice", and `targets_problems` checks branches again.
 
 ## 9. Settings (`base.py`)
 
@@ -258,7 +300,6 @@ shared with the calendar importer).
 | `ONLINE_DASHBOARD_ITEMS` | 5 | Items in the dashboard's card |
 | `ANNOUNCEMENT_MAX_VISIBLE` | 3 | Banners shown at once |
 | `ONLINE_ACCESS_IMPORT_MAX_ROWS` | 1000 | Rows in one Excel file |
-| `ONLINE_ACCESS_INLINE_MAX` | 100 | Above this, the event page doesn't list its rows |
 | `ONLINE_ACCESS_KEYS` | environment | See §6 |
 
 ## 10. Later phases
