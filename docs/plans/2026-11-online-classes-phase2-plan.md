@@ -1,10 +1,12 @@
 # Plan: online classes and announcements, Phase 2 of 3
 
-Status: **awaiting approval.** Planned in two parts, implemented and merged separately:
+Status: **approved 2026-11-17** with D3 extended, D4, D12 and D13 changed, and the policy items decided (see §1).
+Planned in two parts, implemented and merged separately:
 
 - **Part A (admin and student side):** §1 series, §2 groups, §3 «جدید» / «تغییر کرد», §4 open tracking, §5
   acknowledgements. Reports are in the Django admin only. Branch `feature/online-phase2-a`, from `main` after
-  approval. I stop for your review after Part A, and Part A is merged into `main` on its own.
+  approval. I stop for your review after Part A, and Part A is merged into `main` on its own, **and only after the
+  full suite passes on PostgreSQL**.
 - **Part B (other panels):** §6 authoring by teachers and supervisors, and the open and acknowledgement reports in
   their panels. Branch `feature/online-phase2-b`, from `main` after Part A is merged.
 
@@ -16,8 +18,12 @@ scheduler.
 
 | Run on `main` (f870e93) | Result |
 |---|---|
-| Full suite, PostgreSQL | **Not run: blocked.** Postgres closes the connection at once. The VPN interface `singbox_tun` holds `172.18.0.1/30`, so traffic to the `db` container (`172.18.0.3`) goes into the tunnel; the same cause as on 2026-10-26. I haven't touched Docker or the VPN. Once the VPN no longer takes that range, I run it before implementing and add the result here. |
+| Full suite, PostgreSQL (run 2026-11-17 after the address-pool fix) | **1349 tests OK**, none skipped, 19.8 min. No failures. |
 | Full suite, SQLite | **1349 tests OK** (1 skipped: `scheduling/test_conflicts.py`'s `select_for_update` test, which SQLite can't run), 19.6 min. No failures. |
+
+The first PostgreSQL attempt was blocked: the VPN interface `singbox_tun` held `172.18.0.1/30`, inside the compose
+network. On 2026-11-17 Docker's default address pool on the laptop was moved to `10.210.0.0/16` (`/etc/docker/daemon.json`,
+local machine only) and the compose network recreated, so the database is reachable with the VPN on.
 
 Findings from reading:
 
@@ -82,18 +88,32 @@ Findings from reading:
   - **An occurrence's counts:** a student without a row is one with neither an occurrence row nor a series row.
   - **The student page** still reads all of a student's rows in one query (`event in … OR series in …`).
   - **Clearing rows:** «حذف دسترسی‌های شخصی» on a series works once its last occurrence has ended.
+  - **Changes to a series row (added at approval):** a change to a series-level row records an «اطلاعات ورود» change
+    for that student on **every future, non-detached occurrence that uses that row**. Occurrences where the student
+    has their own row are skipped, so «تغییر کرد» appears only where the change applies.
   - **Rejected, a separate `OnlineSeriesAccess` table:** it would need a second reveal page, re-encryption, masking
     and import path.
-- **D4, closures (technical, with a policy edge).**
+- **D4, closures (changed at approval, policy).** Online classes are often held *because* the school is closed (air
+  pollution, snow), so the closure's type decides:
+  - **«تعطیل رسمی» (official holiday):** a whole-day closure that covers every class of the audience cancels the
+    occurrence.
+  - **«تعطیلی غیرمنتظره» (unplanned closure):** the occurrence is **not** cancelled by default. The series has an
+    option, «در تعطیلی‌های غیرمنتظره لغو شود» (`cancel_on_unplanned`, default off). When it's on, the same
+    whole-day, every-class rule applies.
+  - **A closure whose type changes later** (or that is deactivated, edited or imported) goes through the same sync,
+    so its occurrences follow the new type.
   - **The signal:** `academic_calendar` gets one signal, `closures_synced(start, end, academic_year)`, sent by
     `sync_cancelled_sessions` inside its transaction when it wasn't narrowed to class subjects.
     `online_classes` connects to it, so `academic_calendar` doesn't import `online_classes`. A dry run of
     `sync_calendar_sessions` rolls back both together.
-  - **When a day counts as closed:** a closure applies to an occurrence when one active **whole-day** closure (no
-    bell scope) covers **every class** its audience reaches on that date, read through `Closures`.
+  - **When a day counts as closed:** a closure that applies by its type (above) cancels an occurrence when one active
+    **whole-day** closure (no bell scope) covers **every class** its audience reaches on that date, read through
+    `Closures`.
   - **Bell-scoped closures** are ignored, because online times aren't bells.
   - **A closure covering only part of the audience** leaves the occurrence scheduled. The series page lists it as
-    «تعطیلی بخشی از مخاطبان», so the admin can cancel it by hand or narrow the audience.
+    «تعطیلی بخشی از مخاطبان», naming the closure's type («تعطیل رسمی» or «تعطیلی غیرمنتظره»), so the admin can cancel it
+    by hand or narrow the audience. This warning applies to both types, including unplanned closures on a series
+    with the option off.
 - **D5, cancelled by a closure versus by hand.**
   - **Cancelled by a closure:** status «لغو شده», the closure's title as the note, and `closure` set to that
     `CalendarEvent`.
@@ -102,7 +122,7 @@ Findings from reading:
   - **A status set by hand** (`status_by_hand`) is never changed by the sync, either way.
   - **The command:** `sync_online_series [--series ID] [--dry-run]`, idempotent, on the `sync_calendar_sessions`
     pattern. It runs generation and closures, and a second run reports no changes.
-- **D6, Thursday and Friday [policy].**
+- **D6, Thursday and Friday [policy, approved as proposed].**
   - **Proposed:** a series may include Thursday and Friday (online extras often fall on the weekend), and the form
     shows a note when it does.
   - **Closures there:** none, which follows the calendar's own rule that closures have no effect on those days.
@@ -161,10 +181,10 @@ Findings from reading:
     student branch of the sidebar.
   - **Cost:** two queries (the current enrolment, then one count) on student pages that render the sidebar, and
     none elsewhere.
-- **D12, the urgent banner offer [policy: N].**
+- **D12, the urgent banner offer [policy, N decided at approval].**
   - **The checkbox:** «ساختن اطلاعیه‌ی فوری برای مخاطبان این رویداد» appears on the event form when the admin has
     `add_announcement`. It's acted on only if the time, link or status changed and the event starts within
-    `ONLINE_URGENT_CHANGE_HOURS` (proposed **24**). In any other case it does nothing, and a message says why.
+    `ONLINE_URGENT_CHANGE_HOURS` (**72**, so a Wednesday change to a Saturday class still gets the offer). In any other case it does nothing, and a message says why.
   - **The banner it creates, in the same transaction:**
     - level «فوری», linked to the event;
     - the event's audience (groups included);
@@ -175,7 +195,21 @@ Findings from reading:
 
 - **D13, the join view.** `/student/online/<id>/join/` records the open and then redirects.
   - **Which rules it checks:** the same function the card uses (audience, current enrolment, join window, status).
-    Outside those rules it returns 404 and never redirects.
+  - **Outside the audience or without a current enrolment:** 404 (changed at approval).
+  - **In the audience but outside the rules** (changed at approval): a redirect to `/student/online/`, never
+    external, with a short, plain message saying why:
+
+    | Case | Message |
+    |---|---|
+    | Not open yet | «زمان ورود به این کلاس هنوز نرسیده است.» |
+    | Ended | «این کلاس تمام شده است.» |
+    | Cancelled | «این کلاس لغو شده است.» |
+    | Postponed | «این کلاس به تعویق افتاده است؛ زمان جدید اعلام می‌شود.» |
+    | Personal, no row | «لینک شما هنوز ثبت نشده؛ با مدرسه تماس بگیرید.» |
+    | Info only | «این برنامه لینک ورود ندارد.» |
+
+    The word «کلاس» follows the event's type («آزمون», «جلسه»).
+  - **Nothing is recorded as an open** in either of these cases.
   - **Response headers:** `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
   - **No personal link in our own URLs or logs.** Our own URL carries only the event id. Nothing the app logs
     contains the target.
@@ -210,11 +244,11 @@ Findings from reading:
   - **Supervisors:** events and announcements. The audience is their `SupervisorScope` classes.
   - **Editing:** each edits and reports only on items they created and still own by these rules.
   - **Platforms** stay admin-only, chosen from the active ones.
-- **D17 [policy], announcements by supervisors.** Proposed: they show without approval, but are limited to «اطلاع‌رسانی» and
+- **D17 [policy, approved as proposed], announcements by supervisors.** Proposed: they show without approval, but are limited to «اطلاع‌رسانی» and
   «مهم» (no «فوری»), with no image. The alternative is admin approval (a `pending` status and an admin queue).
-- **D18 [policy], personal rows by teachers.** Proposed: teachers and supervisors may enter rows and import Excel
+- **D18 [policy, approved as proposed], personal rows by teachers.** Proposed: teachers and supervisors may enter rows and import Excel
   for their own personal events, but never reveal (reveal stays `view_access_secret`, admin only).
-- **D19 [policy], the director.** Proposed: yes, read-only and GET-only (ADR-020). Per-event open and acknowledgement
+- **D19 [policy, approved as proposed], the director.** Proposed: yes, read-only and GET-only (ADR-020). Per-event open and acknowledgement
   counts by class, with the director's `?branch=` filter; no names list and no export. The alternative is not to
   show them.
 
@@ -253,7 +287,7 @@ Findings from reading:
   - «جدید» and «تغییر کرد» marks;
   - the «متوجه شدم» form;
   - the sidebar badge (`online_classes.context_processors.unseen`).
-- **Settings:** `ONLINE_NEW_DAYS` (7) and `ONLINE_URGENT_CHANGE_HOURS` (24), read in one place.
+- **Settings:** `ONLINE_NEW_DAYS` (7) and `ONLINE_URGENT_CHANGE_HOURS` (72), read in one place.
 
 ### Part B
 
@@ -275,11 +309,15 @@ director page. The detailed outline is written into this plan after Part A is me
   - create, edit, deactivate and import a closure, and check that occurrences follow it;
   - a partial closure keeps the occurrence and warns;
   - bell-scoped closures are ignored;
+  - both closure types: official cancels; unplanned cancels only with `cancel_on_unplanned`, and warns either way when
+    partial;
+  - a closure whose type is changed afterwards (official → unplanned and back) moves its occurrences;
   - a status set by hand is never changed;
   - `academic_calendar` doesn't import `online_classes`;
   - a timetable change doesn't re-sync occurrences.
 - **Rows:**
   - the occurrence-over-series rule;
+  - a series row change logs «اطلاعات ورود» only on future, non-detached occurrences without their own row;
   - the counts, list page, import and add page on a series;
   - reveal and re-encryption of series rows;
   - the constraints.
@@ -295,8 +333,9 @@ director page. The detailed outline is written into this plan after Part A is me
   - the badge's count and its fixed query cost;
   - the urgent banner offer inside and outside N hours, and without permission.
 - **Opens:**
-  - the join view checks every rule (audience, no enrolment, before the window, after the end, cancelled,
-    postponed, personal with no row, info-only), and outside them gives a 404 with no redirect;
+  - the join view: outside the audience or without a current enrolment → 404; in the audience but before the window,
+    after the end, cancelled, postponed, personal with no row or info-only → a redirect to `/student/online/` with
+    the right message, never external; no open recorded in either case;
   - the test mode;
   - the counters;
   - no personal link in the HTML, in our URLs or in any log record;
@@ -325,5 +364,7 @@ director page. The detailed outline is written into this plan after Part A is me
 - **Docs:** `docs/apps/online_classes.md`, `docs/apps/academic_calendar.md` (the signal), `docs/database.md` and
   `docs/database-mermaid.md`, a new ADR-028 (series, groups, change tracking, opens and acknowledgements),
   `docs/changelog.md`, and the report `docs/plans/2026-11-online-classes-phase2.md`.
-- **Deploy notes in the report:** migrations, `collectstatic`, permissions to grant by hand, and briefing admins and
-  families on «جدید» and «متوجه شدم».
+- **Deploy notes in the report:** everything on `main` up to f870e93 is deployed on the server, so Part A's
+  migrations (`online_classes` 0003…) are the only pending ones at its deploy. The notes cover the backup,
+  migrations, `collectstatic`, permissions to grant by hand (`view_open_report`), and briefing admins and families on
+  «جدید» and «متوجه شدم».
