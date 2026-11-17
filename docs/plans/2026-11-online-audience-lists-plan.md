@@ -1,6 +1,6 @@
 # Plan: audience summaries and student list pages in the online classes admin
 
-Status: **plan only, waiting for approval.** Work will go on `feature/online-audience-lists`, branched from
+Status: **approved 2026-11-17** with D3 extended and D5 replaced (see below). Work will go on `feature/online-audience-lists`, branched from
 `main` (f397098). `feature/online-classes` is already merged, so the work doesn't go there.
 
 ## The request
@@ -27,8 +27,11 @@ The query count stays fixed whatever the audience size.
     that it shows none, because Django's field limit would break saving.
   - **Import preview** (`access_import.html`): one table row per file row, up to `ONLINE_ACCESS_IMPORT_MAX_ROWS`
     (1000).
-  - **Student pickers** («دانش‌آموزان», «دانش‌آموزان مستثنا»): one select2 chip per *selected* student. These are
-    the choices themselves, so a count can't replace them (D5).
+  - **Student pickers** («دانش‌آموزان», «دانش‌آموزان مستثنا»): *corrected at approval.* `AudienceAdminMixin`
+    sets `formfield_overrides = {ManyToManyField: {"widget": CheckboxSelectMultiple}}`, and Django's
+    `formfield_for_manytomany` only applies autocomplete when no widget is set. So both fields render **every
+    student profile as a checkbox, twice**: all years and all branches, including other branches' students for a
+    branch admin. This is the scroll that was reported (D5).
   - The access row list is already a paginated changelist. Reveal and clear-confirm are one row or one event each.
 - **Queries today:** `reached_enrollments` reads the five target lists (5 queries) and builds `IN (…)` filters;
   `.count()` adds one. `missing_access` and `obj.access_rows.count()` add more. That's constant, but the
@@ -62,13 +65,31 @@ The query count stays fixed whatever the audience size.
   the summary («ویرایش ردیف‌ها» → the access row list filtered by this event). `ONLINE_ACCESS_INLINE_MAX` and the
   formset's threshold go away. This changes behaviour for small events, where rows were editable in place; the
   alternative is keeping the inline up to a lower threshold (e.g. 30), which still means one line per student.
+  **Extended at approval:**
+  1. On the list page, each «بدون ردیف» student gets «افزودن ردیف». It opens the access row add form prefilled
+     with this event and this student, and appears only for admins who have the add permission and may change the
+     event (same branch rules). The add page is reachable only this way (`?event=` required). The event is fixed,
+     and the student must be in the event's audience and the admin's branches, whatever is posted.
+  2. After saving or adding a row opened from the list page, the admin returns to that list page with the same
+     filters, search and page. A `next` parameter is accepted only if it's a same-site path that resolves to that
+     event's list page; anything else falls back to the default (never an open redirect).
+  Both are tested, including swapping the prefilled student for one outside the audience or the branches.
 - **D4, the import preview (applying point 5):** the preview shows the totals (new, update, skipped, errors,
   warnings), then **only the rows with errors or warnings** in full, since those need fixing, then a per-class
   breakdown of the valid rows (new and update counts) in a collapsed block. Valid rows aren't listed one by one.
   The preview reads only the sealed rows, with no extra per-row query.
-- **D5, student pickers stay as they are:** the selected students are the input itself. Replacing them would take
-  away the way to choose and un-choose. Selecting hundreds by name isn't the intended use; that's what classes,
-  grades and branches are for.
+- **D5 (replaced at approval), fix the student pickers, as its own commit:**
+  1. Checkboxes only for branches, grades and classes. `students` and `excluded_students` use
+     `AutocompleteSelectMultiple` on the event and announcement admins.
+  2. Autocomplete results: only students with a current enrolment, in the admin's branches (superuser: all
+     branches), searchable by name, student code and national code. Each shows name, student code and class.
+     The form field's queryset is the same set plus the students already selected on the item, so an old
+     selection stays valid on re-save. `targets_problems` still refuses, server-side, a student outside the
+     admin's branches even if the id is posted directly.
+  3. Tests: the change page has no checkbox per student; its query count and size don't grow with the number of
+     students; the autocomplete is branch-scoped and current-only; a forged id is refused.
+  4. Check every other admin form in this app for the same override problem.
+  The report explains why the existing tests didn't catch it.
 
 ## 3. Implementation outline
 
