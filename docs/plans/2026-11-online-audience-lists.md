@@ -1,8 +1,9 @@
 # Report: audience summaries and student lists in the online classes admin
 
 **Status:** committed on `feature/online-audience-lists` (from `main` at 6a2f9b9) in two commits: the student-picker
-fix (46456f1) and the rest. **Not merged, not pushed, not deployed.** The full test suite still has to be re-run
-(see §7). Plan:
+fix (46456f1) and the rest. **Merged into `main` and pushed on 2026-11-17, not deployed.** The full test suite was
+not re-run before merging, at the user's request; only `online_classes` + `student` (310 OK, SQLite) were run on the
+final commit (see §7). Plan:
 `docs/plans/2026-11-online-audience-lists-plan.md` (approved 2026-11-17 with D3 extended and D5 replaced).
 
 ## 1. Summary and reasoning
@@ -155,6 +156,7 @@ Resolved during implementation:
 | Branch, `online_classes` + `student`, SQLite | 310 OK |
 | Branch, full suite, PostgreSQL | **Not completed.** Stopped partway by Claude Code because the machine ran critically low on memory; no result. To be re-run. |
 | Branch, full suite, SQLite | **Not completed.** Stopped for the same reason; to be re-run. |
+| Branch (96c7847), `online_classes` + `student`, SQLite, before merging | 310 OK. Full suite skipped at the user's request. |
 
 **Browser check:** scratch SQLite database (300 students in 12 classes, a whole-school personal event with 200 rows,
 an announcement), headless Chromium at 1280 px and a true 375 px. Pages: event change page, announcement change page,
