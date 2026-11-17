@@ -6,10 +6,11 @@ This document provides a technical overview and documentation for the Django `sc
 
 ## 1. Architectural Overview
 
-The `school` app is designed to manage the structural hierarchy of an educational institution. It organizes data around five relational database models and integrates Persian (Jalali) date handling using the `django-jalali` library.
+The `school` app is designed to manage the structural hierarchy of an educational institution. It organizes data around six relational database models and integrates Persian (Jalali) date handling using the `django-jalali` library.
 
 ### Core Features
 *   **Academic Lifecycle Management:** Tracks active and current academic years.
+*   **Branches:** One school with several branches; every class belongs to one.
 *   **Educational Structure Hierarchy:** Manages class grades (e.g., Grade 1, Grade 2) and individual class divisions (sections).
 *   **Subject Registry:** Maintains a catalog of taught subjects.
 *   **Teacher Assignments (Class Subjects):** Bridges classes, subjects, and teachers under specified validity dates.
@@ -49,37 +50,52 @@ Represents the curriculum topics.
 | :--- | :--- | :--- |
 | `name` | `CharField(max_length=255)` | Name of the subject (e.g., "ریاضی"). |
 | `slug` | `SlugField(max_length=255)` | URL-friendly identifier. |
+| `color` | `CharField(max_length=7)` | Hex colour of the subject in the weekly timetable and its PDF; validated by `school.colors.hex_color_validator`, with a default. |
 | `created_at` | `jmodels.jDateTimeField` | Record creation timestamp. |
 | `is_active` | `BooleanField` | Status indicator for the subject. |
 
 ### 2.4 SchoolClass (`school_class.py`)
-Represents a distinct class unit assigned to a grade and academic year.
+Represents a distinct class unit assigned to a branch, a grade and an academic year.
 
 | Field Name | Type | Description |
 | :--- | :--- | :--- |
 | `year` | `ForeignKey(AcademicYear)` | Linked academic year. Cascade on delete. |
 | `grade` | `ForeignKey(Grade)` | Linked educational grade. Cascade on delete. |
+| `branch` | `ForeignKey(Branch)` | The branch this class belongs to. `PROTECT` on delete; `related_name='classes'`. |
 | `section` | `CharField(max_length=255)` | Section identifier (e.g., "الف", "101"). |
 | `created_at` | `jmodels.jDateTimeField` | Creation timestamp. |
 | `is_active` | `BooleanField` | Status indicator. |
 
-*   **String Representation:** Returns `"{grade.name} - {section}"`.
+*   **Constraints:** `unique_class_per_branch_year_grade_section`: one class per `(branch, year, grade, section)`.
+*   **String Representation:** Returns `"{grade.name} | {section} | {branch.name}"`.
 
 ### 2.5 ClassSubject (`class_subject.py`)
-The junction model associating a class, a subject, and a teacher.
+The junction model associating a class, a subject, and a teacher, who is reached through a `staff.TeacherAssignment`.
 
 | Field Name | Type | Description |
 | :--- | :--- | :--- |
 | `school_class` | `ForeignKey(SchoolClass)` | Associated class. Linked via `related_name='class_subjects'`. |
 | `subject` | `ForeignKey(Subject)` | Associated subject. |
-| `teacher` | `ForeignKey(User)` | Assigned teacher user model instance. |
+| `teacher_assignment` | `ForeignKey(staff.TeacherAssignment)` | The teacher's assignment to a branch and year. `PROTECT` on delete; `related_name='class_subjects'`. |
 | `start_date` | `jmodels.jDateField` | Course teaching start date. |
 | `end_date` | `jmodels.jDateField` | Course teaching end date. |
 | `created_at` | `jmodels.jDateTimeField` | Record creation timestamp. |
 | `is_active` | `BooleanField` | Status indicator. |
 
-*   **Constraints:** `teacher` field is limited using `limit_choices_to={'role': 'teacher'}`.
-*   **Icon Helper Property:** A helper `@property` named `icon` evaluates `self.subject.name` and returns an associated FontAwesome icon class string (defaults to `'fa-book'`).
+*   **Validation:** `clean()` requires the assignment to belong to the class's branch and academic year, so a row can't leak a teacher into a branch-scoped query they were never assigned to.
+*   **Icon Helper Property:** `icon` delegates to `Subject.icon`, which holds the map (`SUBJECT_ICONS`) from a subject's slug to a FontAwesome class (defaults to `'fa-book'`).
+
+### 2.6 Branch (`branch.py`)
+One branch of the school. Which branches a user may see is decided by `core.services.access`, never by querying this model directly for access.
+
+| Field Name | Type | Description |
+| :--- | :--- | :--- |
+| `name` | `CharField(max_length=100)` | Unique name. |
+| `code` | `SlugField(max_length=30)` | Unique code. |
+| `address` | `TextField` | Optional. |
+| `phone_number` | `CharField(max_length=20)` | Optional. |
+| `order` | `PositiveSmallIntegerField` | Display order. |
+| `is_active` | `BooleanField` | Status indicator. |
 
 ---
 
@@ -154,7 +170,7 @@ Contains targeted layout styling for class groupings.
 
 The Django administration panel configuration is defined in `school/admin.py`.
 
-*   **Custom Admin Registrations:** `AcademicYear`, `Grade`, `Subject`, `SchoolClass`, and `ClassSubject` are registered using their respective admin customizer classes.
+*   **Custom Admin Registrations:** `AcademicYear`, `Branch`, `Grade`, `Subject`, `SchoolClass`, and `ClassSubject` are registered using their respective admin customizer classes.
 *   **Jalali Date Filtering:** Where appropriate, fields are integrated with `django_jalali.admin` elements.
 *   **Editable Lists:** Fields such as `is_active` and `is_current` can be changed directly within list views (`list_editable`).
-*   **Search and Filter Setup:** Includes deep lookups such as `school_class__section` and `teacher__username` to aid administration in high-volume environments.
+*   **Search and Filter Setup:** Includes deep lookups such as `school_class__section` and `subject__name` to aid administration in high-volume environments.

@@ -271,6 +271,8 @@ See [§3.4](#34-backfill-of-existing-sessions-backfill_session_bells).
 
 Admin → تقویم آموزشی (تعطیلات) → «ورود از اکسل» (`/admin/academic_calendar/calendarevent/import/`). The template is generated on the fly (`academic_calendar/import_template.py`) and downloaded from that page's «دانلود قالب اکسل» link (`/admin/academic_calendar/calendarevent/import/template/`, file `calendar-events-template.xlsx`). It reflects the current branches, grades and bells.
 
+Reading the file and normalising its text live in `core/spreadsheet.py`, shared with the online classes importer; `FileRejected` is still importable from `academic_calendar.importer`.
+
 ### 6.2 Columns
 
 The header row must be exactly these, in this order (`importer.COLUMNS`):

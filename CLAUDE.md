@@ -39,16 +39,17 @@ Notes on testing:
 
 No linter or formatter is configured.
 
-Management commands (in `academic_calendar` and `staff`):
+Management commands (in `academic_calendar`, `staff` and `online_classes`):
 - `sync_calendar_sessions` (idempotent)
 - `backfill_session_bells` (dry run first)
 - `cleanup_redundant_branch_access`
+- `reencrypt_online_access` (dry run by default, `--apply` writes)
 
 Deployment is `docker-compose.yml`: Postgres, gunicorn and nginx. `migrate` and `collectstatic` are run by hand (`docker compose exec web ...`); nothing runs them automatically. Ask before migrating the local Docker database or touching anything production.
 
 ## Architecture
 
-Read `docs/architecture-decisions.md` (ADR-001…022) before changing domain rules; most cross-app behaviour is decided there. `docs/apps/<app>.md` documents each app, and `docs/database.md` / `docs/database-mermaid.md` the schema.
+Read `docs/architecture-decisions.md` (ADR-001…027) before changing domain rules; most cross-app behaviour is decided there. `docs/apps/<app>.md` documents each app, and `docs/database.md` / `docs/database-mermaid.md` the schema.
 
 ### Domain spine
 - `school`: `AcademicYear`, then `SchoolClass`, then `ClassSubject` (class + subject + teacher), the core entity (ADR-005). Data is isolated per academic year, and most entities are soft-deactivated (`is_active`) rather than deleted.

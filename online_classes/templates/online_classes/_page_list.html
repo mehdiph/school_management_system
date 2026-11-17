@@ -1,0 +1,13 @@
+<div class="online-list" data-refresh-seconds="{{ refresh_seconds|default_if_none:'' }}">
+  {% for card in cards %}
+    {% include "online_classes/_event_card.html" %}
+  {% empty %}
+    <p class="online-empty">
+      {% if not has_enrollment %}ثبت‌نام فعالی برای این سال پیدا نشد؛ با مدرسه تماس بگیرید.
+      {% elif tab == 'today' %}امروز کلاس یا آزمون آنلاینی ندارید.
+      {% elif tab == 'upcoming' %}فعلاً برنامه‌ی دیگری ثبت نشده است.
+      {% else %}در این چند روز برنامه‌ی آنلاینی نبوده است.{% endif %}
+    </p>
+  {% endfor %}
+</div>
+<noscript><p class="online-refresh"><a href="?tab={{ tab }}">به‌روزرسانی صفحه</a></p></noscript>

@@ -722,6 +722,47 @@ A person the website admin lets write in the blog, with their public byline.
 
 ---
 
+# Online Classes and Announcements
+
+The rules are in `docs/apps/online_classes.md` and ADR-027. `OnlineEvent` and `Announcement` share the abstract `AudienceTargets`: `is_whole_school` and the M2Ms `branches`, `grades`, `classes`, `students`, `excluded_students` (each with its own table, e.g. `online_classes_onlineevent_branches`). Nothing selected means nobody. Moments are saved in UTC.
+
+## OnlinePlatform
+
+`name` (unique), `logo`, `color`, `join_help`, `support_contact`, `support_url`, `allowed_domains` (one per line), `is_active`, timestamps.
+
+## OnlineEvent
+
+### Key Fields
+
+| Field | Description |
+| --- | --- |
+| title, event_type, description | `class`, `exam`, `meeting` or `other` |
+| platform | Optional FK (`PROTECT`); required by the form for shared and personal events |
+| subject, class_subject | Optional FKs (`PROTECT`); setting `class_subject` fills `subject` |
+| start_at, end_at | Jalali datetimes; `online_event_end_after_start` |
+| status, status_note | `scheduled`, `cancelled` or `postponed`; the note is required for the last two |
+| access_mode, join_url | `shared`, `personal` or `info` |
+| join_lead_minutes | Optional override of `ONLINE_JOIN_LEAD_MINUTES` |
+| credentials_lead_hours | Default 0 = the join window; at most 168; personal events only |
+| is_active | The soft delete; there is no hard delete in the admin |
+| created_by, updated_by | `SET_NULL` |
+
+Index `online_event_window_idx` on `(is_active, start_at, end_at)`.
+
+## OnlineEventAccess
+
+One student's way into one event. `event` (`CASCADE`), `student` (`CASCADE`), `url_encrypted`, `username`, `password_encrypted`, `access_code_encrypted`, `note`, `updated_by`, timestamps. The three `*_encrypted` columns hold Fernet tokens. Constraints: `unique_online_access_per_student` on `(event, student)`, and `online_access_has_a_way_in` (not all four of link, username, password and code empty). Permission: `view_access_secret`.
+
+## Announcement
+
+`title`, `body` (plain text), `image`, `image_mobile`, `button_label`, `button_url`, `level` (`info`, `important`, `urgent`), `visible_from`, `visible_until`, `priority`, `is_pinned`, `is_dismissible`, `event` (optional), `is_active`, `created_by`, `updated_by`, timestamps. Constraints: `announcement_until_after_from`, `announcement_button_label_and_url`. Index `announcement_window_idx` on `(is_active, visible_from, visible_until)`.
+
+## AnnouncementDismissal
+
+`announcement` (`CASCADE`), `student` (`CASCADE`), `dismissed_at`. Constraint: `unique_dismissal_per_student`.
+
+---
+
 # Design Decisions
 
 ## Why ClassSubject Exists

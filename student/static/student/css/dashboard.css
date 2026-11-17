@@ -43,6 +43,15 @@
     backdrop-filter: blur(5px);
 }
 
+/* A student account with no enrolment yet */
+.no-enrollment-note {
+    background-color: var(--warning-bg);
+    color: var(--warning-text);
+    border-radius: 20px;
+    padding: 15px 20px;
+    font-weight: 600;
+}
+
 /* ===== ACHIEVEMENTS & CLASSES GRID ===== */
 .grid-2-col {
     display: grid;

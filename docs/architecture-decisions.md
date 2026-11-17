@@ -643,6 +643,50 @@ Post bodies are written in Trix (vendored, ADR-021) and stored as HTML that `blo
 
 ---
 
+# ADR-027: Online Events and Announcements Share One Audience; Personal Secrets Are Encrypted and Revealed One at a Time
+
+## Status
+
+Accepted
+
+## Context
+
+The school runs some classes and exams online, on services that change. Families need the way in at the right moment, and each child may have a personal link or password. These are primary-school children's accounts (grades 1–6, no fields of study), and parents usually use the panel. Database dumps and backups travel further than the server.
+
+## Decision
+
+**One audience, one module.** `online_classes.models.AudienceTargets` (abstract) holds `is_whole_school`, `branches`, `grades`, `classes`, `students` and `excluded_students`, for events and announcements alike. `online_classes/audience.py` is the only reader, in both directions: `visible_to` (what one student sees) and `reached_enrollments` (who an item reaches). A test requires the two to agree over a matrix of targets.
+
+**Audience semantics.** Nothing selected means nobody. Whole school, or the student listed, or the student's class listed, or a branch or grade selected and matching (branch AND grade when both are selected); then exclusions always win.
+
+**Enrolment.** `student.selectors.current_enrollment` decides: active, current year, active class and branch; the newest wins if two years are flagged current. Without one a student receives nothing, even if listed by name. Their own timetable and homework pages use `panel_enrollment` instead, the newest enrolment in any status, as before.
+
+**Time.** Nothing is stored and no job runs: states and tabs come from the clock. A postponed event means "no new time yet": it stays in «پیش‌رو» with «زمان جدید اعلام می‌شود» until an admin edits it, never «گذشته».
+
+**When credentials appear.** By default in the join window. `credentials_lead_hours` on a personal event opens them earlier so families can test the login; it never moves the join button, and both close at the end or on cancellation or postponement. Links and credentials aren't in the HTML before they open.
+
+**Encryption at rest.** The password, access code and personal link are Fernet tokens in explicit `*_encrypted` columns, read only through explicit methods, not a field that decrypts on every load. `ONLINE_ACCESS_KEYS` is a list: the first encrypts, all decrypt. Production refuses to start without a key. `reencrypt_online_access` rotates, a dry run by default.
+
+**Reveal.** Secrets show as `••••••` everywhere in the admin. `online_classes.view_access_secret`, granted by hand, allows revealing one row on a POST-only page, written to the admin history without the value. Without it, staff can enter or replace a secret but not read it.
+
+**Import preview.** The session holds one encrypted token, tied to the admin and the event, expiring after 30 minutes. The file isn't kept.
+
+**One validator.** `online_classes/validators.py` requires https with a host and no `user@host`, with optional per-platform domains. Templates check again when rendering.
+
+**Direct links.** A plain link with `noopener noreferrer`, with no redirect view and no open tracking.
+
+## Consequences
+
+* If the key is lost, the secrets are gone; recovery means importing the files again. The key must be backed up separately from database backups (`docs/apps/online_classes.md` §6).
+* Secrets can't be searched or filtered in the database, which nothing needs.
+* A leaked key opens old backups too, so rotating isn't enough on its own: the passwords must be replaced on the platforms.
+* Announcement images are public under `/media/`, the same limit ADR-026 records, so they must not carry private content.
+* A separate `Audience` table was rejected: the admin can't edit it inline from the foreign-key side, and prefill and duplicate are copies anyway. Custom groups (Phase 2) become one more M2M and one more term in `audience.py`.
+* No redirect view means no open tracking; Phase 3 can add one without changing the data.
+* `core/moments.py` and `core/spreadsheet.py` hold what the blog and the calendar importer previously kept to themselves, with no change to their behaviour.
+
+---
+
 # Future Architectural Directions
 
 Planned modules:

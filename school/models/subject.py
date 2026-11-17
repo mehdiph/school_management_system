@@ -4,6 +4,19 @@ from django_jalali.db import models as jmodels
 from school.colors import DEFAULT_SUBJECT_COLOR, hex_color_validator
 
 
+#: The icon of a subject, by its slug.
+SUBJECT_ICONS = {
+    "math": "fa-calculator",
+    "science": "fa-flask",
+    "farsi": "fa-book",
+    "computer": "fa-laptop-code",
+    "qoran": "fa-star-and-crescent",
+    "motaleat": "fa-book",
+    "varzesh": "fa-basketball",
+    "art": "fa-palette",
+}
+
+
 class Subject(models.Model):
     name = models.CharField(max_length=255, verbose_name='نام درس')
     slug = models.SlugField(max_length=255, verbose_name='نامک')
@@ -27,6 +40,10 @@ class Subject(models.Model):
         if self.color:
             self.color = self.color.lower()
         super().save(*args, **kwargs)
+
+    @property
+    def icon(self):
+        return SUBJECT_ICONS.get(self.slug, "fa-book")
 
     def __str__(self):
         return self.name

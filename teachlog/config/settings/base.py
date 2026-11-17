@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'analytics',
     'director',
     'blog',
+    'online_classes',
 ]
 
 MIDDLEWARE = [
@@ -245,6 +246,29 @@ BLOG_PAGE_SIZE = 9                     # posts per page: fills a 3-column grid
 BLOG_MAX_TAGS_PER_POST = 5
 BLOG_FEED_ITEMS = 20
 BLOG_TOC_MIN_HEADINGS = 3              # a post's table of contents from this many headings
+
+
+# Online classes and announcements (see online_classes/ and
+# docs/apps/online_classes.md)
+#
+# School policy: the join button opens this many minutes before the start
+# (an event can override it); past items stay visible this many days.
+ONLINE_JOIN_LEAD_MINUTES = 15
+ONLINE_PAST_DAYS = 14
+ONLINE_DASHBOARD_ITEMS = 5             # items in the dashboard's card
+ANNOUNCEMENT_MAX_VISIBLE = 3           # banners shown at once
+ONLINE_ACCESS_IMPORT_MAX_ROWS = 1000   # rows in one Excel file of personal access
+ONLINE_ACCESS_INLINE_MAX = 100         # above this, the event page doesn't list its rows
+# Keys encrypting personal passwords, codes and links at rest, comma separated
+# Fernet keys: the first encrypts, all decrypt. If they are lost the secrets
+# are gone. Generating, backing up and rotating: docs/apps/online_classes.md.
+# Read only in online_classes.crypto. development.py has a default; production
+# refuses to start without one.
+ONLINE_ACCESS_KEYS = [
+    key.strip()
+    for key in os.environ.get('ONLINE_ACCESS_KEYS', '').split(',')
+    if key.strip()
+]
 
 
 # Static files (CSS, JavaScript, Images)

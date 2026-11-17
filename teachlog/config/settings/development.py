@@ -6,7 +6,7 @@ DJANGO_SETTINGS_MODULE is overridden (e.g. by Docker Compose in production).
 """
 
 from .base import *  # noqa: F401,F403
-from .base import INSTALLED_APPS
+from .base import INSTALLED_APPS, ONLINE_ACCESS_KEYS
 
 DEBUG = True
 
@@ -20,3 +20,8 @@ INSTALLED_APPS = INSTALLED_APPS + [
 # Keep the project runnable out of the box with no .env / env vars at all.
 if not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# A fixed, public key, so development and tests need no .env. Nothing real may
+# ever be encrypted with it: production refuses to start without its own keys.
+if not ONLINE_ACCESS_KEYS:
+    ONLINE_ACCESS_KEYS = ['ZGV2ZWxvcG1lbnQtb25seS1rZXktbm90LXNlY3JldCE=']

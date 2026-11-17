@@ -24,6 +24,29 @@
 
 # [Unreleased]
 
+## Added (online classes and announcements, Phase 1 of 3)
+
+- New app `online_classes` (`docs/apps/online_classes.md`, ADR-027): platforms, online classes and exams, per-student access rows and announcements, all managed in the admin. No notifications, no tracking, no platform APIs.
+- Student panel: banners and a «کلاس‌ها و آزمون‌های آنلاین» card on the dashboard, and `/student/online/` with «امروز», «پیش‌رو» and «گذشته». Every page works without JS and at 375 px. Sidebar item «کلاس‌های آنلاین».
+- Audiences: whole school, branches, grades, classes, students, exclusions; nothing selected means nobody.
+- The join button opens 15 minutes before the start (`ONLINE_JOIN_LEAD_MINUTES`, per-event override). `credentials_lead_hours` can show personal credentials earlier so families can test the login. A postponed event stays in «پیش‌رو» with «زمان جدید اعلام می‌شود» until an admin edits it.
+- Personal passwords, codes and links are encrypted at rest (`ONLINE_ACCESS_KEYS`; production won't start without it). `reencrypt_online_access` rotates the key. The admin shows `••••••`; `view_access_secret` allows revealing one row, written to the admin history.
+- Excel import of access rows, from a template generated per event, with a masked preview and all-or-nothing confirmation.
+- Admin: duplicate an event as a hidden copy, clear the rows of ended events, «ساختن اطلاعیه» from an event, branch scoping for non-superusers.
+- `cryptography` is pinned in `requirements.txt`.
+
+## Changed
+
+- `core/moments.py` holds the UTC and Jalali moment helpers (from the blog) and `core/spreadsheet.py` the Excel reading (from the calendar importer). Blog and calendar behaviour is unchanged.
+- `Subject.icon` holds the icon map; `ClassSubject.icon` delegates to it.
+- `StudentProfileAdmin` has `search_fields`, for the student pickers; results are branch-scoped only for requests from `online_classes`.
+
+## Fixed (student pages)
+
+- The dashboard no longer returns a 500 for a student with no enrolment; it shows an empty state.
+- `sessions_list` and `session_list_json` no longer fail for a student with enrolments in two years.
+- `docs/apps/student.md` corrected: `school_class`, `enrollment_date` and `status` are on `StudentEnrollment`, not `StudentProfile`; URLs, the dashboard and the admin updated.
+
 ## Fixed (blog follow-ups)
 
 - The login page no longer throws a JavaScript error: `accounts/js/login.js` only adds its listener when `.form-container` and the username input exist (the login page has neither); no change where they exist.

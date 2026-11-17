@@ -1,0 +1,101 @@
+{% extends "admin/base_site.html" %}
+{% load static jalali_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'academic_calendar/admin/calendar.css' %}">
+  <link rel="stylesheet" href="{% static 'online_classes/admin/import.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">خانه</a>
+  &rsaquo; <a href="{% url 'admin:online_classes_onlineevent_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{% url 'admin:online_classes_onlineevent_change' event.pk %}">{{ event.title }}</a>
+  &rsaquo; ورود از اکسل
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="calendar-admin">
+
+  {% if file_error %}<p class="errornote">{{ file_error }}</p>{% endif %}
+
+  {% if plan %}
+    <h2>پیش‌نمایش «{{ filename }}»</h2>
+    {% if plan.is_valid %}
+      <p class="calendar-admin__ok">
+        همه‌ی ردیف‌ها معتبر است: {{ plan.new_count|fa_digits }} ردیف تازه و {{ plan.update_count|fa_digits }} بروزرسانی
+        {% if plan.skipped %}({{ plan.skipped|fa_digits }} ردیف خالی نادیده گرفته شد){% endif %}. با تأیید، همه با هم ثبت می‌شوند؛ خانه‌ی خالی مقدار ثبت‌شده را تغییر نمی‌دهد.
+      </p>
+    {% else %}
+      <p class="errornote">{{ plan.errors|length|fa_digits }} ردیف خطا دارد. تا همه‌ی خطاها برطرف نشود هیچ ردیفی ثبت نمی‌شود؛ فایل را اصلاح کنید و دوباره بفرستید.</p>
+    {% endif %}
+    {% if plan.warnings %}
+      <p class="errornote">{{ plan.warnings|length|fa_digits }} دانش‌آموز جزو مخاطبان این رویداد نیستند. ردیف آن‌ها ثبت می‌شود، ولی تا جزو مخاطبان نشوند چیزی نمی‌بینند؛ کدها را بررسی کنید.</p>
+    {% endif %}
+    <table class="calendar-admin__table">
+      <thead>
+        <tr><th>ردیف</th><th>دانش‌آموز</th><th>کد دانش‌آموزی</th><th>کد ملی</th><th>لینک</th><th>نام کاربری</th><th>رمز</th><th>کد</th><th>توضیح</th><th>نتیجه</th></tr>
+      </thead>
+      <tbody>
+        {% for row in plan.rows %}
+        <tr class="{% if row.errors %}calendar-admin__row--error{% elif row.warnings %}online-import__row--warning{% endif %}">
+          <td>{{ row.number|fa_digits }}</td>
+          <td>{% if row.student %}{{ row.student.user.get_full_name }}{% else %}—{% endif %}</td>
+          <td>{{ row.student_code }}</td>
+          <td>{{ row.national_code }}</td>
+          <td dir="ltr">{% if row.url %}{{ row.link_display }}{% endif %}</td>
+          <td dir="ltr">{{ row.username }}</td>
+          <td>{{ row.password_display }}</td>
+          <td>{{ row.access_code_display }}</td>
+          <td>{{ row.note }}</td>
+          <td>
+            {% if row.errors %}<ul class="errorlist">{% for error in row.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            {% elif row.warnings %}{% for warning in row.warnings %}<strong>{{ warning }}</strong>{% endfor %}
+            {% elif row.is_update %}بروزرسانی{% else %}تازه{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if plan.is_valid %}
+    <form method="post" class="submit-row">
+      {% csrf_token %}
+      <input type="submit" name="confirm" class="default" value="تأیید و ثبت همه">
+      <a href="{% url 'admin:online_classes_onlineevent_access_import' event.pk %}" class="button cancel-link">انصراف</a>
+    </form>
+    {% endif %}
+    <hr>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      {% for field in form %}
+      <div class="form-row{% if field.errors %} errors{% endif %}">
+        {{ field.errors }}
+        <div class="flex-container">{{ field.label_tag }} {{ field }}</div>
+        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </fieldset>
+    <div class="submit-row"><input type="submit" class="default" value="بررسی فایل"></div>
+  </form>
+
+  <div class="module calendar-admin__guide">
+    <h2>راهنمای فایل</h2>
+    <p><a href="{% url 'admin:online_classes_onlineevent_access_template' event.pk %}">دانلود قالب اکسل همین رویداد</a> (مخاطبان این رویداد در آن آمده‌اند).</p>
+    <p>ستون‌ها به همین ترتیب: {{ columns|join:"، " }}.</p>
+    <ul>
+      <li>هر دانش‌آموز با کد دانش‌آموزی یا کد ملی شناخته می‌شود.</li>
+      <li>ردیفی که اطلاعاتی ندارد نادیده گرفته می‌شود.</li>
+      <li>در ارسال دوباره، خانه‌ی خالی مقدار ثبت‌شده را تغییر نمی‌دهد.</li>
+      <li>حداکثر {{ max_rows|fa_digits }} ردیف در هر فایل؛ حجم تا ۵ مگابایت.</li>
+      <li>اگر حتی یک ردیف خطا داشته باشد، هیچ ردیفی ثبت نمی‌شود.</li>
+      <li>پیش‌نمایش ۳۰ دقیقه معتبر است. خود فایل نگه داشته نمی‌شود؛ پس از ثبت آن را پاک کنید.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

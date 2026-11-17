@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">خانه</a>
+  &rsaquo; <a href="{% url 'admin:online_classes_onlineevent_change' row.event_id %}">{{ row.event.title }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <p><strong>{{ row.student.user.get_full_name }}</strong> · {{ row.event.title }}</p>
+  {% if failed %}
+    <p class="errornote">این ردیف با کلیدهای فعلی باز نمی‌شود؛ اطلاعات را دوباره ثبت کنید.</p>
+  {% elif secrets %}
+    <table>
+      <tr><th>لینک</th><td dir="ltr">{{ secrets.url|default:"—" }}</td></tr>
+      <tr><th>نام کاربری</th><td dir="ltr">{{ row.username|default:"—" }}</td></tr>
+      <tr><th>رمز عبور</th><td dir="ltr">{{ secrets.password|default:"—" }}</td></tr>
+      <tr><th>کد دسترسی</th><td dir="ltr">{{ secrets.access_code|default:"—" }}</td></tr>
+    </table>
+    <p class="help">این نمایش در تاریخچه‌ی همین ردیف ثبت شد.</p>
+  {% else %}
+    <p>رمزها فقط با این دکمه نمایش داده می‌شوند و هر نمایش به نام شما در تاریخچه ثبت می‌شود.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="submit" class="default" value="نمایش اطلاعات ورود">
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

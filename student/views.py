@@ -1,40 +1,50 @@
 from django.db.models import Count, F, Q
+from django.http import Http404, JsonResponse
 from django.shortcuts import render
 from teaching.models.school_session import SchoolSession
 from teaching.models.session_content import SessionContent
 from school.models.class_subject import ClassSubject
 from datetime import timedelta
 from django.utils import timezone
-from django.http import JsonResponse
+from django.views.decorators.cache import never_cache
+from online_classes.selectors import dashboard_block
 from .templatetags import persian_filters
 from .decorators import student_required
+from .selectors import panel_enrollment
 from .services import get_classes_for_day
 
 # Create your views here.
 
 @student_required
+@never_cache
 def student_dashboard(request):
-    student = request.user.student_profile.enrollments.all()[0]
-    print(f"student: {student}")
-    school_class = student.school_class
-    today_classes = get_classes_for_day(school_class, timezone.localdate())
-    tomorrow_classes = get_classes_for_day(school_class, timezone.localdate() + timedelta(days=1))
+    # The online card can hold personal links, so this page is never cached.
+    online = dashboard_block(request.user.student_profile)
+    if request.GET.get('partial') == '1':
+        return render(request, 'online_classes/_dashboard_card.html', online)
+
+    enrollment = panel_enrollment(request.user.student_profile)
+    school_class = enrollment.school_class if enrollment else None
+    today = timezone.localdate()
+    today_classes = get_classes_for_day(school_class, today) if school_class else []
+    tomorrow_classes = get_classes_for_day(school_class, today + timedelta(days=1)) if school_class else []
     homework_queryset = (
         SessionContent.objects
         .filter(session__class_subject__school_class=school_class)
         .exclude(homework='')
         .select_related('session', 'session__class_subject', 'session__class_subject__subject')
         .order_by('-session__date')[:5]
-    )
-
-    print(today_classes)
+    ) if school_class else []
 
     context = {
         'today_classes': today_classes,
         'tomorrow_classes': tomorrow_classes,
         'homeworks': homework_queryset,
-        'student': student, 
-        'school_class': school_class
+        # The greeting prints this: the enrolment and the user both read as the full name.
+        'student': enrollment or request.user,
+        'school_class': school_class,
+        'has_enrollment': enrollment is not None,
+        **online,
     }
 
     return render(request, 'student/dashboard.html', context)
@@ -43,11 +53,9 @@ def student_dashboard(request):
 
 @student_required
 def sessions_list(request):
-    # print(type(request.user.student_profile.enrollments.all()[0]))
-    # print(hasattr(request.user.student_profile.enrollments.all()[0], 'school_class'))
-    school_class = request.user.student_profile.enrollments.get().school_class
+    enrollment = panel_enrollment(request.user.student_profile)
     class_subject_query = ClassSubject.objects\
-        .filter(school_class=school_class)\
+        .filter(school_class=enrollment.school_class if enrollment else None)\
         .annotate(session_count=Count(
             'sessions', filter=~Q(sessions__status=SchoolSession.Status.HOLIDAY)
         ))\
@@ -94,17 +102,18 @@ def _session_json(session):
 
 @student_required
 def session_list_json(request, subject):
-    school_class = request.user.student_profile.enrollments.get().school_class
-
+    enrollment = panel_enrollment(request.user.student_profile)
     class_subject = (
         ClassSubject.objects
         .filter(
-            school_class=school_class,
+            school_class=enrollment.school_class if enrollment else None,
             subject__slug=subject
         )
         .select_related('subject')
-        .get()
+        .first()
     )
+    if class_subject is None:
+        raise Http404
 
     sessions = (
         class_subject.sessions

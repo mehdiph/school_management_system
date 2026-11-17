@@ -1,32 +1,12 @@
-import re
-from datetime import datetime
-
-import jdatetime
 from django import forms
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
+
+from core.moments import parse_jalali_datetime
 
 from . import services
 from .models import BlogAuthor, Category, Post, Section, Tag
 from .widgets import EditorWidget, ImageInput
-
-_TO_ASCII_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
-_JALALI_DATETIME = re.compile(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?")
-
-
-def parse_jalali_datetime(value):
-    """«۱۴۰۵/۰۸/۱۲ ۱۰:۳۰» (Persian or ASCII digits; time optional, default 00:00) -> aware datetime, or None."""
-
-    match = _JALALI_DATETIME.fullmatch((value or "").strip().translate(_TO_ASCII_DIGITS))
-    if not match:
-        return None
-    year, month, day, hour, minute = (int(part) if part else 0 for part in match.groups())
-    try:
-        moment = jdatetime.datetime(year, month, day, hour, minute).togregorian()
-    except ValueError:
-        return None
-    return timezone.make_aware(datetime(moment.year, moment.month, moment.day, moment.hour, moment.minute))
 
 
 class CategoryChoiceField(forms.ModelChoiceField):

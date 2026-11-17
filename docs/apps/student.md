@@ -22,22 +22,19 @@ To ease template rendering across various school directories, the app defines a 
 ## 2. Database Models (`student/models/`)
 
 ### 2.1 StudentProfile (`student_profile.py`)
-This model stores the primary biographical, enrollment, and administrative status information for each student.
+One row per student, whatever the year.
 
 | Field Name | Type | Description |
 | :--- | :--- | :--- |
-| `user` | `OneToOneField(AUTH_USER_MODEL)` | Maps directly to the authentication user. Relates back via `student_profile` and is restricted to `role='student'`. |
-| `student_code` | `CharField(max_length=20)` | Unique registration code assigned to the student (e.g., "کد دانش آموزی"). |
-| `school_class` | `ForeignKey(SchoolClass)` | Associated physical/logical class unit. Employs `PROTECT` on delete to avoid accidental removal of active student data. |
-| `enrollment_date` | `jmodels.jDateField` | Date of registration using the Jalali calendar system. |
-| `status` | `CharField` | Status selection from the `Status` text choices sub-class. |
+| `user` | `OneToOneField(AUTH_USER_MODEL)` | The login. Relates back via `student_profile`; restricted to `role='student'`. |
+| `student_code` | `CharField(max_length=20)` | Unique registration code («کد دانش آموزی»). |
 
-#### Status Selection Options
-*   `active` ("فعال")
-*   `graduated` ("فارغ التحصیل")
-*   `transferred` ("انتقالی")
+### 2.2 StudentEnrollment (`student_enrollment.py`)
+One row per student per academic year: `student`, `academic_year`, `school_class`, `enrollment_date`, `status`, `created_at`. A class change edits this row.
 
-*   **String Representation:** Returns the full name of the student's associated authentication user.
+### 2.3 Which enrolment a page uses (`student/selectors.py`)
+*   **`current_enrollment(profile)`** decides what a student receives right now (online classes, announcements): active, current year, active class of an active branch; the newest wins if two years are flagged current; otherwise `None`. A student who left or hasn't re-enrolled receives nothing.
+*   **`panel_enrollment(profile)`** is what the student's own pages show (timetable, homework, sessions): the newest year's, in any status, or `None`.
 
 ---
 
@@ -60,22 +57,14 @@ Converts standard datetime objects or formatted Jalali date strings into a local
 ## 4. Views and Controller Logic (`student/views.py`)
 
 ### 4.1 `student_dashboard` View
-Renders the primary landing portal for authenticated students. It performs the following data queries:
-*   **Profile Query:** Retrieves the student profile and active school class.
-*   **Homework Query:** Queries the `SessionContent` database for up to five of the latest homework items. It targets sessions that match the student's `school_class` and filters out empty strings:
-    ```python
-    homeworks = (
-        SessionContent.objects
-        .filter(session__class_subject__school_class=school_class)
-        .exclude(homework='')
-        .select_related('session', 'session__class_subject', 'session__class_subject__subject')
-        .order_by('-session__date')[:5]
-    )
-    ```
-*   **Schedule Query:** Dynamically queries `ClassSchedule` for active classes scheduled for the current day. The query helper `get_today_schedule_day(date.today())` retrieves classes matching the correct day of the week, ordered by start time.
+Renders the primary landing portal for authenticated students. `never_cache`, because the online card can hold personal links. A student with no enrolment gets an empty state, not an error.
+*   **Enrolment:** `panel_enrollment` gives the class.
+*   **Online block:** `online_classes.selectors.dashboard_block` gives the banners and the card, at most four queries (see [online_classes.md](online_classes.md)). `?partial=1` returns just the card, for the JS refresh (ADR-015).
+*   **Today and tomorrow:** `get_classes_for_day(school_class, date)`.
+*   **Homework:** up to five latest `SessionContent` rows of the class with non-empty homework.
 
 ### 4.2 `sessions_list` View
-Lists class subjects assigned to the student's standard school class. It uses `prefetch_related` on `'sessions'` and `'sessions__session_contents'` to optimize performance when rendering timeline structures. Each class subject is annotated with `session_count`, which **excludes holiday sessions** (status `HL`, see [academic_calendar.md](academic_calendar.md)).
+Lists the class subjects of the class from `panel_enrollment` (none for a student with no enrolment). It uses `prefetch_related` on `'sessions'` and `'sessions__session_contents'` to optimize performance when rendering timeline structures. Each class subject is annotated with `session_count`, which **excludes holiday sessions** (status `HL`, see [academic_calendar.md](academic_calendar.md)).
 
 ### 4.3 `session_list_json` API Endpoint
 A localized API view that returns JSON formatted list data for a specific subject. 
@@ -103,10 +92,12 @@ app_name = 'student'
 
 urlpatterns = [
     path('dashboard/', views.student_dashboard, name='dashboard'),
-    path('sessions/<slug:subject>', views.sessions_list, name='sessions'),
+    path('sessions/', views.sessions_list, name='sessions'),
     path('api/sessions/<slug:subject>', views.session_list_json, name='session_list_json')
 ]
 ```
+
+The online pages are also under `/student/` but belong to `online_classes` (`/student/online/`, `/student/announcements/<id>/dismiss/`).
 
 ---
 
@@ -115,6 +106,7 @@ urlpatterns = [
 The frontend components leverage modern, clean layouts designed to display dashboard blocks and interactive timelines.
 
 ### 6.1 `dashboard.html`
+*   **Announcements and online card:** the banners on top, then the «کلاس‌ها و آزمون‌های آنلاین» card after the hero (templates in `online_classes`).
 *   **Hero Section:** Welcomes the student and displays their avatar image.
 *   **Achievements Panel:** Lists gamification statistics, such as learning streaks or homework completed status badges.
 *   **Today's Classes:** Uses conditional structures to display today's lessons or an alternative message if there are no classes scheduled.
@@ -132,16 +124,5 @@ The frontend components leverage modern, clean layouts designed to display dashb
 
 ## 7. Admin Interface Integration (`student/admin.py`)
 
-The student administrative panels are registered using basic Django model administrators:
-
-```python
-@admin.register(StudentProfile)
-class StudentProfileAdmin(admin.ModelAdmin):
-    list_display = ['get_full_name', 'school_class', 'enrollment_date', 'status']
-
-    def get_full_name(self, obj):
-        return f"{obj.user.get_full_name()}"
-    get_full_name.short_description = 'نام و نام خانوادگی'
-```
-
-*   **`get_full_name` Helper:** Invokes `obj.user.get_full_name()` inside a list column to display the student's full name, resolving the nested authentication dependency.
+*   **`StudentProfileAdmin`:** `list_display = ['get_full_name']`, and `search_fields` on name, student code and national code, which the online classes pickers need. In `get_search_results`, results are limited to the admin's branches only when the autocomplete request comes from `online_classes`, so the existing pages don't change.
+*   **`StudentEnrollmentAdmin`:** branch-scoped, listing student, class, branch, status, date and year.
