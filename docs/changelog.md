@@ -24,6 +24,14 @@
 
 # [Unreleased]
 
+## Fixed (online classes: allowed domains)
+
+- A link pasted from a Persian messenger was refused as «جزو دامنه‌های مجاز این پلتفرم نیست» even though its domain was allowed. The invisible direction mark it carried had become part of the host. Links are now cleaned before being checked, and the cleaned link is stored and rendered: bidi and zero-width marks are removed everywhere, and ZWNJ is removed from the scheme and host only. This applies to events, access rows (form and Excel import), the platform's support link and announcement buttons. A host that is still not plain ASCII is refused (no IDN hosts).
+- A platform's «دامنه‌های مجاز» are normalised on save (scheme, path, port, `*.`, `www.`, spaces, invisible characters, Persian digits, case), and each unusable line is named in the error. `www.example.com` and `example.com` now accept each other, also for rows saved before the fix.
+- The domain error names the link's host and lists the platform's allowed domains.
+- The student page now shows the platform's support link only through the render-time check, like the other links.
+- Migration `online_classes.0002` changes only the help text (no database effect).
+
 ## Added (online classes and announcements, Phase 1 of 3)
 
 - New app `online_classes` (`docs/apps/online_classes.md`, ADR-027): platforms, online classes and exams, per-student access rows and announcements, all managed in the admin. No notifications, no tracking, no platform APIs.

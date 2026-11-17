@@ -68,12 +68,12 @@
   {% endif %}
 
   {% if not compact and platform and event.is_scheduled and not card.is_past %}
-    {% if platform.join_help or platform.support_contact or platform.support_url %}
+    {% if platform.join_help or platform.support_contact or platform.safe_support_url %}
     <details class="online-help">
       <summary>راهنمای ورود و پشتیبانی</summary>
       {% if platform.join_help %}<p>{{ platform.join_help|linebreaksbr }}</p>{% endif %}
       {% if platform.support_contact %}<p>پشتیبانی: <span dir="ltr">{{ platform.support_contact }}</span></p>{% endif %}
-      {% if platform.support_url %}<p><a href="{{ platform.support_url }}" target="_blank" rel="noopener noreferrer">صفحه‌ی پشتیبانی {{ platform.name }}</a></p>{% endif %}
+      {% if platform.safe_support_url %}<p><a href="{{ platform.safe_support_url }}" target="_blank" rel="noopener noreferrer">صفحه‌ی پشتیبانی {{ platform.name }}</a></p>{% endif %}
     </details>
     {% endif %}
   {% endif %}

@@ -31,7 +31,7 @@ from student.models.student_profile import StudentProfile
 
 from . import audience, crypto
 from .models import OnlineEventAccess
-from .validators import validate_https_url
+from .validators import clean_url, validate_https_url
 
 STUDENT_CODE = "کد دانش‌آموزی"
 NATIONAL_CODE = "کد ملی"
@@ -179,7 +179,7 @@ def validate(raw_rows, event, acting_user):
             number=number,
             student_code=normalize(cells.get(STUDENT_CODE, "")),
             national_code=_national(cells.get(NATIONAL_CODE, "")),
-            url=cells.get(URL, ""),
+            url=clean_url(cells.get(URL, "")),
             username=cells.get(USERNAME, ""),
             password=cells.get(PASSWORD, ""),
             access_code=cells.get(ACCESS_CODE, ""),

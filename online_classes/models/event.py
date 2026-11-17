@@ -10,7 +10,7 @@ from django_jalali.db import models as jmodels
 
 from core.moments import as_datetime, to_utc, utc_now
 
-from ..validators import MAX_URL_LENGTH, validate_https_url
+from ..validators import MAX_URL_LENGTH, clean_url, validate_https_url
 from .audience import AudienceTargets
 
 #: The event's own moments, compared with the clock in queries (``core.moments``).
@@ -248,6 +248,12 @@ class OnlineEvent(AudienceTargets):
         return min((moment for moment in moments if moment > now), default=None)
 
     # ------------------------------------------------------------------- rules
+
+    def clean_fields(self, exclude=None):
+        # Store the link without the invisible marks a copy from a messenger brings along.
+        if "join_url" not in (exclude or ()):
+            self.join_url = clean_url(self.join_url)
+        super().clean_fields(exclude)
 
     def clean(self):
         errors = {}

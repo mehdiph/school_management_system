@@ -22,7 +22,7 @@ class HttpsUrlTests(SimpleTestCase):
             "https://exa mple.com/",
             "https://example.com/a b",
             "https://example.com\\@evil.com",
-            "https://example.com/\n",
+            "https://example.com/\nx",
             "ftp://example.com",
             "https://example.com/" + "a" * 2000,
         ):
@@ -35,6 +35,11 @@ class HttpsUrlTests(SimpleTestCase):
             with self.subTest(value):
                 validate_https_url(value)
                 self.assertEqual(safe_https_url(value), value)
+
+    def test_surrounding_whitespace_is_trimmed(self):
+        # Refused before the 2026-11 allowed-domains fix; now trimmed like any pasted link.
+        validate_https_url("https://example.com/\n")
+        self.assertEqual(safe_https_url("https://example.com/\n"), "https://example.com/")
 
     def test_allowed_domains(self):
         domains = "skyroom.online\nmonta.ir"
@@ -51,7 +56,10 @@ class HttpsUrlTests(SimpleTestCase):
 
     def test_domain_list(self):
         validate_domains("skyroom.online\nclass.monta.ir, a-b.co")
-        for value in ("https://skyroom.online", "skyroom", "skyroom.online/path", "*.example.com"):
+        # A pasted link, a path or "*." is normalised since the 2026-11 allowed-domains fix (test_links).
+        for value in ("https://skyroom.online", "skyroom.online/path", "*.example.com"):
+            validate_domains(value)
+        for value in ("skyroom", "اسکای.ir", "1.2.3.4"):
             with self.subTest(value), self.assertRaises(ValidationError):
                 validate_domains(value)
 

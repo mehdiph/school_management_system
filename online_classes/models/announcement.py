@@ -9,7 +9,7 @@ from website.images import METADATA_HELP, reencode
 from website.models.base import image_url
 from website.validators import IMAGE_VALIDATORS
 
-from ..validators import MAX_URL_LENGTH, safe_button_url, validate_button_url
+from ..validators import MAX_URL_LENGTH, clean_url, safe_button_url, validate_button_url
 from .audience import AudienceTargets
 
 IMAGE_MAX_SIDE = 1600
@@ -157,7 +157,12 @@ class Announcement(AudienceTargets):
 
     @property
     def button_is_external(self):
-        return self.button_url.startswith("https://")
+        return self.safe_button_url.startswith("https://")
+
+    def clean_fields(self, exclude=None):
+        if "button_url" not in (exclude or ()):
+            self.button_url = clean_url(self.button_url)
+        super().clean_fields(exclude)
 
     def clean(self):
         errors = {}
